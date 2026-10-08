@@ -1,0 +1,67 @@
+{
+ "product": "0070-3m",
+ "width": 1350,
+ "height": 1350,
+ "_about": "Lifestyle photo for 0070-3m, built by tools/make_lifestyle_assets.py from Numo's layers.",
+ "lifestyle": {
+  "bounds": {
+   "x": 646.3,
+   "y": 670.8,
+   "w": 319.4,
+   "h": 397.0
+  },
+  "wrap": 128.44,
+  "phase": 16.38,
+  "can": {
+   "cx": 783.37,
+   "r": 184.85
+  },
+  "top": [
+   633.79,
+   36.98
+  ],
+  "bottom": [
+   1004.5,
+   63.27
+  ],
+  "_measured": "Numo's placement shot (Side 1 grid), mapped onto the photo: x*2+268, y*2+478"
+ },
+ "exports": {
+  "background": {
+   "file": "background.jpg",
+   "blend": "normal"
+  },
+  "neoprene_mask": {
+   "file": "neoprene_mask.png",
+   "role": "color_mask"
+  },
+  "art_zone_side1": {
+   "file": "art_zone_side1.png",
+   "role": "art_clip"
+  },
+  "art_zone_side2": {
+   "file": "art_zone_side2.png",
+   "role": "art_clip"
+  },
+  "stitching_mask": {
+   "file": "stitching_mask.png",
+   "role": "color_mask"
+  },
+  "texture_overlay": {
+   "file": "texture_overlay.png",
+   "blend": "overlay"
+  },
+  "texture_screen": {
+   "file": "texture_screen.png",
+   "blend": "multiply"
+  },
+  "rim": {
+   "file": "rim.png",
+   "role": "overlay_top"
+  },
+  "edges": {
+   "file": "edges.png",
+   "role": "overlay_top"
+  }
+ }
+}
