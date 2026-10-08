@@ -1,0 +1,7 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "buildAptPackages": ["libcairo2-dev"],
+  "deploy": {
+    "aptPackages": ["ghostscript", "poppler-utils", "libcairo2"]
+  }
+}

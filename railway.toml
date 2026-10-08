@@ -1,0 +1,12 @@
+# Railway service configuration.
+#
+# NOTE: this file supports no `variables` section. The RAILPACK_* settings that
+# used to live here under [build.variables] were never applied by Railway —
+# neither the Python pin nor the libcairo2-dev package. Apt packages now live in
+# railpack.json beside this file, which Railpack does read.
+#
+# Anything else RAILPACK_* has to be set as a service variable in the Railway
+# dashboard (service -> Variables), not here.
+
+[build]
+builder = "RAILPACK"

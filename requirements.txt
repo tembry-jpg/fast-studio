@@ -1,0 +1,20 @@
+flask>=3.0
+colorthief>=0.2.1
+reportlab>=4.0
+Pillow>=10.0
+pdfrw>=0.4
+pdf2image>=1.16
+cairosvg>=2.7
+svglib>=1.5
+gunicorn>=21.0
+# Raster-to-vector for screen print. potracer is a pure-Python potrace, so it
+# needs no apt package and no build step; numpy is what it takes its bitmap as
+# and what vectorize.py measures with. scipy is deliberately NOT here —
+# vectorize.py implements the four morphology operations it needs in numpy,
+# checked against scipy for exact agreement, to keep ~90 MB out of the image.
+numpy>=1.24
+potracer>=0.0.4
+# Final pass on the press file: every colour forced to /Separation /All.
+pikepdf>=8.0
+# Measures text ink for layouts (stacked text + artwork).
+fonttools>=4.40
