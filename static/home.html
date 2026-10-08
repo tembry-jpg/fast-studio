@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/png" sizes="64x64" href="data:image/png;base64,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"><link rel="icon" href="/favicon.ico" sizes="any"><link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Numo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f0eb;
+    --card: #ffffff;
+    --text: #1a1a1a;
+    --muted: #888;
+    --accent: #6b1a2a;
+    --accent-hover: #8b2235;
+    --border: #e5e0da;
+    --serif: 'Instrument Serif', Georgia, serif;
+    --sans: 'Instrument Sans', 'Inter', sans-serif;
+  }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    padding: 32px 48px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  header h1 {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: -0.5px;
+  }
+  header span {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 48px;
+  }
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.15s, transform 0.15s;
+    display: flex;
+    flex-direction: column;
+    contain: layout style;
+    will-change: transform;
+  }
+  .card-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    content-visibility: auto;
+  }
+  .card:hover {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+    transform: translateY(-2px);
+  }
+  .card-thumb {
+    background: #fbeede;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .card.soon { cursor: default; }
+  .card.soon:hover { transform: none; box-shadow: none; }
+  .card-thumb { position: relative; }
+  .soon-veil { position: absolute; inset: 0; background: rgba(245, 240, 235, .62); display: flex; align-items: center; justify-content: center; }
+  .soon-veil span { background: #6b1a2a; color: #fff; font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; padding: 8px 16px; border-radius: 20px; }
+  .card-thumb .placeholder {
+    font-family: var(--serif);
+    font-size: 48px;
+    color: rgba(255,255,255,0.15);
+    font-style: italic;
+  }
+  .card-body {
+    padding: 16px 18px 18px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .card-label {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .card-meta {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .card-cta {
+    margin-top: auto;
+    padding-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .card-cta svg {
+    transition: transform 0.15s;
+  }
+  .card:hover .card-cta svg {
+    transform: translateX(3px);
+  }
+  .loading {
+    color: var(--muted);
+    font-size: 14px;
+    padding: 40px 0;
+  }
+
+  /* ── This Is Fast programme ─────────────────────────────────────────── */
+  .tif-head { margin-bottom: 22px; }
+  .tif-kicker {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+  }
+  .tif-title {
+    font-family: var(--serif); font-size: 32px; font-weight: 400;
+    letter-spacing: -0.4px; line-height: 1.15;
+  }
+  .tif-sub {
+    font-size: 14px; color: var(--muted); margin-top: 8px;
+    line-height: 1.5; max-width: 620px;
+  }
+  .tif-points {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
+  }
+  .tif-point {
+    font-size: 11.5px; color: #4a4a4a; background: var(--card);
+    border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px;
+  }
+  .badge-24 {
+    display: inline-block; font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    background: var(--accent); color: #fff;
+    border-radius: 4px; padding: 3px 7px; margin-left: 6px;
+    vertical-align: 2px;
+  }
+
+  /* ── Program landing + views ─────────────────────────────────────────── */
+  .view { display: none; }
+  .view.on { display: block; }
+  .nav { margin-left: auto; display: flex; gap: 6px; align-self: center; }
+  .nav a { text-decoration: none; font-size: 13px; font-weight: 600; color: var(--muted);
+           padding: 8px 14px; border-radius: 22px; border: 1px solid transparent; }
+  .nav a:hover { color: var(--accent); }
+  .nav a.on { color: var(--accent); background: var(--card); border-color: var(--border); }
+  .back { display: inline-block; font-size: 13px; color: var(--muted); text-decoration: none; margin-bottom: 18px; }
+  .back:hover { color: var(--accent); }
+  .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 30px; }
+  .choice { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+            text-decoration: none; color: inherit; display: flex; flex-direction: column;
+            transition: box-shadow .15s, transform .15s; }
+  .choice:hover { box-shadow: 0 10px 36px rgba(0,0,0,.10); transform: translateY(-2px); }
+  .choice-thumbs { background: #1a1a1a; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; aspect-ratio: 3 / 1.25; }
+  .choice-thumbs div { display: flex; align-items: center; justify-content: center; overflow: hidden; background: #1a1a1a; }
+  .choice-thumbs img { width: 85%; height: 85%; object-fit: contain; }
+  .choice-body { padding: 20px 22px 22px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .choice-title { font-family: var(--serif); font-size: 28px; line-height: 1.15; }
+  .choice-sub { font-size: 14px; color: var(--muted); line-height: 1.5; }
+  .group { margin-bottom: 48px; }
+  .group-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 18px; }
+  .group-head h2 { font-family: var(--serif); font-size: 24px; font-weight: 400; }
+  .group-head span { font-size: 12px; color: var(--muted); }
+
+  /* ── Full catalog disclosure ────────────────────────────────────────── */
+  .catalog-toggle {
+    margin-left: auto; align-self: center;
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 22px;
+    padding: 9px 16px; cursor: pointer;
+    font-family: var(--sans); font-size: 13px; font-weight: 600;
+    color: var(--accent); transition: border-color 0.15s, color 0.15s;
+  }
+  .catalog-toggle:hover { border-color: var(--accent); color: var(--accent-hover); }
+  .catalog-toggle svg { transition: transform 0.25s ease; }
+  .catalog-toggle.open svg { transform: rotate(180deg); }
+  #full-catalog { display: none; margin-top: 44px; padding-top: 40px; border-top: 1px solid var(--border); }
+  #full-catalog.open { display: block; }
+  /* ── Catalog: search, filters, sort ─────────────────────────────────── */
+  main.wide { max-width: 1280px; }
+  .cat { display: grid; grid-template-columns: 220px 1fr; gap: 36px; align-items: start; }
+  .cat-side { position: sticky; top: 18px; display: flex; flex-direction: column; gap: 22px; }
+  .facet h3 { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+              color: var(--muted); margin-bottom: 8px; }
+  .facet label { display: flex; align-items: center; gap: 9px; font-size: 13.5px; padding: 5px 0;
+                 cursor: pointer; color: var(--text); user-select: none; }
+  .facet label.zero { color: #bbb; cursor: default; }
+  .facet input { accent-color: var(--accent); width: 15px; height: 15px; }
+  .facet .n { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+  .cat-top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .search { flex: 1 1 320px; position: relative; }
+  .search input { width: 100%; font: inherit; font-size: 15px; padding: 12px 40px 12px 42px;
+                  border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--text); }
+  .search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(107,26,42,.10); }
+  .search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+  .search .kbd { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 11px;
+                 color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; }
+  .search .clear-q { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); border: 0;
+                     background: none; font-size: 18px; color: var(--muted); cursor: pointer; display: none; }
+  .sel { font: inherit; font-size: 13px; padding: 10px 12px; border: 1px solid var(--border);
+         border-radius: 10px; background: var(--card); color: var(--text); cursor: pointer; }
+  .toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); cursor: pointer; }
+  .toggle input { accent-color: var(--accent); }
+  .cat-status { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 22px; min-height: 28px; }
+  .cat-count { font-size: 13px; color: var(--muted); margin-right: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; background: var(--card);
+          border: 1px solid var(--border); border-radius: 20px; padding: 5px 8px 5px 12px; cursor: pointer; }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip b { font-weight: 400; color: var(--muted); }
+  .link-btn { border: 0; background: none; font: inherit; font-size: 12.5px; color: var(--accent);
+              cursor: pointer; text-decoration: underline; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+  .tag { font-size: 10.5px; color: #4a4a4a; background: #f3eee8; border-radius: 4px; padding: 2px 7px; }
+  .tag.fast { background: var(--accent); color: #fff; }
+  .item-no { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+  .empty { background: var(--card); border: 1px dashed var(--border); border-radius: 12px; padding: 40px;
+           text-align: center; color: var(--muted); font-size: 14px; }
+  .recent { margin-bottom: 34px; }
+  .recent .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .filters-btn { display: none; }
+  .landing-search { margin-top: 26px; max-width: 560px; }
+  @media (max-width: 860px) {
+    .cat { grid-template-columns: 1fr; }
+    .cat-side { position: static; display: none; background: var(--card); border: 1px solid var(--border);
+                border-radius: 12px; padding: 16px; }
+    .cat-side.open { display: flex; }
+    .filters-btn { display: inline-flex; }
+  }
+  @media (max-width: 640px) {
+    header { flex-wrap: wrap; padding: 22px 16px 16px; }
+    .nav { margin-left: 0; }
+    main { padding: 28px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><a href="/" style="color:inherit;text-decoration:none">Numo</a></h1>
+  <span id="hdr-sub">Choose a program</span>
+  <nav class="nav" id="nav">
+    <a href="/items" data-v="items">All items</a>
+  </nav>
+</header>
+
+<main>
+  <!-- Landing: pick a program -->
+  <section id="v-home" class="view">
+    <div class="tif-kicker">Numo</div>
+    <div class="tif-title">What are you setting up?</div>
+    <div class="tif-sub">Mockup, digital proof and press-ready files for every Numo item.</div>
+    <form class="search landing-search" action="/items" method="get" role="search">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.2" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input name="q" type="search" placeholder="Search every item — name, item number, material…" autocomplete="off" aria-label="Search items">
+    </form>
+    <div class="choices">
+      <a class="choice" href="/tif">
+        <div class="choice-thumbs" id="thumbs-tif"></div>
+        <div class="choice-body">
+          <div class="tif-kicker">This Is Fast · 24 Hour Program</div>
+          <div class="choice-title">One-color screen print</div>
+          <div class="choice-sub">Fast-turn items printed in one PMS ink. <span id="count-tif"></span></div>
+          <div class="card-cta">Open 24 HR items <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+      </a>
+      <a class="choice" href="/standard">
+        <div class="choice-thumbs" id="thumbs-std"></div>
+        <div class="choice-body">
+          <div class="tif-kicker">Standard Items</div>
+          <div class="choice-title">Multi-color &amp; full color</div>
+          <div class="choice-sub">Can insulators, totes and pens — up to 5 spot colors or full color. <span id="count-std"></span></div>
+          <div class="card-cta">Open standard items <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+      </a>
+    </div>
+    <p style="margin-top:22px;font-size:13.5px"><a href="/items" style="color:var(--accent)">Browse all items with filters →</a></p>
+  </section>
+
+
+  <!-- Every item: search, filters, sort. /tif and /standard open it filtered. -->
+  <section id="v-items" class="view">
+    <div class="tif-head">
+      <div class="tif-kicker" id="cat-kicker">All items</div>
+      <div class="tif-title" id="cat-title">Find an item</div>
+      <div class="tif-sub" id="cat-sub">Search by name, item number or material, or narrow it down with the filters.</div>
+    </div>
+    <div class="cat-top">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.2" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="Search — e.g. slim can, 0070, burlap, camo, tote" autocomplete="off" aria-label="Search items">
+        <span class="kbd" id="q-kbd">/</span>
+        <button class="clear-q" id="q-clear" aria-label="Clear search">×</button>
+      </div>
+      <button class="sel filters-btn" id="filters-btn" aria-expanded="false">Filters</button>
+      <select class="sel" id="sort" aria-label="Sort">
+        <option value="rec">Sort: Recommended</option>
+        <option value="item">Sort: Item number</option>
+        <option value="name">Sort: Name A–Z</option>
+        <option value="name-desc">Sort: Name Z–A</option>
+        <option value="locs">Sort: Most print locations</option>
+      </select>
+      <label class="toggle"><input type="checkbox" id="group" checked> Group by type</label>
+    </div>
+    <div class="cat">
+      <aside class="cat-side" id="facets" aria-label="Filters"></aside>
+      <div>
+        <div class="cat-status" id="status"></div>
+        <div id="recent"></div>
+        <div id="results"><div class="loading">Loading products…</div></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+const MATERIAL_LABELS = {
+  scuba_foam: "Scuba Foam",
+  scuba_foam_4cp: "Scuba Foam 4CP",
+  neoprene: "Neoprene",
+  neoprene_4cp: "Neoprene 4CP",
+  jotter: "Pens",
+  three_way_pen: "Pens",
+};
+
+// Standard items, grouped by what they are rather than by material.
+const GROUPS = [
+  { key: "can",  title: "Can Insulators", test: m => !/^(cotton_canvas|jotter|three_way_pen)/.test(m) },
+  { key: "tote", title: "Totes",          test: m => /^cotton_canvas/.test(m) },
+  { key: "pen",  title: "Pens",           test: m => /^(jotter|three_way_pen)/.test(m) },
+];
+function thumbs(items) {
+  return items.slice(0, 3).map(p =>
+    `<div><img src="${p.thumb_url || `/static/assets/${p.asset_id || p.id}/thumbnail.png`}" alt="" loading="lazy" onerror="this.remove()"></div>`).join("");
+}
+
+function currentView() {
+  const path = location.pathname.replace(/\/+$/, "");
+  if (path === "/tif" || location.hash === "#tif") return "tif";
+  if (path === "/standard" || location.hash === "#catalog" || location.hash === "#standard") return "standard";
+  // The items page is the front page; the program chooser is at /start.
+  if (path === "/start") return "home";
+  return "items";
+}
+
+// ── Catalog ───────────────────────────────────────────────────────────────
+// Facets in the order people narrow down: what it is, what it fits, what it's
+// made of, how it prints, which program. Multiple ticks in one facet widen
+// (OR); ticks across facets narrow (AND). Each option shows how many items
+// it would leave, given everything else already chosen.
+const FACETS = [
+  { key: "shape",          label: "Type",     param: "type" },
+  { key: "fits",           label: "Fits",     param: "fits" },
+  { key: "material_label", label: "Material", param: "material" },
+  { key: "printing",       label: "Print",    param: "print" },
+  { key: "program",        label: "Program",  param: "program" },
+];
+const SHAPE_ORDER = ["Beverage Insulators", "Totes and Bags", "Key Chains", "Pens"];
+const MAT_ORDER = ["Neoprene", "Scuba Foam", "Metallic Neoprene", "Heathered Neoprene", "Denim", "Burlap", "Suede", "Canvas", "Plastic"];
+const PRINT_ORDER = ["Spot color", "Full color (4CP)", "One color · 24 HR"];
+const PROGRAM_COPY = {
+  "This Is Fast": { kicker: "This Is Fast · 24 Hour Program", title: "One-color screen print, set up in minutes",
+    sub: "Upload your art — vector, or a PNG/JPG we convert for you — place it inside the approved imprint area, pick your PMS ink, and see the finished product before you submit." },
+  "Standard": { kicker: "Standard Items", title: "Multi-color and full-color items",
+    sub: "Screen print up to 5 spot colors with every color matched to Pantone, or full-color 4CP — with text, numbers and extra logos on any side." },
+};
+const ST = { q: "", sel: {}, sort: "rec", group: true };
+let ALL = [];
+const CAT = { recentKey: "pe_recent_items" };
+
+function esc(t) { return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]); }
+function orderOf(list, v) { const i = list.indexOf(v); return i < 0 ? 99 : i; }
+
+// Search: every word must appear somewhere in the item's name, number,
+// material, print method, colours or the everyday words for it (koozie…).
+const SYN = { koozie: "insulator", coozie: "insulator", koozy: "insulator", cozy: "insulator", huggie: "insulator",
+              cooler: "insulator", bag: "tote", skinny: "slim", seltzer: "slim", "4cp": "full", fullcolor: "full",
+              "1c": "one", "24hr": "24", fast: "fast", camo: "camo" };
+function matchesQ(p, q) {
+  if (!q) return true;
+  const hay = (p.keywords + " " + p.item.toLowerCase()).replace(/[-_]/g, " ") + " " + p.keywords;
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => {
+    w = w.replace(/[^a-z0-9.-]/g, "");
+    if (!w) return true;
+    return hay.includes(w) || hay.includes(w.replace(/-/g, " ")) || (SYN[w] && hay.includes(SYN[w]));
+  });
+}
+function passes(p, skipKey) {
+  if (!matchesQ(p, ST.q)) return false;
+  for (const f of FACETS) {
+    if (f.key === skipKey) continue;
+    const want = ST.sel[f.key];
+    if (want && want.size && !want.has(p[f.key])) return false;
+  }
+  return true;
+}
+
+function rankRec(a, b) {
+  if (a.catalog_order != null && b.catalog_order != null) return a.catalog_order - b.catalog_order;   // the client catalog's own order
+  return orderOf(SHAPE_ORDER, a.shape) - orderOf(SHAPE_ORDER, b.shape)
+      || a.family.localeCompare(b.family)
+      || (a.program === "This Is Fast") - (b.program === "This Is Fast")
+      || orderOf(PRINT_ORDER, a.printing) - orderOf(PRINT_ORDER, b.printing)
+      || orderOf(MAT_ORDER, a.material_label) - orderOf(MAT_ORDER, b.material_label)
+      || a.id.localeCompare(b.id);
+}
+function sorter() {
+  return {
+    rec: rankRec,
+    item: (a, b) => a.item.localeCompare(b.item, undefined, { numeric: true }),
+    name: (a, b) => a.name.localeCompare(b.name) || a.item.localeCompare(b.item),
+    "name-desc": (a, b) => b.name.localeCompare(a.name) || a.item.localeCompare(b.item),
+    locs: (a, b) => b.slots.length - a.slots.length || rankRec(a, b),
+  }[ST.sort] || rankRec;
+}
+
+function catCard(p) {
+  if (p.coming_soon) return `
+    <div class="card soon" data-id="${esc(p.id)}" aria-disabled="true">
+      <div class="card-thumb">
+        ${p.thumb_url ? `<img src="${esc(p.thumb_url)}" loading="lazy" decoding="async" width="260" height="260" alt="${esc(p.name)}">` : ""}
+        <div class="soon-veil"><span>Coming soon</span></div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">${esc(p.name)}</div>
+        ${p.printing ? `<div class="tags"><span class="tag">${esc(p.printing)}</span></div>` : ""}
+      </div>
+    </div>`;
+  const tags = [
+    p.program === "This Is Fast" ? `<span class="tag fast">24 HR · 1 color</span>` : `<span class="tag">${esc(p.printing)}${p.max_inks > 1 ? ` · up to ${p.max_inks} PMS` : ""}</span>`,
+    `<span class="tag">${esc(p.material_label)}</span>`,
+    p.fits ? `<span class="tag">${esc(p.fits)}</span>` : "",
+  ].join("");
+  const bodies = p.bodies && p.bodies.length ? `<div class="card-meta">${esc(p.bodies.join(" · "))}</div>` : "";
+  return `
+    <a class="card" href="/${encodeURIComponent(p.id)}" data-id="${esc(p.id)}">
+      <div class="card-thumb">
+        <img src="${esc(p.thumb_url || `/static/assets/${p.asset_id || p.id}/thumbnail.png`)}" loading="lazy" decoding="async" width="260" height="260"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${esc(p.name)}">
+        <div class="placeholder" style="display:none">${esc(p.id)}</div>
+      </div>
+      <div class="card-body">
+        <div class="item-no">${esc(p.item)}</div>
+        <div class="card-label">${esc(p.name)}</div>
+        <div class="tags">${tags}</div>
+        <div class="card-meta">${esc(p.slots.map(s => s.label).join(", "))}</div>
+        ${bodies}
+        <div class="card-cta">Configure <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+    </a>`;
+}
+
+function renderFacets() {
+  const box = document.getElementById("facets");
+  box.innerHTML = FACETS.map(f => {
+    const values = [...new Set(ALL.map(p => p[f.key]).filter(Boolean))];
+    if (values.length < 2) return "";
+    const order = { shape: SHAPE_ORDER, material_label: MAT_ORDER, printing: PRINT_ORDER }[f.key] || [];
+    values.sort((a, b) => orderOf(order, a) - orderOf(order, b) || String(a).localeCompare(String(b)));
+    const base = ALL.filter(p => passes(p, f.key));
+    const sel = ST.sel[f.key] || new Set();
+    return `<div class="facet"><h3>${f.label}</h3>${values.map(v => {
+      const n = base.filter(p => p[f.key] === v).length;
+      const on = sel.has(v);
+      return `<label class="${!n && !on ? "zero" : ""}"><input type="checkbox" data-k="${f.key}" value="${esc(v)}" ${on ? "checked" : ""} ${!n && !on ? "disabled" : ""}>
+        ${esc(v)}<span class="n">${n}</span></label>`;
+    }).join("")}</div>`;
+  }).join("");
+  box.querySelectorAll("input[type=checkbox]").forEach(cb => cb.addEventListener("change", () => {
+    const k = cb.dataset.k;
+    ST.sel[k] = ST.sel[k] || new Set();
+    cb.checked ? ST.sel[k].add(cb.value) : ST.sel[k].delete(cb.value);
+    update();
+  }));
+}
+
+function activeCount() { return Object.values(ST.sel).reduce((n, s) => n + (s ? s.size : 0), 0); }
+
+function renderStatus(n) {
+  const chips = [];
+  if (ST.q) chips.push(`<span class="chip" data-clear="q"><b>Search:</b> ${esc(ST.q)} ×</span>`);
+  for (const f of FACETS) for (const v of (ST.sel[f.key] || [])) {
+    chips.push(`<span class="chip" data-k="${f.key}" data-v="${esc(v)}"><b>${f.label}:</b> ${esc(v)} ×</span>`);
+  }
+  const box = document.getElementById("status");
+  box.innerHTML = `<span class="cat-count">${n} item${n === 1 ? "" : "s"}</span>${chips.join("")}` +
+    (chips.length ? `<button class="link-btn" id="clear-all">Clear all</button>` : "");
+  box.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+    if (c.dataset.clear === "q") { ST.q = ""; document.getElementById("q").value = ""; }
+    else ST.sel[c.dataset.k]?.delete(c.dataset.v);
+    update();
+  }));
+  document.getElementById("clear-all")?.addEventListener("click", clearAll);
+  const fb = document.getElementById("filters-btn");
+  fb.textContent = activeCount() ? `Filters (${activeCount()})` : "Filters";
+}
+
+function clearAll() {
+  ST.q = ""; ST.sel = {};
+  document.getElementById("q").value = "";
+  update();
+}
+
+function renderResults(items) {
+  const box = document.getElementById("results");
+  if (!items.length) {
+    box.innerHTML = `<div class="empty">Nothing matches${ST.q ? ` “${esc(ST.q)}”` : ""}${activeCount() ? " with these filters" : ""}.
+      <div style="margin-top:12px"><button class="link-btn" id="empty-clear">Clear search and filters</button></div></div>`;
+    document.getElementById("empty-clear").addEventListener("click", clearAll);
+    return;
+  }
+  items.sort(sorter());
+  if (!ST.group) { box.innerHTML = `<div class="grid">${items.map(catCard).join("")}</div>`; return; }
+  const groups = new Map();
+  for (const p of items) {
+    const k = p.shape + (p.fits ? ` — ${p.fits}` : "");
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(p);
+  }
+  box.innerHTML = [...groups].map(([k, list]) => `<div class="group">
+      <div class="group-head"><h2>${esc(k)}</h2><span>${list.length} item${list.length === 1 ? "" : "s"}</span></div>
+      <div class="grid">${list.map(catCard).join("")}</div></div>`).join("");
+}
+
+// Recently opened, for this browser only: the item an artist goes back to most
+// is usually the one they just had open.
+function recentIds() { try { return JSON.parse(localStorage.getItem(CAT.recentKey) || "[]"); } catch (e) { return []; } }
+function pushRecent(id) {
+  try {
+    const r = [id, ...recentIds().filter(x => x !== id)].slice(0, 6);
+    localStorage.setItem(CAT.recentKey, JSON.stringify(r));
+  } catch (e) {}
+}
+function renderRecent() {
+  const box = document.getElementById("recent");
+  const ids = recentIds();
+  const items = ids.map(id => ALL.find(p => p.id === id)).filter(Boolean);
+  if (ST.q || activeCount() || !items.length) { box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="recent"><div class="group-head"><h2>Recently opened</h2></div>
+    <div class="grid">${items.map(catCard).join("")}</div></div>`;
+}
+
+function syncUrl() {
+  const q = new URLSearchParams();
+  if (ST.q) q.set("q", ST.q);
+  for (const f of FACETS) { const s = ST.sel[f.key]; if (s && s.size) q.set(f.param, [...s].join("|")); }
+  if (ST.sort !== "rec") q.set("sort", ST.sort);
+  if (!ST.group) q.set("group", "0");
+  const url = "/items" + (q.toString() ? "?" + q : "");
+  if (location.pathname + location.search !== url) history.replaceState(null, "", url);
+}
+
+function renderHeader() {
+  const prog = ST.sel.program && ST.sel.program.size === 1 && !ST.q && activeCount() === 1 ? [...ST.sel.program][0] : null;
+  const c = PROGRAM_COPY[prog] || { kicker: "All items", title: "Find an item",
+    sub: "Search by name, item number or material, or narrow it down with the filters." };
+  document.getElementById("cat-kicker").textContent = c.kicker;
+  document.getElementById("cat-title").textContent = c.title;
+  document.getElementById("cat-sub").textContent = c.sub;
+}
+
+function update() {
+  const items = ALL.filter(p => passes(p));
+  renderFacets(); renderStatus(items.length); renderRecent(); renderResults(items); renderHeader(); syncUrl();
+  document.getElementById("q-clear").style.display = ST.q ? "block" : "none";
+  document.getElementById("q-kbd").style.display = ST.q ? "none" : "";
+}
+
+function readUrl(view) {
+  const q = new URLSearchParams(location.search);
+  ST.q = q.get("q") || "";
+  ST.sel = {};
+  for (const f of FACETS) {
+    const v = q.get(f.param);
+    if (v) ST.sel[f.key] = new Set(v.split("|"));
+  }
+  if (view === "tif" && !ST.sel.program) ST.sel.program = new Set(["This Is Fast"]);
+  if (view === "standard" && !ST.sel.program) ST.sel.program = new Set(["Standard"]);
+  ST.sort = q.get("sort") || "rec";
+  ST.group = q.get("group") !== "0";
+}
+
+function initCatalog(view, products) {
+  ALL = products;
+  readUrl(view);
+  const qi = document.getElementById("q");
+  qi.value = ST.q;
+  document.getElementById("sort").value = ST.sort;
+  document.getElementById("group").checked = ST.group;
+  let t = null;
+  qi.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { ST.q = qi.value.trim(); update(); }, 120); });
+  qi.addEventListener("keydown", e => {
+    if (e.key === "Escape") { qi.value = ""; ST.q = ""; update(); }
+    if (e.key === "Enter") {                     // one match: open it
+      const hit = ALL.filter(p => passes(p));
+      if (hit.length === 1) { pushRecent(hit[0].id); location.href = "/" + encodeURIComponent(hit[0].id); }
+    }
+  });
+  document.getElementById("q-clear").addEventListener("click", () => { qi.value = ""; ST.q = ""; update(); qi.focus(); });
+  document.getElementById("sort").addEventListener("change", e => { ST.sort = e.target.value; update(); });
+  document.getElementById("group").addEventListener("change", e => { ST.group = e.target.checked; update(); });
+  document.getElementById("filters-btn").addEventListener("click", e => {
+    const open = document.getElementById("facets").classList.toggle("open");
+    e.currentTarget.setAttribute("aria-expanded", open);
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "/" && document.activeElement !== qi && !/input|textarea|select/i.test(document.activeElement.tagName)) {
+      e.preventDefault(); qi.focus(); qi.select();
+    }
+  });
+  document.getElementById("v-items").addEventListener("click", e => {
+    const a = e.target.closest("a.card"); if (a) pushRecent(a.dataset.id);
+  });
+  update();
+  if (!ST.q && !activeCount()) qi.focus();
+}
+
+async function init() {
+  const view = currentView();
+  const isCat = view !== "home";
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === (isCat ? "v-items" : "v-home")));
+  document.querySelector("main").classList.toggle("wide", isCat);
+  document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("on", a.dataset.v === view));
+  document.getElementById("hdr-sub").textContent =
+    view === "tif" ? "This Is Fast · 24 Hour Program" : view === "standard" ? "Standard items" : isCat ? "All items" : "Choose a program";
+  document.title = (view === "tif" ? "24 HR items · " : view === "standard" ? "Standard items · " : isCat ? "Items · " : "") + "Numo";
+
+  const products = await (await fetch("/api/products-lite")).json();
+  const tif = products.filter(p => p.is_screenprint);
+  const std = products.filter(p => !p.is_screenprint);
+
+  if (view === "home") {
+    document.getElementById("thumbs-tif").innerHTML = thumbs(tif);
+    document.getElementById("thumbs-std").innerHTML = thumbs(
+      GROUPS.map(g => std.find(p => g.test(p.material || ""))).filter(Boolean));
+    document.getElementById("count-tif").textContent = `${tif.length} items.`;
+    document.getElementById("count-std").textContent = `${std.length} items.`;
+  } else {
+    initCatalog(view, products);
+  }
+}
+
+init();
+</script>
+<script src="/static/client.js" defer></script>
+</body>
+</html>
