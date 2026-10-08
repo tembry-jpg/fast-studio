@@ -1,0 +1,32 @@
+{
+ "product": "5001-10",
+ "width": 2400,
+ "height": 2400,
+ "layer_naming": "Master_Mockup_{index}_{layername}.png",
+ "exports": {
+  "background": {
+   "file": "background.png",
+   "blend": "normal"
+  },
+  "canvas_mask": {
+   "file": "canvas_mask.png",
+   "role": "color_mask"
+  },
+  "art_zone_side1": {
+   "file": "art_zone_side1.png",
+   "role": "art_clip"
+  },
+  "texture_overlay": {
+   "file": "texture_overlay.png",
+   "blend": "overlay"
+  },
+  "texture_screen": {
+   "file": "texture_screen.png",
+   "blend": "soft-light"
+  },
+  "art_zone_side2": {
+   "file": "art_zone_side2.png",
+   "role": "art_clip"
+  }
+ }
+}
