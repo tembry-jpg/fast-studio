@@ -1,0 +1,122 @@
+{
+ "_scope": "CALIBRATED FOR 5001-TIF-7-1C AND 5001-TIF-CC-1C \u2014 the two share one die, one press template and one imposition; only the canvas colour differs, and that is a proof colour, not a geometry.",
+ "_template_file": "5001-TIF-7-1C.pdf and 5001-TIF-CC-1C.pdf \u2014 two vendor files, one geometry",
+ "_measured_by": "content-stream rectangles on the guide page; magenta imprint crosshairs on the press sheet",
+ "_shared_spec_evidence": "The vendor's two templates were compared rather than assumed equal: every large rectangle on the guide page matches to a tenth of a point, and both crosshairs to a hundredth. They differ only in the item number printed in the title, which is why each product keeps its own template file and they share this one spec.",
+ "_unverified": "Derived by measurement, never checked against a printed sheet. Two things to confirm at press before a live job: that the art lands on the crosshairs, and that ROTATED_SIDE1_DIR turns the bag the right way up.",
+ "template": "5001- 10 - Main Squeeze - 1 Side",
+ "product": "5001-TIF-7-1C",
+ "products": [
+  "5001-TIF-7-1C",
+  "5001-TIF-CC-1C"
+ ],
+ "_geometry_note": "The die is 1043.9 x 2232.0 pt (14.50\" x 31.00\") \u2014 the whole flat body, both panels, hinged at the fold on y=1230.3. Each panel is therefore 15.50\" tall. The press sheet's panel band is 1044 pt tall, which is the die WIDTH to within a tenth of a point, and 15.50\" does not fit in 14.50\": the panel is imposed rotated 90\u00b0. That equality is the measurement this whole layout rests on.",
+ "_zone_note": "The zone below is the imprint area the configurator offers, which is the purple body outline the customer was told they could print up to \u2014 not the template's cyan 'Maximum Imprint Area' rectangle, which is 883.5 x 801.9 pt (12.27\" x 11.14\"). Proof and press both use the configurator's zone so the three agree; the cyan rectangle printed on the guide page will read smaller than the art placed over it. Both rectangles share a centre, so nothing shifts \u2014 only the size differs.",
+ "guide_pages": {
+  "1": {
+   "sides": [
+    "side1"
+   ],
+   "zones": {
+    "side1": {
+     "cx": 1528.7,
+     "cy": 1721.8,
+     "w": 972.0,
+     "h": 936.0,
+     "left": 1042.7,
+     "top": 2189.8
+    }
+   }
+  }
+ },
+ "offsets": {
+  "side_w": 972.0,
+  "side_h": 936.0,
+  "circle_d": 0.0,
+  "d_side1": 0.0,
+  "d_side2": 0.0
+ },
+ "press_pages": {
+  "2": {
+   "page": [
+    1656.0,
+    2375.8
+   ],
+   "rotation": 90,
+   "positions": [
+    {
+     "cx": 827.8,
+     "cy": 1710.1,
+     "gap": 1043.8,
+     "vertical": false
+    },
+    {
+     "cx": 827.8,
+     "cy": 666.4,
+     "gap": 1043.8,
+     "vertical": false
+    }
+   ],
+   "artboard": "STRYKER",
+   "name_at": [
+    253.01,
+    1269.31,
+    90
+   ]
+  }
+ },
+ "_positions_note": "Both centres read straight off the magenta crosshairs the vendor drew at the dead centre of each imprint \u2014 no arc-fitting or inference. Measured at 150 dpi and agreeing with the sheet's own 1044 pt band pitch to 0.4 pt. 'vertical': false is what turns the art 90\u00b0.",
+ "proof_cover": [
+  190,
+  900,
+  520,
+  780
+ ],
+ "_proof_cover_note": "Covers the step-1/step-2 notes, the colour legend and the ART REQUIREMENTS box \u2014 all of which describe guide furniture this proof no longer shows. Stops below the product photo and its 'Front' caption, which stay: they tell the customer which panel they are looking at. The ART REQUIREMENTS box is outlined vector, not live text, so it was measured off a render rather than from pdftotext.",
+ "info_panel": {
+  "x": 200,
+  "y_top": 1660,
+  "w": 520,
+  "scale": 2.0
+ },
+ "_info_panel_note": "Sits in the column the cover rectangle just cleared. The koozie defaults are for an 1152 x 1656 page; this one is 2215 x 2809, so the block is placed and scaled for it rather than inherited.",
+ "flat_proof": {
+  "always_show": [
+   "side1",
+   "side2"
+  ],
+  "handles": true
+ },
+ "_flat_proof_note": "The 1-side This Is Fast job prints the front only, but the bag still has a back \u2014 so the flat proof shows both panels with the back blank, the back turned upright the way the koozies turn theirs, and simplified handle tabs on each.",
+ "die_fill": [
+  [
+   1006.7,
+   114.3,
+   1043.9,
+   2232.0
+  ]
+ ],
+ "die_folds": [
+  1230.3
+ ],
+ "_die_fill_note": "The whole flat body as one rectangle \u2014 this die has no handle cut-outs, so a rectangle is the die, not an approximation of it. Painted by the overlay rather than by fill_die_cut because this template strokes its die near the start of the content stream and its own panel blocks paint over anything filled in place.",
+ "die_regions": {
+  "1": {
+   "x": [
+    1006.7,
+    2050.6
+   ],
+   "panels": [
+    [
+     1230.3,
+     2346.3
+    ],
+    [
+     114.3,
+     1230.3
+    ]
+   ]
+  }
+ },
+ "_die_note": "Panel 1 is the front (printed), panel 2 the back, hinged at the fold on y=1230.3. The 1-side This Is Fast process prints the front only; the back is greyed out on the template."
+}

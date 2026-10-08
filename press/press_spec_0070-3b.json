@@ -1,0 +1,430 @@
+{
+ "_scope": "CALIBRATED FOR 0070-3b ONLY \u2014 do not use for any other product",
+ "_template_file": "mass_burlap.pdf (press sheets) + guide pages redrawn from oneup_burlap.pdf",
+ "_measured_by": "tools/make_press_template.py",
+ "template": "0070-3B - own cut, 0070-3m imprint areas",
+ "product": "0070-3b",
+ "guide_pages": {
+  "1": {
+   "sides": [
+    "side1"
+   ],
+   "zones": {
+    "side1": {
+     "left": 534.7489665032679,
+     "top": 811.71209486166,
+     "w": 215.96323529411768,
+     "h": 215.98418972332013,
+     "cx": 642.7305841503266,
+     "cy": 703.72
+    },
+    "bottom": {
+     "left": 574.9421241830064,
+     "top": 539.7139145127749,
+     "w": 135.57691993464056,
+     "h": 135.57691993464056,
+     "cx": 642.7305841503266,
+     "cy": 471.9254545454546
+    }
+   }
+  },
+  "2": {
+   "sides": [
+    "side1",
+    "side2"
+   ],
+   "zones": {
+    "side1": {
+     "left": 534.7489665032679,
+     "top": 811.71209486166,
+     "w": 215.96323529411768,
+     "h": 215.98418972332013,
+     "cx": 642.7305841503266,
+     "cy": 703.72
+    },
+    "side2": {
+     "left": 534.7489665032679,
+     "top": 348.1520948616601,
+     "w": 215.96323529411768,
+     "h": 215.98418972332013,
+     "cx": 642.7305841503266,
+     "cy": 240.16
+    },
+    "bottom": {
+     "left": 574.9421241830064,
+     "top": 539.7139145127749,
+     "w": 135.57691993464056,
+     "h": 135.57691993464056,
+     "cx": 642.7305841503266,
+     "cy": 471.9254545454546
+    }
+   }
+  }
+ },
+ "offsets": {
+  "circle_d": 135.57691993464056,
+  "side_w": 215.96323529411768,
+  "side_h": 215.98418972332013,
+  "d_side1": 231.7945454545454,
+  "d_side2": -231.76545454545462
+ },
+ "press_pages": {
+  "3": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "positions": [
+    {
+     "cx": 442.62,
+     "cy": 2160.72,
+     "gap": 172.8,
+     "vertical": false
+    },
+    {
+     "cx": 1213.2,
+     "cy": 2160.54,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 442.8,
+     "cy": 1836.54,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 1213.56,
+     "cy": 1836.18,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 442.08,
+     "cy": 1512.72,
+     "gap": 172.8,
+     "vertical": false
+    },
+    {
+     "cx": 1212.48,
+     "cy": 1512.54,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 442.44,
+     "cy": 1188.54,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 1212.84,
+     "cy": 1188.18,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 1211.4,
+     "cy": 865.26,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 442.8,
+     "cy": 864.72,
+     "gap": 172.8,
+     "vertical": false
+    },
+    {
+     "cx": 1211.76,
+     "cy": 540.9,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 443.16,
+     "cy": 540.54,
+     "gap": 173.16,
+     "vertical": false
+    }
+   ],
+   "artboard": "STRYKER",
+   "_artboard_as_drawn": "STRYKER",
+   "machine": "STRYKER",
+   "layout": null,
+   "positions_from": "4",
+   "name_at": [
+    845.36,
+    233.21,
+    180
+   ]
+  },
+  "4": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "positions": [
+    {
+     "cx": 442.62,
+     "cy": 2160.72,
+     "gap": 172.8,
+     "vertical": false
+    },
+    {
+     "cx": 1213.2,
+     "cy": 2160.54,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 442.8,
+     "cy": 1836.54,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 1213.56,
+     "cy": 1836.18,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 442.08,
+     "cy": 1512.72,
+     "gap": 172.8,
+     "vertical": false
+    },
+    {
+     "cx": 1212.48,
+     "cy": 1512.54,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 442.44,
+     "cy": 1188.54,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 1212.84,
+     "cy": 1188.18,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 1211.4,
+     "cy": 865.26,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 442.8,
+     "cy": 864.72,
+     "gap": 172.8,
+     "vertical": false
+    },
+    {
+     "cx": 1211.76,
+     "cy": 540.9,
+     "gap": 173.16,
+     "vertical": false
+    },
+    {
+     "cx": 443.16,
+     "cy": 540.54,
+     "gap": 173.16,
+     "vertical": false
+    }
+   ],
+   "artboard": "STRYKER - BTM",
+   "_artboard_as_drawn": "STRYKER - BTM",
+   "machine": "STRYKER",
+   "layout": null,
+   "name_at": [
+    845.36,
+    233.21,
+    180
+   ]
+  },
+  "5": {
+   "page": [
+    1152.0,
+    1656.0
+   ],
+   "positions": [
+    {
+     "cx": 737.82,
+     "cy": 828.72,
+     "gap": 173.16,
+     "vertical": true
+    },
+    {
+     "cx": 413.46,
+     "cy": 828.36,
+     "gap": 173.16,
+     "vertical": true
+    }
+   ],
+   "artboard": "DISCO",
+   "_artboard_as_drawn": "DISCO",
+   "machine": "DISCO",
+   "layout": null,
+   "positions_from": "6",
+   "name_at": [
+    581.5,
+    1273.26,
+    0
+   ]
+  },
+  "6": {
+   "page": [
+    1152.0,
+    1656.0
+   ],
+   "positions": [
+    {
+     "cx": 737.82,
+     "cy": 828.72,
+     "gap": 173.16,
+     "vertical": true
+    },
+    {
+     "cx": 413.46,
+     "cy": 828.36,
+     "gap": 173.16,
+     "vertical": true
+    }
+   ],
+   "artboard": "DISCO - BTM",
+   "_artboard_as_drawn": "DISCO - BTM",
+   "machine": "DISCO",
+   "layout": null,
+   "name_at": [
+    591.59,
+    1268.05,
+    0
+   ]
+  },
+  "7": {
+   "page": [
+    864.0,
+    1008.0
+   ],
+   "positions": [
+    {
+     "cx": 593.82,
+     "cy": 504.54,
+     "gap": 173.16,
+     "vertical": true
+    },
+    {
+     "cx": 269.46,
+     "cy": 504.18,
+     "gap": 173.16,
+     "vertical": true
+    }
+   ],
+   "artboard": "DBC",
+   "_artboard_as_drawn": "DBC",
+   "machine": "DBC",
+   "layout": null,
+   "positions_from": "8",
+   "name_at": [
+    100.15,
+    605.54,
+    90
+   ]
+  },
+  "8": {
+   "page": [
+    864.0,
+    1008.0
+   ],
+   "positions": [
+    {
+     "cx": 593.82,
+     "cy": 504.54,
+     "gap": 173.16,
+     "vertical": true
+    },
+    {
+     "cx": 269.46,
+     "cy": 504.18,
+     "gap": 173.16,
+     "vertical": true
+    }
+   ],
+   "artboard": "DBC - BTM",
+   "_artboard_as_drawn": "DBC - BTM",
+   "machine": "DBC",
+   "layout": null,
+   "name_at": [
+    99.96,
+    691.9,
+    90
+   ]
+  }
+ },
+ "die_regions": {
+  "1": {
+   "x": [
+    480.48,
+    804.96
+   ],
+   "panels": [
+    [
+     550.48,
+     856.96
+    ],
+    [
+     86.8,
+     393.52
+    ]
+   ],
+   "circle_cy": 472.0
+  },
+  "2": {
+   "x": [
+    480.48,
+    804.96
+   ],
+   "panels": [
+    [
+     550.48,
+     856.96
+    ],
+    [
+     86.8,
+     393.52
+    ]
+   ],
+   "circle_cy": 472.0
+  }
+ },
+ "seams": {
+  "xs": [
+   489.72,
+   794.52
+  ],
+  "bands": [
+   [
+    551.2,
+    856.0
+   ],
+   [
+    87.76,
+    392.56
+   ]
+  ]
+ },
+ "products": [
+  "0070-3b"
+ ],
+ "_arcless_pages_filled": [
+  "page 3 uses page 4 positions",
+  "page 5 uses page 6 positions",
+  "page 7 uses page 8 positions"
+ ]
+}

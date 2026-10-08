@@ -1,0 +1,426 @@
+{
+ "_scope": "CALIBRATED FOR 9100-24HR-1c ONLY \u2014 do not use for any other product",
+ "_template_file": "9100 - Mass Export.pdf (press sheets, 2026-09-28) + guide pages 1-2 from the previous 9100-24HR - 1c Pocket Coolie.pdf",
+ "_measured_by": "measure_press_template.py",
+ "_unverified": "Derived by measurement, never checked against a printed sheet.",
+ "template": "9100-24HR - 1c Pocket Coolie",
+ "product": "9100-24HR-1c",
+ "guide_pages": {
+  "1": {
+   "sides": [
+    "side1"
+   ],
+   "zones": {
+    "side1": {
+     "cx": 655.3199999999999,
+     "cy": 779.8,
+     "w": 251.99999999999997,
+     "h": 252.71999999999997,
+     "left": 529.3199999999999,
+     "top": 906.16
+    },
+    "bottom": {
+     "cx": 655.3199999999999,
+     "cy": 541.48,
+     "w": 117.65789681663931,
+     "h": 117.65789681663931,
+     "left": 596.4910515916803,
+     "top": 600.3089484083197
+    }
+   }
+  },
+  "2": {
+   "sides": [
+    "side1",
+    "side2"
+   ],
+   "zones": {
+    "side1": {
+     "cx": 664.68,
+     "cy": 745.72,
+     "w": 251.99999999999997,
+     "h": 252.71999999999997,
+     "left": 538.68,
+     "top": 872.08
+    },
+    "side2": {
+     "cx": 664.68,
+     "cy": 269.08000000000004,
+     "w": 251.99999999999997,
+     "h": 252.71999999999997,
+     "left": 538.68,
+     "top": 395.44000000000005
+    },
+    "bottom": {
+     "cx": 664.68,
+     "cy": 507.40000000000003,
+     "w": 117.65789681663931,
+     "h": 117.65789681663931,
+     "left": 605.8510515916803,
+     "top": 566.2289484083196
+    }
+   }
+  }
+ },
+ "offsets": {
+  "circle_d": 117.65789681663931,
+  "side_w": 251.99999999999997,
+  "side_h": 252.71999999999997,
+  "d_side1": 238.32,
+  "d_side2": -238.32
+ },
+ "press_pages": {
+  "3": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "positions": [
+    {
+     "cx": 1223.82,
+     "cy": 2120.76,
+     "gap": 160.56040358693673,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 2120.22,
+     "gap": 160.20040449387136,
+     "vertical": false
+    },
+    {
+     "cx": 1223.82,
+     "cy": 1809.72,
+     "gap": 160.56040358693673,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 1809.0,
+     "gap": 160.56040358693673,
+     "vertical": false
+    },
+    {
+     "cx": 1223.82,
+     "cy": 1500.12,
+     "gap": 160.56040358693673,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 1499.94,
+     "gap": 160.20040449387136,
+     "vertical": false
+    },
+    {
+     "cx": 1223.82,
+     "cy": 1189.98,
+     "gap": 160.20040449387136,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 1189.62,
+     "gap": 160.20040449387136,
+     "vertical": false
+    },
+    {
+     "cx": 1223.82,
+     "cy": 880.74,
+     "gap": 160.20040449387136,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 880.2,
+     "gap": 160.56040358693673,
+     "vertical": false
+    },
+    {
+     "cx": 1223.82,
+     "cy": 569.52,
+     "gap": 159.8404054048913,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 569.1599999999999,
+     "gap": 160.56040358693673,
+     "vertical": false
+    }
+   ],
+   "positions_from": "4",
+   "artboard": "STRYKER",
+   "name_at": [
+    832.12,
+    325.44,
+    180
+   ],
+   "_artboard_as_drawn": "STRYKER 1 Side",
+   "machine": "STRYKER",
+   "layout": "1side"
+  },
+  "4": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "positions": [
+    {
+     "cx": 1223.82,
+     "cy": 2120.76,
+     "gap": 160.56040358693673,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 2120.22,
+     "gap": 160.20040449387136,
+     "vertical": false
+    },
+    {
+     "cx": 1223.82,
+     "cy": 1809.72,
+     "gap": 160.56040358693673,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 1809.0,
+     "gap": 160.56040358693673,
+     "vertical": false
+    },
+    {
+     "cx": 1223.82,
+     "cy": 1500.12,
+     "gap": 160.56040358693673,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 1499.94,
+     "gap": 160.20040449387136,
+     "vertical": false
+    },
+    {
+     "cx": 1223.82,
+     "cy": 1189.98,
+     "gap": 160.20040449387136,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 1189.62,
+     "gap": 160.20040449387136,
+     "vertical": false
+    },
+    {
+     "cx": 1223.82,
+     "cy": 880.74,
+     "gap": 160.20040449387136,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 880.2,
+     "gap": 160.56040358693673,
+     "vertical": false
+    },
+    {
+     "cx": 1223.82,
+     "cy": 569.52,
+     "gap": 159.8404054048913,
+     "vertical": false
+    },
+    {
+     "cx": 431.82,
+     "cy": 569.1599999999999,
+     "gap": 160.56040358693673,
+     "vertical": false
+    }
+   ],
+   "artboard": "STRYKER - BTM",
+   "name_at": [
+    832.12,
+    325.44,
+    180
+   ],
+   "_artboard_as_drawn": "STRYKER 1 Side - BTM",
+   "machine": "STRYKER",
+   "layout": "1side"
+  },
+  "5": {
+   "page": [
+    1152.0,
+    1656.0
+   ],
+   "positions": [
+    {
+     "cx": 419.76,
+     "cy": 809.64,
+     "gap": 159.84,
+     "vertical": true
+    },
+    {
+     "cx": 729.0,
+     "cy": 809.64,
+     "gap": 160.56161434166012,
+     "vertical": true
+    }
+   ],
+   "positions_from": "6",
+   "artboard": "DISCO",
+   "name_at": [
+    571.89,
+    1295.94,
+    0
+   ],
+   "_artboard_as_drawn": "DISCO",
+   "machine": "DISCO",
+   "layout": null
+  },
+  "6": {
+   "page": [
+    1152.0,
+    1656.0
+   ],
+   "positions": [
+    {
+     "cx": 419.76,
+     "cy": 809.64,
+     "gap": 159.84,
+     "vertical": true
+    },
+    {
+     "cx": 729.0,
+     "cy": 809.64,
+     "gap": 160.56161434166012,
+     "vertical": true
+    }
+   ],
+   "artboard": "DISCO - BTM",
+   "name_at": [
+    571.8,
+    1295.94,
+    0
+   ],
+   "_artboard_as_drawn": "DISCO - BTM",
+   "machine": "DISCO",
+   "layout": null
+  },
+  "7": {
+   "page": [
+    864.0,
+    1008.0
+   ],
+   "positions": [
+    {
+     "cx": 276.84000000000003,
+     "cy": 505.62,
+     "gap": 160.56040358693673,
+     "vertical": true
+    },
+    {
+     "cx": 587.16,
+     "cy": 505.62,
+     "gap": 160.56040358693673,
+     "vertical": true
+    }
+   ],
+   "positions_from": "8",
+   "artboard": "DBC",
+   "name_at": [
+    91.35,
+    662.03,
+    90
+   ],
+   "_artboard_as_drawn": "DBC",
+   "machine": "DBC",
+   "layout": null
+  },
+  "8": {
+   "page": [
+    864.0,
+    1008.0
+   ],
+   "positions": [
+    {
+     "cx": 276.84000000000003,
+     "cy": 505.62,
+     "gap": 160.56040358693673,
+     "vertical": true
+    },
+    {
+     "cx": 587.16,
+     "cy": 505.62,
+     "gap": 160.56040358693673,
+     "vertical": true
+    }
+   ],
+   "artboard": "DBC - BTM",
+   "name_at": [
+    99.46,
+    586.53,
+    90
+   ],
+   "_artboard_as_drawn": "DBC - BTM",
+   "machine": "DBC",
+   "layout": null
+  }
+ },
+ "proof_cover": [
+  16,
+  266,
+  462,
+  514
+ ],
+ "_proof_cover_note": "Covers step-1, the legend and the ART REQUIREMENTS box (PDF y 282-411). That box collides with the THIS CONFIGURATION panel on this layout, and its \"Imprint Colors: all the same - registration black\" line is wrong for a PMS job. The notes panel (y 27-255) is left showing.",
+ "die_regions": {
+  "1": {
+   "x": [
+    499.68,
+    810.72
+   ],
+   "panels": [
+    [
+     622.36,
+     937.72
+    ],
+    [
+     145.36,
+     460.72
+    ]
+   ],
+   "circle_cy": 541.54
+  },
+  "2": {
+   "x": [
+    509.04,
+    820.08
+   ],
+   "panels": [
+    [
+     588.52,
+     903.52
+    ],
+    [
+     111.16,
+     426.52
+    ]
+   ],
+   "circle_cy": 507.52
+  }
+ },
+ "_artboard_source": "Artboard names read from Numo's production file for this template. The conventions differ between products, so these are recorded rather than derived.",
+ "_arcless_pages_filled": [
+  "page 3 uses page 4 positions",
+  "page 5 uses page 6 positions",
+  "page 7 uses page 8 positions"
+ ],
+ "_remeasured": "2026-09-28: press sheets re-measured from the new template. Arcs are drawn shorter than before, so pairs were matched at 160 pt arc spacing (was 151); the die is unchanged and position centres are unaffected by the arc length.",
+ "products": [
+  "9100-24HR-1c",
+  "9100"
+ ],
+ "_products_note": "Same die for the This Is Fast twin (one ink, Registration) and the standard item (up to 4 named PANTONE screens)."
+}

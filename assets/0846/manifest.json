@@ -1,0 +1,26 @@
+{
+ "product": "0846",
+ "width": 2400,
+ "height": 2400,
+ "_about": "Stick Pen (0846): one photo per stock colour (cap, frosted barrel and its ink cartridge), shown whole for the colour picked (color_photos). Imprint on the cap/clip.",
+ "color_photos": {
+  "Orange": "photo_orange.png",
+  "Red": "photo_red.png",
+  "Purple": "photo_purple.png",
+  "Aqua": "photo_aqua.png",
+  "Blue": "photo_blue.png",
+  "Green": "photo_green.png",
+  "Black": "photo_black.png"
+ },
+ "exports": {
+  "background": {
+   "file": "background.png",
+   "blend": "normal"
+  },
+  "footer_bg": {
+   "file": "footer_bg.png",
+   "blend": "normal",
+   "opacity": 0.8
+  }
+ }
+}

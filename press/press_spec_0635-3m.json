@@ -1,0 +1,209 @@
+{
+ "_scope": "CALIBRATED FOR 0635-3m ONLY \u2014 do not use for any other product",
+ "_template_file": "mass.pdf (press sheets) + guide pages redrawn from oneup.pdf",
+ "_measured_by": "tools/make_strip_template.py",
+ "template": "0635-3M - folded strip",
+ "product": "0635-3m",
+ "products": [
+  "0635-3m"
+ ],
+ "guide_pages": {
+  "1": {
+   "sides": [
+    "side1"
+   ],
+   "zones": {
+    "side1": {
+     "left": 85.42000000000002,
+     "top": 99.438,
+     "w": 216.0,
+     "h": 54.0,
+     "cx": 193.42000000000002,
+     "cy": 72.438
+    }
+   }
+  },
+  "2": {
+   "sides": [
+    "side1",
+    "side2"
+   ],
+   "zones": {
+    "side1": {
+     "left": 85.42000000000002,
+     "top": 99.438,
+     "w": 216.0,
+     "h": 54.0,
+     "cx": 193.42000000000002,
+     "cy": 72.438
+    },
+    "side2": {
+     "left": 357.573,
+     "top": 99.438,
+     "w": 216.0,
+     "h": 54.0,
+     "cx": 465.573,
+     "cy": 72.438
+    }
+   }
+  }
+ },
+ "offsets": {
+  "side_w": 216.0,
+  "side_h": 54.0,
+  "circle_d": 0.0,
+  "d_side1": -136.493,
+  "d_side2": 135.65999999999997
+ },
+ "side2_turn": 0,
+ "press_pages": {
+  "3": {
+   "page": [
+    1152.0,
+    1656.0
+   ],
+   "rotation": 0,
+   "positions": [
+    {
+     "cx": 576.0,
+     "cy": 874.2,
+     "gap": 70.8,
+     "vertical": false
+    },
+    {
+     "cx": 576.0,
+     "cy": 781.8,
+     "gap": 70.8,
+     "vertical": false
+    }
+   ],
+   "artboard": "DISCO",
+   "_artboard_as_drawn": "DISCO",
+   "machine": "DISCO",
+   "layout": null,
+   "name_at": [
+    657.66,
+    1040.48,
+    0
+   ]
+  },
+  "4": {
+   "page": [
+    864.0,
+    1008.0
+   ],
+   "rotation": 0,
+   "positions": [
+    {
+     "cx": 432.0,
+     "cy": 550.2,
+     "gap": 70.8,
+     "vertical": false
+    },
+    {
+     "cx": 432.0,
+     "cy": 457.8,
+     "gap": 70.8,
+     "vertical": false
+    }
+   ],
+   "artboard": "DBC",
+   "_artboard_as_drawn": "DBC",
+   "machine": "DBC",
+   "layout": null,
+   "name_at": [
+    448.14,
+    672.17,
+    0
+   ]
+  }
+ },
+ "die_regions": {
+  "1": {
+   "x": [
+    36.0,
+    623.52
+   ],
+   "y": [
+    36.260000000000005,
+    108.5
+   ],
+   "fold_x": 329.913,
+   "panels": [
+    [
+     36.260000000000005,
+     108.5
+    ],
+    [
+     36.260000000000005,
+     108.5
+    ]
+   ]
+  },
+  "2": {
+   "x": [
+    36.0,
+    623.52
+   ],
+   "y": [
+    36.260000000000005,
+    108.5
+   ],
+   "fold_x": 329.913,
+   "panels": [
+    [
+     36.260000000000005,
+     108.5
+    ],
+    [
+     36.260000000000005,
+     108.5
+    ]
+   ]
+  }
+ },
+ "seams": {
+  "style": "straight",
+  "xs": [
+   602.0662,
+   57.7598
+  ],
+  "bands": [
+   [
+    41.48009999999999,
+    102.5191
+   ],
+   [
+    41.08650000000001,
+    104.4925
+   ]
+  ]
+ },
+ "fold_lines": [
+  [
+   329.913,
+   36.75919999999999,
+   329.913,
+   107.7242
+  ]
+ ],
+ "flat_proof": {
+  "layout": "strip",
+  "always_show": [
+   "side1",
+   "side2"
+  ]
+ },
+ "proof_cover": [
+  0,
+  0,
+  0,
+  0
+ ],
+ "info_panel": {
+  "x": 4,
+  "y_top": -1000,
+  "w": 10,
+  "scale": 0.1
+ }
+}

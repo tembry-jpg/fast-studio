@@ -1,0 +1,580 @@
+{
+ "_scope": "CALIBRATED FOR 1080-3m-24HR-1c ONLY \u2014 do not use for any other product",
+ "_template_file": "1080 - Neo - TIF.pdf",
+ "_measured_by": "measure_press_template.py",
+ "_unverified": "Derived by measurement, never checked against a printed sheet.",
+ "template": "1080-24hr - Kolder Kaddy Slim Can (1C Screen Print)",
+ "product": "1080-3m-24HR-1c",
+ "guide_pages": {
+  "1": {
+   "sides": [
+    "side1"
+   ],
+   "zones": {
+    "side1": {
+     "cx": 642.24,
+     "cy": 826.4,
+     "w": 201.6,
+     "h": 331.91999999999996,
+     "left": 541.44,
+     "top": 992.3599999999999
+    },
+    "bottom": {
+     "cx": 642.24,
+     "cy": 549.56,
+     "w": 122.83196910873136,
+     "h": 122.83196910873136,
+     "left": 580.8240154456344,
+     "top": 610.9759845543656
+    }
+   }
+  },
+  "2": {
+   "sides": [
+    "side1",
+    "side2"
+   ],
+   "zones": {
+    "side1": {
+     "cx": 642.24,
+     "cy": 826.4,
+     "w": 201.6,
+     "h": 331.91999999999996,
+     "left": 541.44,
+     "top": 992.3599999999999
+    },
+    "side2": {
+     "cx": 642.24,
+     "cy": 272.72,
+     "w": 201.6,
+     "h": 331.91999999999996,
+     "left": 541.44,
+     "top": 438.68
+    },
+    "bottom": {
+     "cx": 642.24,
+     "cy": 549.56,
+     "w": 122.83196910873136,
+     "h": 122.83196910873136,
+     "left": 580.8240154456344,
+     "top": 610.9759845543656
+    }
+   }
+  }
+ },
+ "offsets": {
+  "circle_d": 122.83196910873136,
+  "side_w": 201.6,
+  "side_h": 331.91999999999996,
+  "d_side1": 276.84000000000003,
+  "d_side2": -276.8399999999999
+ },
+ "seams": {
+  "xs": [
+   521.4,
+   763.08
+  ],
+  "bands": [
+   [
+    631.64,
+    1023.8
+   ],
+   [
+    76.28,
+    469.16
+   ]
+  ]
+ },
+ "press_pages": {
+  "3": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "positions": [
+    {
+     "cx": 359.64,
+     "cy": 2058.3,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 1307.52,
+     "cy": 2058.3,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 1307.52,
+     "cy": 1795.5,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 359.64,
+     "cy": 1795.1399999999999,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 1307.52,
+     "cy": 1531.8,
+     "gap": 149.78768974785612,
+     "vertical": false
+    },
+    {
+     "cx": 359.64,
+     "cy": 1531.44,
+     "gap": 149.0678234898464,
+     "vertical": false
+    },
+    {
+     "cx": 359.64,
+     "cy": 1268.46,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 1307.52,
+     "cy": 1268.46,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 1307.7,
+     "cy": 1005.6599999999999,
+     "gap": 149.43512840025267,
+     "vertical": false
+    },
+    {
+     "cx": 359.64,
+     "cy": 1005.3,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 359.82,
+     "cy": 742.1399999999999,
+     "gap": 149.4212515005814,
+     "vertical": false
+    },
+    {
+     "cx": 1307.88,
+     "cy": 742.1399999999999,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 347.94,
+     "cy": 478.26,
+     "gap": 149.4212515005814,
+     "vertical": false
+    },
+    {
+     "cx": 1296.18,
+     "cy": 478.26,
+     "gap": 149.4212515005814,
+     "vertical": false
+    }
+   ],
+   "positions_from": "4",
+   "artboard": "STRYKER",
+   "name_at": [
+    821.59,
+    245.51,
+    180
+   ],
+   "_artboard_as_drawn": "STRYKER 1 Side",
+   "machine": "STRYKER",
+   "layout": "1side"
+  },
+  "4": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "positions": [
+    {
+     "cx": 359.64,
+     "cy": 2058.3,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 1307.52,
+     "cy": 2058.3,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 1307.52,
+     "cy": 1795.5,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 359.64,
+     "cy": 1795.1399999999999,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 1307.52,
+     "cy": 1531.8,
+     "gap": 149.78768974785612,
+     "vertical": false
+    },
+    {
+     "cx": 359.64,
+     "cy": 1531.44,
+     "gap": 149.0678234898464,
+     "vertical": false
+    },
+    {
+     "cx": 359.64,
+     "cy": 1268.46,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 1307.52,
+     "cy": 1268.46,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 1307.7,
+     "cy": 1005.6599999999999,
+     "gap": 149.43512840025267,
+     "vertical": false
+    },
+    {
+     "cx": 359.64,
+     "cy": 1005.3,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 359.82,
+     "cy": 742.1399999999999,
+     "gap": 149.4212515005814,
+     "vertical": false
+    },
+    {
+     "cx": 1307.88,
+     "cy": 742.1399999999999,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 347.94,
+     "cy": 478.26,
+     "gap": 149.4212515005814,
+     "vertical": false
+    },
+    {
+     "cx": 1296.18,
+     "cy": 478.26,
+     "gap": 149.4212515005814,
+     "vertical": false
+    }
+   ],
+   "artboard": "STRYKER - BTM",
+   "name_at": [
+    821.59,
+    245.51,
+    180
+   ],
+   "_artboard_as_drawn": "STRYKER 1 Side - BTM",
+   "machine": "STRYKER",
+   "layout": "1side"
+  },
+  "5": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "positions": [
+    {
+     "cx": 821.7,
+     "cy": 2092.5,
+     "gap": 149.4212515005814,
+     "vertical": false
+    },
+    {
+     "cx": 821.1600000000001,
+     "cy": 1829.52,
+     "gap": 149.0678234898464,
+     "vertical": false
+    },
+    {
+     "cx": 821.52,
+     "cy": 1566.1799999999998,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 821.34,
+     "cy": 1302.6599999999999,
+     "gap": 149.43512840025267,
+     "vertical": false
+    },
+    {
+     "cx": 821.7,
+     "cy": 1039.1399999999999,
+     "gap": 149.4212515005814,
+     "vertical": false
+    },
+    {
+     "cx": 821.7,
+     "cy": 775.6199999999999,
+     "gap": 149.4212515005814,
+     "vertical": false
+    },
+    {
+     "cx": 821.7,
+     "cy": 512.0999999999999,
+     "gap": 149.4212515005814,
+     "vertical": false
+    }
+   ],
+   "positions_from": "6",
+   "artboard": "STRYKER",
+   "name_at": [
+    831.34,
+    283.09,
+    180
+   ],
+   "_artboard_as_drawn": "STRYKER 2 Sides Diff",
+   "machine": "STRYKER",
+   "layout": "2diff"
+  },
+  "6": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "positions": [
+    {
+     "cx": 821.7,
+     "cy": 2092.5,
+     "gap": 149.4212515005814,
+     "vertical": false
+    },
+    {
+     "cx": 821.1600000000001,
+     "cy": 1829.52,
+     "gap": 149.0678234898464,
+     "vertical": false
+    },
+    {
+     "cx": 821.52,
+     "cy": 1566.1799999999998,
+     "gap": 149.42775645776123,
+     "vertical": false
+    },
+    {
+     "cx": 821.34,
+     "cy": 1302.6599999999999,
+     "gap": 149.43512840025267,
+     "vertical": false
+    },
+    {
+     "cx": 821.7,
+     "cy": 1039.1399999999999,
+     "gap": 149.4212515005814,
+     "vertical": false
+    },
+    {
+     "cx": 821.7,
+     "cy": 775.6199999999999,
+     "gap": 149.4212515005814,
+     "vertical": false
+    },
+    {
+     "cx": 821.7,
+     "cy": 512.0999999999999,
+     "gap": 149.4212515005814,
+     "vertical": false
+    }
+   ],
+   "artboard": "STRYKER - BTM",
+   "name_at": [
+    831.34,
+    283.09,
+    180
+   ],
+   "_artboard_as_drawn": "STRYKER 2 Sides Diff - BTM",
+   "machine": "STRYKER",
+   "layout": "2diff"
+  },
+  "7": {
+   "page": [
+    1152.0,
+    1656.0
+   ],
+   "positions": [
+    {
+     "cx": 443.7,
+     "cy": 834.12,
+     "gap": 149.42775645776123,
+     "vertical": true
+    },
+    {
+     "cx": 707.22,
+     "cy": 834.12,
+     "gap": 149.42775645776123,
+     "vertical": true
+    }
+   ],
+   "positions_from": "8",
+   "artboard": "DISCO",
+   "name_at": [
+    575.07,
+    1342.72,
+    0
+   ],
+   "_artboard_as_drawn": "DISCO",
+   "machine": "DISCO",
+   "layout": null
+  },
+  "8": {
+   "page": [
+    1152.0,
+    1656.0
+   ],
+   "positions": [
+    {
+     "cx": 443.7,
+     "cy": 834.12,
+     "gap": 149.42775645776123,
+     "vertical": true
+    },
+    {
+     "cx": 707.22,
+     "cy": 834.12,
+     "gap": 149.42775645776123,
+     "vertical": true
+    }
+   ],
+   "artboard": "DISCO - BTM",
+   "name_at": [
+    575.07,
+    1342.72,
+    0
+   ],
+   "_artboard_as_drawn": "DISCO - BTM",
+   "machine": "DISCO",
+   "layout": null
+  },
+  "9": {
+   "page": [
+    864.0,
+    1008.0
+   ],
+   "positions": [
+    {
+     "cx": 299.7,
+     "cy": 511.2,
+     "gap": 149.42775645776123,
+     "vertical": true
+    },
+    {
+     "cx": 563.22,
+     "cy": 510.12,
+     "gap": 149.42775645776123,
+     "vertical": true
+    }
+   ],
+   "positions_from": "10",
+   "artboard": "DBC",
+   "name_at": [
+    133.39,
+    508.37,
+    90
+   ],
+   "_artboard_as_drawn": "DBC",
+   "machine": "DBC",
+   "layout": null
+  },
+  "10": {
+   "page": [
+    864.0,
+    1008.0
+   ],
+   "positions": [
+    {
+     "cx": 299.7,
+     "cy": 511.2,
+     "gap": 149.42775645776123,
+     "vertical": true
+    },
+    {
+     "cx": 563.22,
+     "cy": 510.12,
+     "gap": 149.42775645776123,
+     "vertical": true
+    }
+   ],
+   "artboard": "DBC - BTM",
+   "name_at": [
+    133.39,
+    508.37,
+    90
+   ],
+   "_artboard_as_drawn": "DBC - BTM",
+   "machine": "DBC",
+   "layout": null
+  }
+ },
+ "_arcless_pages_filled": [
+  "page 3 uses page 4 positions",
+  "page 5 uses page 6 positions",
+  "page 7 uses page 8 positions",
+  "page 9 uses page 10 positions"
+ ],
+ "die_regions": {
+  "1": {
+   "x": [
+    510.12,
+    774.0
+   ],
+   "panels": [
+    [
+     629.0,
+     1023.92
+    ],
+    [
+     75.32,
+     470.24
+    ]
+   ],
+   "circle_cy": 549.62
+  },
+  "2": {
+   "x": [
+    510.12,
+    774.0
+   ],
+   "panels": [
+    [
+     629.0,
+     1023.92
+    ],
+    [
+     75.32,
+     470.24
+    ]
+   ],
+   "circle_cy": 549.62
+  }
+ },
+ "_artboard_source": "Artboard names read from Numo's production file for this template. The conventions differ between products, so these are recorded rather than derived.",
+ "products": [
+  "1080-3m-24HR-1c",
+  "1080-3m",
+  "1080-3l",
+  "1080-3h"
+ ],
+ "_products_note": "Same die for the This Is Fast twin (one ink, Registration) and the standard item (up to 4 named PANTONE screens)."
+}

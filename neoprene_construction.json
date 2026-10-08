@@ -1,0 +1,168 @@
+{
+ "_about": "How each 3mm neoprene colour is built: face fabric / foam (rubber) core / back fabric. Sources: 'Neoprene 3mm color chart with inside foam' and the peeled-corner chart (2026-10-06). A boxed pair on the chart = two-sided: each colour's back is the other colour of the pair. White space in the back square = white foam. A plain black back square = standard (black foam, black back). Colours not listed here are standard. Names are the app's neoprene names (engine.NEOPRENE); chart names in 'aka'. Products use this only when they turn it on (products.py 'shows_inside').",
+ "default": {
+  "foam": "black",
+  "back": "Black"
+ },
+ "colors": {
+  "Orange": {
+   "foam": "white",
+   "back": "Black"
+  },
+  "Bright Yellow": {
+   "foam": "white",
+   "back": "Black"
+  },
+  "Citron": {
+   "foam": "white",
+   "back": "Black"
+  },
+  "Neon Coral": {
+   "foam": "white",
+   "back": "Neon Coral"
+  },
+  "Mustard": {
+   "foam": "white",
+   "back": "Goldenrod"
+  },
+  "Goldenrod": {
+   "foam": "white",
+   "back": "Mustard",
+   "aka": [
+    "Golden Rod"
+   ]
+  },
+  "Ice Green": {
+   "foam": "white",
+   "back": "Sea Green"
+  },
+  "Sea Green": {
+   "foam": "white",
+   "back": "Ice Green"
+  },
+  "Tropical": {
+   "foam": "white",
+   "back": "Dark Tropical"
+  },
+  "Dark Tropical": {
+   "foam": "white",
+   "back": "Tropical"
+  },
+  "Ocean Blue": {
+   "foam": "white",
+   "back": "Sky Blue"
+  },
+  "Sky Blue": {
+   "foam": "white",
+   "back": "Ocean Blue"
+  },
+  "Indigo": {
+   "foam": "white",
+   "back": "Something Blue"
+  },
+  "Something Blue": {
+   "foam": "white",
+   "back": "Indigo"
+  },
+  "Lilac Breeze": {
+   "foam": "white",
+   "back": "Periwinkle"
+  },
+  "Periwinkle": {
+   "foam": "white",
+   "back": "Lilac Breeze"
+  },
+  "Bubblegum": {
+   "foam": "white",
+   "back": "Perfect Pink",
+   "aka": [
+    "Bubble Gum"
+   ]
+  },
+  "Perfect Pink": {
+   "foam": "white",
+   "back": "Bubblegum"
+  },
+  "Coral": {
+   "foam": "white",
+   "back": "Light Coral"
+  },
+  "Light Coral": {
+   "foam": "white",
+   "back": "Coral"
+  },
+  "Aqua": {
+   "foam": "black",
+   "back": "Teal"
+  },
+  "Teal": {
+   "foam": "black",
+   "back": "Aqua"
+  },
+  "Rose": {
+   "foam": "black",
+   "back": "Magenta"
+  },
+  "Magenta": {
+   "foam": "black",
+   "back": "Rose"
+  },
+  "Violet": {
+   "foam": "black",
+   "back": "Fuchsia"
+  },
+  "Fuchsia": {
+   "foam": "black",
+   "back": "Violet"
+  },
+  "Gray": {
+   "foam": "black",
+   "back": "Ash"
+  },
+  "Ash": {
+   "foam": "black",
+   "back": "Gray"
+  },
+  "Brown": {
+   "foam": "black",
+   "back": "Beige"
+  },
+  "Beige": {
+   "foam": "black",
+   "back": "Brown"
+  },
+  "Fluor Green": {
+   "foam": "white",
+   "back": "Black",
+   "aka": [
+    "Fluor. Green",
+    "Fluorescent Green"
+   ]
+  },
+  "Pastel Pink": {
+   "foam": "white",
+   "back": "Black"
+  },
+  "Peach": {
+   "foam": "white",
+   "back": "Light Peach"
+  },
+  "Light Peach": {
+   "foam": "white",
+   "back": "Peach"
+  }
+ },
+ "foam_rgb": {
+  "black": "#0F0F0F",
+  "white": "#EDEDED"
+ },
+ "extra_hex": {
+  "Light Coral": "#FF808B",
+  "Pastel Pink": "#F2ACB9",
+  "_note": "backs that are not in the configurator's colour list"
+ },
+ "back_hex": {
+  "Black": "#0A0A0A",
+  "_note": "the colour an inside back is drawn in where it differs from the face swatch: the black back fabric reads much darker than the Black face swatch once the mockup's shading is on it (0635 photo: inside ~27/255)"
+ }
+}

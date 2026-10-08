@@ -1,0 +1,438 @@
+{
+ "_scope": "CALIBRATED FOR 0070-3m-24HR-1c ONLY \u2014 do not use for any other product",
+ "_template_file": "0070 - KK Mass Export.pdf (press sheets, 2026-09-29) + guide pages from the previous 0070 template",
+ "template": "0070-3M-24HR - Kolder Kaddy (1C Screen Print)",
+ "product": "0070-3m-24HR-1c",
+ "guide_pages": {
+  "1": {
+   "sides": [
+    "side1"
+   ],
+   "zones": {
+    "side1": {
+     "cx": 642.8505637254901,
+     "cy": 701.858602504944,
+     "w": 215.96323529411765,
+     "h": 215.9564930784443
+    },
+    "bottom": {
+     "cx": 642.7305841503268,
+     "cy": 471.5050098879367,
+     "w": 135.57691993464053,
+     "h": 135.57691993464053
+    }
+   }
+  },
+  "2": {
+   "sides": [
+    "side1",
+    "side2"
+   ],
+   "zones": {
+    "side1": {
+     "left": 534.8689460784313,
+     "top": 810.6606587615283,
+     "w": 215.96323529411768,
+     "h": 215.98418972332013,
+     "cx": 642.8505637254902,
+     "cy": 702.6685638998683
+    },
+    "side2": {
+     "left": 534.8689460784313,
+     "top": 349.8943873517786,
+     "w": 215.96323529411768,
+     "h": 215.98418972332013,
+     "cx": 642.8505637254902,
+     "cy": 241.90229249011855
+    },
+    "bottom": {
+     "left": 574.9421241830064,
+     "top": 539.7204918752745,
+     "w": 135.57691993464056,
+     "h": 135.59007465963992,
+     "cx": 642.7305841503266,
+     "cy": 471.9254545454546
+    }
+   }
+  }
+ },
+ "offsets": {
+  "circle_d": 135.57691993464056,
+  "side_w": 215.96323529411768,
+  "side_h": 215.98418972332013,
+  "d_side1": 230.74310935441372,
+  "d_side2": -230.02316205533606
+ },
+ "press_pages": {
+  "3": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "positions": [
+    {
+     "cx": 449.82,
+     "cy": 2180.52,
+     "gap": 162.72039822960122,
+     "vertical": false
+    },
+    {
+     "cx": 1204.92,
+     "cy": 2180.52,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 448.2,
+     "cy": 1892.52,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 1203.48,
+     "cy": 1892.52,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 450.0,
+     "cy": 1604.88,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 1205.28,
+     "cy": 1604.88,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 448.56,
+     "cy": 1316.7,
+     "gap": 163.08,
+     "vertical": false
+    },
+    {
+     "cx": 1203.8400000000001,
+     "cy": 1316.7,
+     "gap": 163.08,
+     "vertical": false
+    },
+    {
+     "cx": 450.0,
+     "cy": 1029.24,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 1206.54,
+     "cy": 1029.24,
+     "gap": 162.72039822960122,
+     "vertical": false
+    },
+    {
+     "cx": 448.56,
+     "cy": 741.24,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 1205.28,
+     "cy": 741.06,
+     "gap": 162.36,
+     "vertical": false
+    },
+    {
+     "cx": 450.72,
+     "cy": 453.5999999999999,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 1205.46,
+     "cy": 453.24,
+     "gap": 162.72039822960122,
+     "vertical": false
+    }
+   ],
+   "artboard": "STRYKER",
+   "_artboard_as_drawn": "STRYKER",
+   "machine": "STRYKER",
+   "layout": null,
+   "positions_from": "4",
+   "name_at": [
+    829.06,
+    343.43,
+    180
+   ]
+  },
+  "4": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "positions": [
+    {
+     "cx": 449.82,
+     "cy": 2180.52,
+     "gap": 162.72039822960122,
+     "vertical": false
+    },
+    {
+     "cx": 1204.92,
+     "cy": 2180.52,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 448.2,
+     "cy": 1892.52,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 1203.48,
+     "cy": 1892.52,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 450.0,
+     "cy": 1604.88,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 1205.28,
+     "cy": 1604.88,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 448.56,
+     "cy": 1316.7,
+     "gap": 163.08,
+     "vertical": false
+    },
+    {
+     "cx": 1203.8400000000001,
+     "cy": 1316.7,
+     "gap": 163.08,
+     "vertical": false
+    },
+    {
+     "cx": 450.0,
+     "cy": 1029.24,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 1206.54,
+     "cy": 1029.24,
+     "gap": 162.72039822960122,
+     "vertical": false
+    },
+    {
+     "cx": 448.56,
+     "cy": 741.24,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 1205.28,
+     "cy": 741.06,
+     "gap": 162.36,
+     "vertical": false
+    },
+    {
+     "cx": 450.72,
+     "cy": 453.5999999999999,
+     "gap": 162.72,
+     "vertical": false
+    },
+    {
+     "cx": 1205.46,
+     "cy": 453.24,
+     "gap": 162.72039822960122,
+     "vertical": false
+    }
+   ],
+   "artboard": "STRYKER - BTM",
+   "_artboard_as_drawn": "STRYKER - BTM",
+   "machine": "STRYKER",
+   "layout": null,
+   "name_at": [
+    826.44,
+    346.71,
+    180
+   ]
+  },
+  "5": {
+   "page": [
+    1152.0,
+    1656.0
+   ],
+   "positions": [
+    {
+     "cx": 431.64000000000004,
+     "cy": 829.4399999999999,
+     "gap": 162.72,
+     "vertical": true
+    },
+    {
+     "cx": 720.0,
+     "cy": 828.0,
+     "gap": 162.72,
+     "vertical": true
+    }
+   ],
+   "artboard": "DISCO",
+   "_artboard_as_drawn": "DISCO",
+   "machine": "DISCO",
+   "layout": null,
+   "positions_from": "6",
+   "name_at": [
+    559.83,
+    1297.25,
+    0
+   ]
+  },
+  "6": {
+   "page": [
+    1152.0,
+    1656.0
+   ],
+   "positions": [
+    {
+     "cx": 431.64000000000004,
+     "cy": 829.4399999999999,
+     "gap": 162.72,
+     "vertical": true
+    },
+    {
+     "cx": 720.0,
+     "cy": 828.0,
+     "gap": 162.72,
+     "vertical": true
+    }
+   ],
+   "artboard": "DISCO - BTM",
+   "_artboard_as_drawn": "DISCO - BTM",
+   "machine": "DISCO",
+   "layout": null,
+   "name_at": [
+    564.04,
+    1298.08,
+    0
+   ]
+  },
+  "7": {
+   "page": [
+    864.0,
+    1008.0
+   ],
+   "positions": [
+    {
+     "cx": 287.28000000000003,
+     "cy": 504.71999999999997,
+     "gap": 162.72,
+     "vertical": true
+    },
+    {
+     "cx": 575.46,
+     "cy": 503.28,
+     "gap": 163.08,
+     "vertical": true
+    }
+   ],
+   "artboard": "DBC",
+   "_artboard_as_drawn": "DBC",
+   "machine": "DBC",
+   "layout": null,
+   "positions_from": "8",
+   "name_at": [
+    153.75,
+    609.31,
+    90
+   ]
+  },
+  "8": {
+   "page": [
+    864.0,
+    1008.0
+   ],
+   "positions": [
+    {
+     "cx": 287.28000000000003,
+     "cy": 504.71999999999997,
+     "gap": 162.72,
+     "vertical": true
+    },
+    {
+     "cx": 575.46,
+     "cy": 503.28,
+     "gap": 163.08,
+     "vertical": true
+    }
+   ],
+   "artboard": "DBC - BTM",
+   "_artboard_as_drawn": "DBC - BTM",
+   "machine": "DBC",
+   "layout": null,
+   "name_at": [
+    157.56,
+    626.82,
+    90
+   ]
+  }
+ },
+ "die_regions": {
+  "1": {
+   "x": [
+    498.6,
+    786.96
+   ],
+   "panels": [
+    [
+     554.18,
+     849.38
+    ],
+    [
+     93.02,
+     388.22
+    ]
+   ],
+   "circle_cy": 471.2
+  },
+  "2": {
+   "x": [
+    498.6,
+    786.96
+   ],
+   "panels": [
+    [
+     555.04,
+     850.24
+    ],
+    [
+     93.88,
+     389.08
+    ]
+   ],
+   "circle_cy": 472.06
+  }
+ },
+ "_artboard_source": "Artboard names from Numo's 0070 KK Mass Export (plain + - BTM per machine).",
+ "products": [
+  "0070-3m-24HR-1c",
+  "0070-3m",
+  "0070-3l",
+  "0070-3h"
+ ],
+ "_products_note": "Same die for the This Is Fast twin (one ink, Registration) and the standard item (up to 4 named PANTONE screens).",
+ "_arcless_pages_filled": [
+  "page 3 uses page 4 positions",
+  "page 5 uses page 6 positions",
+  "page 7 uses page 8 positions"
+ ]
+}
