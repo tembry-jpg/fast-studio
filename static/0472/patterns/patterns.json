@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Tan Camo",
+    "hex": "#61502D",
+    "swatch": "tan-camo_swatch.png",
+    "body": "tan-camo_body.png",
+    "tile": "tan-camo_tile.png"
+  },
+  {
+    "name": "Green Camo",
+    "hex": "#2F3B1E",
+    "swatch": "green-camo_swatch.png",
+    "body": "green-camo_body.png",
+    "tile": "green-camo_tile.png"
+  }
+]
