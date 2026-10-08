@@ -5,15 +5,19 @@ order This Is Fast items. It is its own repo and its own Railway service, and
 it has no NetSuite connection or data and none of IT's additions.
 
 ## What clients get
-- A sign-in page with one shared password (client_login.py).
+- A sign-in page with one shared username and password (client_login.py).
 - The catalog: the This Is Fast items from numomfg.com, by their site names.
   Ready to configure: Kolder Kaddy (0070-3m-24HR-1c), Kolder Kaddy Neoprene for
   Slim Cans (1080-3m-24HR-1c), Pocket Coolie (9100-24HR-1c), Pocket Coolie for
   Slim Cans (0472-24HR-1c), Main Squeeze Natural and Colored Canvas
   (5001-TIF-7-1C, 5001-TIF-CC-1C) and the Jotter Pen (the 0837 as it is).
-  Coming soon (photo with an overlay, can't be opened): every 4CP item, Duplex
+  Full color (4CP): 4CP Kolder Kaddy (0070-3w), Kolder Kaddy Neoprene for Slim
+  Cans - 4CP (1080-3w), 4CP Pocket Coolie (9100-4CP), Pocket Coolie for Slim
+  Cans - 4CP (0472-4CP).
+  Coming soon (photo with an overlay, can't be opened): Duplex
   Kolder Kaddy, Shamwow and Daily Grind (natural and colored).
-- The client view only: color, logo, review, then "Get my proof", which
+- The client view only: color, logo (upload it, add text, or pick it out of a
+  mockup or template), review, then "Get my proof", which
   downloads their digital proof and virtual.
 - No pricing.
 
