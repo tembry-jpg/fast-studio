@@ -1,0 +1,41 @@
+{
+  "product": "9100",
+  "width": 1350,
+  "height": 1350,
+  "layer_naming": "Master_Mockup_{index}_{layername}.png",
+  "exports": {
+    "background": {
+      "file": "background.png",
+      "blend": "normal"
+    },
+    "neoprene_mask": {
+      "file": "scuba_mask.png",
+      "role": "color_mask"
+    },
+    "art_zone_side1": {
+      "file": "art_zone_side1.png",
+      "role": "art_clip"
+    },
+    "art_zone_side2": {
+      "file": "art_zone_side2.png",
+      "role": "art_clip"
+    },
+    "art_zone_bottom": {
+      "file": "art_zone_bottom.png",
+      "role": "art_clip"
+    },
+    "texture_overlay": {
+      "file": "texture_overlay.png",
+      "blend": "overlay"
+    },
+    "texture_screen": {
+      "file": "texture_screen.png",
+      "blend": "screen"
+    },
+    "footer_bg": {
+      "file": "footer_bg.png",
+      "blend": "normal",
+      "opacity": 0.8
+    }
+  }
+}
