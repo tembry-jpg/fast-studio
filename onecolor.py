@@ -436,6 +436,19 @@ def analyze(pdf_path, work_dir):
         else:
             s["auto"], s["why"] = "print", ""
 
+    # Never knock everything out: a traced JPG's colour fringe can make every
+    # colour look like detail inside another, and then nothing prints. The
+    # colour with the most area prints; any part can still be changed.
+    painted = [s for s in shapes if s["area"] > 0]
+    if painted and not any(s["auto"] == "print" for s in painted):
+        area_by = {}
+        for s in painted:
+            area_by[s["hex"]] = area_by.get(s["hex"], 0) + s["area"]
+        main = max(area_by, key=area_by.get)
+        for s in painted:
+            if s["hex"] == main:
+                s["auto"], s["why"] = "print", "the main colour"
+
     # The ID map is shipped as an image the browser can read pixel-exact.
     idmap = np.zeros(ids.shape + (3,), np.uint8)
     v = ids + 1
@@ -455,7 +468,8 @@ def analyze(pdf_path, work_dir):
     return {"shapes": shapes,
             "groups": sorted(groups.values(), key=lambda g: -g["area"]),
             "idmap_png": str(idmap_png), "colour_png": str(colour_png),
-            "width": col.width, "height": col.height, "count": n}
+            "width": col.width, "height": col.height, "count": n,
+            "box": [int(box[0]), int(box[1])], "dpi": DPI}
 
 
 def _drop_unused_spots(page):
@@ -602,6 +616,279 @@ def apply(pdf_path, decisions, auto, out_pdf):
     return str(out_pdf)
 
 
+def _mul(m, n):
+    """PDF matrices [a b c d e f]: m then n."""
+    a, b, c, d, e, f = m
+    A, B, C, D, E, F = n
+    return [a * A + b * C, a * B + b * D, c * A + d * C, c * B + d * D,
+            e * A + f * C + E, e * B + f * D + F]
+
+
+def _page_path(ops, ctm):
+    """A path's construction ops, moved into page space."""
+    a, b, c, d, e, f = ctm
+
+    def pt(x, y):
+        return [a * x + c * y + e, b * x + d * y + f]
+    out = []
+    for operands, op in ops:
+        o = str(op)
+        v = [float(x) for x in operands]
+        if o in ("m", "l"):
+            out.append((pt(*v), pikepdf.Operator(o)))
+        elif o == "c":
+            out.append((pt(v[0], v[1]) + pt(v[2], v[3]) + pt(v[4], v[5]), op))
+        elif o in ("v", "y"):
+            out.append((pt(v[0], v[1]) + pt(v[2], v[3]), op))
+        elif o == "re":
+            x, y, w, h = v
+            out += [(pt(x, y), pikepdf.Operator("m")), (pt(x + w, y), pikepdf.Operator("l")),
+                    (pt(x + w, y + h), pikepdf.Operator("l")), (pt(x, y + h), pikepdf.Operator("l")),
+                    ([], pikepdf.Operator("h"))]
+        elif o == "h":
+            out.append(([], op))
+    return out
+
+
+def _fill_ops(mask, rgb, grid, page):
+    """A filled area (True pixels on the editor's grid) as a vector shape in
+    page space: traced like an image, a pixel wider all round so it meets the
+    shapes around it without a hairline."""
+    import vectorize
+    m = vectorize.dilate(np.asarray(mask, dtype=bool), 1)
+    curves = vectorize._trace_curves(m, turdsize=0)
+    bx, by, dpi = float(grid["box"][0]), float(grid["box"][1]), float(grid.get("dpi") or DPI)
+    cb = [float(v) for v in (page.obj.get("/CropBox") or page.obj.get("/MediaBox"))]
+    k = 72.0 / dpi
+
+    def pt(p):
+        return [cb[0] + (bx + p.x) * k, cb[3] - (by + p.y) * k]
+    ops = [([], pikepdf.Operator("q"))] + _col(rgb)
+    for cv in curves:
+        ops.append((pt(cv.start_point), pikepdf.Operator("m")))
+        for sg in cv.segments:
+            if sg.is_corner:
+                ops.append((pt(sg.c), pikepdf.Operator("l")))
+                ops.append((pt(sg.end_point), pikepdf.Operator("l")))
+            else:
+                ops.append((pt(sg.c1) + pt(sg.c2) + pt(sg.end_point), pikepdf.Operator("c")))
+        ops.append(([], pikepdf.Operator("h")))
+    ops += [([], pikepdf.Operator("f*")), ([], pikepdf.Operator("Q"))]
+    return ops if curves else []
+
+
+def cut(pdf_path, remove, out_pdf, recolor=None, knock=None, fills=None, grid=None):
+    """
+    The artwork with some shapes taken out and everything else exactly as it
+    was (its colours, spots and strokes untouched). `remove` holds shape
+    numbers as analyze() counts them; `recolor` maps shape numbers to an
+    (r, g, b) they are painted in instead; `knock` shapes become holes through
+    all the art (the page is clipped to everything outside them, so nothing
+    under them prints either - no white paint is involved); `fills` are
+    (mask, (r, g, b)) areas on the editor's grid (`grid`: {"box", "dpi"} from
+    analyze) added as new shapes after everything else, so every existing
+    shape keeps its number. Returns (shapes in the file, shapes that could
+    not be recoloured).
+    """
+    remove = {int(i) for i in remove}
+    recolor = {int(k): v for k, v in (recolor or {}).items()}
+    knock = {int(i) for i in (knock or [])} - remove
+    holes = []                                   # knocked-out outlines, page space
+    skipped = []
+    pdf = pikepdf.open(str(pdf_path))
+    counter = [0]
+    seen = set()
+
+    def walk(obj, res, is_page, ctm0):
+        out = []
+        path_at, clips = None, False
+        ctm, stack = list(ctm0), []
+        for operands, op in pikepdf.parse_content_stream(obj):
+            s = str(op)
+            if s == "q":
+                stack.append(list(ctm))
+            elif s == "Q" and stack:
+                ctm = stack.pop()
+            elif s == "cm" and len(operands) == 6:
+                ctm = _mul([float(x) for x in operands], ctm)
+            if s in _PATH_START and path_at is None:
+                path_at = len(out)
+            if s in ("W", "W*"):
+                clips = True
+            if s == "n":
+                path_at, clips = None, False
+            if s in _FILL_OPS or s in _STROKE_ONLY:
+                idx = counter[0]; counter[0] += 1
+                at = path_at if path_at is not None else len(out)
+                path_at, was_clip, clips = None, clips, False
+                if idx in knock:
+                    if s in _FILL_OPS and not was_clip:
+                        holes.extend(_page_path(out[at:], ctm))
+                    out.append(([], pikepdf.Operator("n")))
+                elif idx in remove:
+                    # "n" ends the path without painting it; a clip set with it stays.
+                    out.append(([], pikepdf.Operator("n")))
+                elif idx in recolor and not was_clip:
+                    # Its own colour, inside q...Q so the shapes after it keep theirs.
+                    out[at:at] = [([], pikepdf.Operator("q"))] + _col(recolor[idx])
+                    out.append((operands, op))
+                    out.append(([], pikepdf.Operator("Q")))
+                else:
+                    if idx in recolor:
+                        skipped.append(idx)
+                    out.append((operands, op))
+                continue
+            if s in _TEXT_OPS:
+                idx = counter[0]; counter[0] += 1
+                if idx in recolor and idx not in remove:
+                    skipped.append(idx)          # live text: outlined on upload, so rare
+                if idx in remove or idx in knock:
+                    out += [([3], pikepdf.Operator("Tr")), (operands, op), ([0], pikepdf.Operator("Tr"))]
+                else:
+                    out.append((operands, op))
+                continue
+            if s == "Do":
+                try:
+                    x = res.XObject[operands[0]]
+                except Exception:
+                    x = None
+                if x is not None and x.get("/Subtype") == "/Form" and x.objgen not in seen:
+                    seen.add(x.objgen)
+                    fm = [float(v) for v in (x.get("/Matrix") or [1, 0, 0, 1, 0, 0])]
+                    walk(x, x.get("/Resources", res), False, _mul(fm, ctm))
+            out.append((operands, op))
+        if is_page and fills and grid:
+            # The page's own content in q...Q so the fills are drawn in page
+            # space whatever transform the content leaves set.
+            add = []
+            for mask, rgb in fills:
+                add += _fill_ops(mask, rgb, grid, page)
+            if add:
+                out = [([], pikepdf.Operator("q"))] + out + [([], pikepdf.Operator("Q"))] + add
+        if is_page and holes:
+            # Everything on the page is clipped to the area outside the holes:
+            # a big box plus the outlines, even-odd, so a letter's counter
+            # (an outline inside an outline) stays part of the letter.
+            x0, y0, x1, y1 = [float(v) for v in (obj.get("/MediaBox") or [0, 0, 612, 792])]
+            big = [([x0 - 5000, y0 - 5000, (x1 - x0) + 10000, (y1 - y0) + 10000], pikepdf.Operator("re"))]
+            out = ([([], pikepdf.Operator("q"))] + big + holes
+                   + [([], pikepdf.Operator("W*")), ([], pikepdf.Operator("n"))] + out
+                   + [([], pikepdf.Operator("Q"))])
+        data = pikepdf.unparse_content_stream(out)
+        if is_page:
+            obj.Contents = pdf.make_stream(data)
+        else:
+            obj.write(data)
+
+    page = pdf.pages[0]
+    walk(page.obj, page.obj.get("/Resources") or page.Resources, True, [1, 0, 0, 1, 0, 0])
+    pdf.save(str(out_pdf))
+    return counter[0], skipped
+
+
+def split_parts(pdf_path, out_pdf):
+    """
+    A traced image draws each colour as one path of many outlines, so the
+    whole colour is one shape: a lasso round one word picked every word in
+    that colour. Here each outline becomes its own shape, with the holes
+    inside it (the counter of an O) kept with it, so every letter, star and
+    facet can be picked on its own. It looks exactly the same. Page content
+    only (the tracer writes no forms). Returns how many shapes it wrote.
+    """
+    def pts_of(sub):
+        out = []
+        for operands, op in sub:
+            o = str(op)
+            if o in ("m", "l"):
+                out.append((float(operands[0]), float(operands[1])))
+            elif o == "c":
+                out.append((float(operands[4]), float(operands[5])))
+            elif o in ("v", "y"):
+                out.append((float(operands[2]), float(operands[3])))
+        return out
+
+    def inside(pt, poly):
+        x, y = pt; n = len(poly); hit = False
+        j = n - 1
+        for i in range(n):
+            xi, yi = poly[i]; xj, yj = poly[j]
+            if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / ((yj - yi) or 1e-12) + xi:
+                hit = not hit
+            j = i
+        return hit
+
+    def regroup(subs, paint):
+        polys = [pts_of(sb) for sb in subs]
+        boxes = []
+        for pl in polys:
+            if pl:
+                xs = [p[0] for p in pl]; ys = [p[1] for p in pl]
+                boxes.append((min(xs), min(ys), max(xs), max(ys)))
+            else:
+                boxes.append((0, 0, 0, 0))
+        area = [(b[2] - b[0]) * (b[3] - b[1]) for b in boxes]
+        parent = [-1] * len(subs)
+        for i, pl in enumerate(polys):
+            if not pl:
+                continue
+            best = -1
+            for j, pj in enumerate(polys):
+                if j == i or not pj or area[j] <= area[i]:
+                    continue
+                bj, bi = boxes[j], boxes[i]
+                if bi[0] < bj[0] or bi[1] < bj[1] or bi[2] > bj[2] or bi[3] > bj[3]:
+                    continue
+                if inside(pl[0], pj) and (best < 0 or area[j] < area[best]):
+                    best = j
+            parent[i] = best
+        depth = []
+        for i in range(len(subs)):
+            d, k = 0, parent[i]
+            while k >= 0 and d < 64:
+                d += 1; k = parent[k]
+            depth.append(d)
+        groups = {}
+        for i in range(len(subs)):
+            root = i if depth[i] % 2 == 0 else parent[i]
+            groups.setdefault(root, []).append(i)
+        out = []
+        for root in sorted(groups):
+            for i in groups[root]:
+                out += subs[i]
+            out.append(([], paint))
+        return out, len(groups)
+
+    pdf = pikepdf.open(str(pdf_path))
+    page = pdf.pages[0]
+    out, subs, cur, n = [], [], None, 0
+    for operands, op in pikepdf.parse_content_stream(page):
+        o = str(op)
+        if o == "m":
+            if cur:
+                subs.append(cur)
+            cur = [(operands, op)]
+        elif o in ("l", "c", "v", "y") and cur is not None:
+            cur.append((operands, op))
+        elif o == "h" and cur is not None:
+            cur.append((operands, op)); subs.append(cur); cur = None
+        elif o in ("f", "f*", "F") and (subs or cur):
+            if cur:
+                subs.append(cur); cur = None
+            ops, k = regroup(subs, op)
+            out += ops; n += k; subs = []
+        else:
+            if cur:
+                subs.append(cur); cur = None
+            if subs:                       # a path that isn't a plain fill: as it was
+                for sb in subs:
+                    out += sb
+                subs = []
+            out.append((operands, op))
+    page.obj.Contents = pdf.make_stream(pikepdf.unparse_content_stream(out))
+    pdf.save(str(out_pdf))
+    return n
+
+
 def preview(one_colour_pdf, out_png):
     """
     The one-colour result as an alpha mask the configurator recolours: ink is
@@ -719,8 +1006,14 @@ def separate(pdf_path, inks, out_pdf, mode="press", knockout_rgb=(1, 1, 1),
             sep_names.append(nm)
         sep_of_ink[i] = sep_names.index(nm)
 
-    any_colour = white_is_knockout or any(not _is_white(_hex_rgb01(ink.get("pms_hex") or ink.get("hex")))
-                                          for ink in inks if not ink.get("hidden"))
+    # Colour in the art itself, whatever Pantones it is printed in: art drawn
+    # in gold and peach with white facets keeps its facets open even when
+    # every colour is set to White ink (otherwise the white facets were taken
+    # for White ink and the diamond printed solid).
+    any_colour = white_is_knockout or any(
+        not _is_white(_hex_rgb01(ink.get("pms_hex") or ink.get("hex")))
+        or not _is_white(_hex_rgb01(ink.get("hex") or ink.get("pms_hex")))
+        for ink in inks if not ink.get("hidden"))
     # Art with colour that also prints White ink from plain (non-spot) white:
     # only the white standing on its own is ink; white inside or behind the
     # coloured art stays a knockout.

@@ -1679,6 +1679,46 @@ def _wrap_text(c, text, font, size, width):
     return lines
 
 
+def _info_and_note(c, x, y, right, meta, max_note_lines=8):
+    """
+    The proof's Info and Artist Note lines.
+
+    Info says how the job prints: 1 Side, 2 Sides Same or 2 Sides Different.
+    The artist's note is set in full: wrapped to the line, the artist's own
+    line breaks kept, a ruled line under each so more can still be added by
+    hand. Very long notes stop at max_note_lines with an ellipsis.
+    Returns the y below the last line.
+    """
+    x_val = x + 78
+    room = max(x + 200, right) - x_val
+    note = str(meta.get("artist_note") or "").strip()
+    lines = []
+    for para in note.split("\n"):
+        if para.strip():
+            lines += _wrap_text(c, para.strip(), "Helvetica", 9, room) or [""]
+    if len(lines) > max_note_lines:
+        lines = lines[:max_note_lines]
+        last = lines[-1]
+        while last and c.stringWidth(last + "…", "Helvetica", 9) > room:
+            last = last[:-1]
+        lines[-1] = last.rstrip() + "…"
+    rows = [("Info", [meta.get("info") or ""]), ("Artist Note", lines or [""])]
+    for label, texts in rows:
+        c.setFillColor(_MUTED)
+        c.setFont("Helvetica", 9)
+        c.drawString(x, y, label)
+        for i, t in enumerate(texts):
+            if t:
+                c.setFillColor(_INK)
+                c.setFont("Helvetica", 9)
+                c.drawString(x_val, y, t)
+            c.setStrokeColor(_RULE)
+            c.setLineWidth(0.7)
+            c.line(x_val, y - 2, max(x + 200, right), y - 2)
+            y -= 17 if i == len(texts) - 1 else 12
+    return y
+
+
 def _risk_line(r):
     """One finding as the proof prints it.
 
@@ -1954,15 +1994,7 @@ def build_proof_page_multi(out_pdf, metas, flats, mockup_img=None):
     for sz in sizes:
         y = _field(c, x + 14, y, sz.get("label") or "", sz.get("size"), label_w=64.0)
     y -= 4
-    for label, text in (("Info", None), ("Artist Note", m0.get("artist_note"))):
-        c.setFillColor(_MUTED); c.setFont("Helvetica", 9)
-        c.drawString(x, y, label)
-        if text:
-            c.setFillColor(_INK); c.setFont("Helvetica", 9)
-            c.drawString(x + 78, y, str(text)[:90])
-        c.setStrokeColor(_RULE); c.setLineWidth(0.7)
-        c.line(x + 78, y - 2, max(x + 200, text_right), y - 2)
-        y -= 17
+    y = _info_and_note(c, x, y, text_right, m0)
     y = min(y, mock_bottom - 10)
     w = PROOF_W - 2 * PROOF_MARGIN
     head_y = _proof_swatch_grid(c, x, PROOF_MARGIN + 14, w, m0.get("product_colors"))
@@ -2127,24 +2159,7 @@ def _build_proof_page(out_pdf, meta, flat_png=None, mockup_img=None):
     y -= 4
     # In artist mode the note typed at export is set on its line; the line is
     # still ruled so it can be added to by hand.
-    for label, text in (("Info", None), ("Artist Note", meta.get("artist_note"))):
-        c.setFillColor(_MUTED)
-        c.setFont("Helvetica", 9)
-        c.drawString(x, y, label)
-        if text:
-            c.setFillColor(_INK)
-            size = 9.0
-            room = max(x + 200, text_right) - (x + 78)
-            while size > 7 and c.stringWidth(text, "Helvetica", size) > room:
-                size -= 0.25
-            while len(text) > 4 and c.stringWidth(text, "Helvetica", size) > room:
-                text = text[:-2].rstrip() + "…"
-            c.setFont("Helvetica", size)
-            c.drawString(x + 78, y, text)
-        c.setStrokeColor(_RULE)
-        c.setLineWidth(0.7)
-        c.line(x + 78, y - 2, max(x + 200, text_right), y - 2)
-        y -= 17
+    y = _info_and_note(c, x, y, text_right, meta)
 
     # The flat lay runs the full width of the sheet, so it has to clear the
     # mockup as well as the field column. On a job with few fields — one
@@ -2320,18 +2335,22 @@ def build(template_pdf, spec_path, art_pdf, out_path,
             if key not in by_src:
                 n = len(by_src)
                 stem = Path(src).stem
+                # Art the one-color editor wrote (name ends .1c-<tag>) is ink in
+                # black and knockouts in white by construction, so its white is
+                # always a knockout - even when its one ink is White.
+                ko_white = one_ink or bool(re.search(r"\.1c-[0-9a-f]{8}", stem))
                 pp = work / f"{stem}.sep{n}-press.pdf"
                 pr = work / f"{stem}.sep{n}-proof.pdf"
                 # Traced images: disjoint, trapped inks -> overprint (see separate()).
                 got = onecolor.separate(src, sl_inks, pp, "press",
                                         overprint=src.endswith(".traced.pdf"),
-                                        white_is_knockout=one_ink)
+                                        white_is_knockout=ko_white)
                 for nm in got or []:
                     if nm not in screens:
                         screens.append(nm)
                 onecolor.separate(src, sl_inks, pr, "proof",
                                   knockout_rgb=tuple(body_rgb0 or (1, 1, 1)),
-                                  white_is_knockout=one_ink)
+                                  white_is_knockout=ko_white)
                 by_src[key] = (Artwork(str(pp)), Artwork(str(pr)))
             arts_press[sl], arts_proof[sl] = by_src[key]
 
@@ -2805,6 +2824,7 @@ def build(template_pdf, spec_path, art_pdf, out_path,
             "customer": extra.get("customer"),
             "artist": extra.get("artist"),
             "artist_note": extra.get("artist_note"),
+            "info": SIDES_LABEL.get(sides),
             "revision": extra.get("revision"),
             "quantity": extra.get("quantity"),
             "item_color": ({"label": body_comp.get("label"),

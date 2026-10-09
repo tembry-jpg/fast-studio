@@ -796,6 +796,21 @@ NON_PMS_INKS = [
 
 NON_PMS_HEX = {i["name"]: i["hex"] for i in NON_PMS_INKS}
 
+# Special inks the shop runs on request: the two classic metallics by their
+# PMS numbers (871 C gold, 877 C silver, which the filter above otherwise
+# drops) and three stock specialty inks with no chip. They are offered in the
+# picker under their own heading but never chosen automatically — a matched
+# grey or tan must not land on a metallic. Hex = how they show on screen.
+# (Glow-in-the-dark is still to come.)
+SPECIAL_INKS = [
+    {"name": "PANTONE 877 C", "short": "877 C", "hex": "#8A8E91", "special": True},
+    {"name": "Metallic Silver", "short": "Metallic Silver", "hex": "#A8A9AD", "special": True},
+    {"name": "PANTONE 871 C", "short": "871 C", "hex": "#877650", "special": True},
+    {"name": "Metallic Gold", "short": "Metallic Gold", "hex": "#B39348", "special": True},
+    {"name": "Shimmer Gold", "short": "Shimmer Gold", "hex": "#C9A64B", "special": True},
+]
+NON_PMS_HEX.update({i["name"]: i["hex"] for i in SPECIAL_INKS if not i["name"].startswith("PANTONE")})
+
 
 def with_non_pms_inks(matches, rgb, top_n=None):
     """
@@ -888,6 +903,9 @@ def pantone_library():
         if is_printable_pms(name)
     ]
     colors = NON_PMS_INKS + colors
+    # The special inks go out on their own ("special"), not in "colors" (the
+    # main app keeps them apart for its own reasons). The page adds them to
+    # its list itself, so they show under Special inks and in search.
 
     # White leads the quick picks: it has no PMS chip, and on dark neoprene it
     # is the ink customers reach for first.
@@ -900,7 +918,7 @@ def pantone_library():
     from flask import make_response, request as _rq
     import hashlib
 
-    resp = make_response(jsonify({"colors": colors, "quick": quick}))
+    resp = make_response(jsonify({"colors": colors, "quick": quick, "special": SPECIAL_INKS}))
 
     # This list changes whenever the ink rules change — a family is filtered
     # out, White is added, the quick picks are reordered. It used to be served
@@ -1097,6 +1115,7 @@ def rasterize():
             }), 400
 
     f.save(str(orig_path))
+    font_note, font_missing = None, False
 
     try:
         png_path = orig_path.parent / (orig_path.stem + ".preview.png")
@@ -1134,6 +1153,35 @@ def rasterize():
                 return jsonify({"error": f"EPS could not be converted: {e}"}), 500
             orig_path = converted
             ext = ".pdf"
+
+        # Live text: outlined here when the file carries its fonts, so the
+        # preview, the press files and Illustrator never depend on the font;
+        # flagged by name when it doesn't (text_outline.py).
+        if ext in {".pdf", ".ai"}:
+            try:
+                import text_outline
+                use, font_note = text_outline.prepare(orig_path)
+                font_missing = bool(font_note) and "doesn't include" in font_note
+                orig_path = Path(use)
+            except Exception as e:
+                print(f"⚠️ live-text check skipped: {e}")
+            # A font the file doesn't carry can't be drawn right by anything -
+            # this site, Illustrator or the RIP - so the art is turned away
+            # until the customer sends it with the text outlined.
+            if font_missing:
+                missing = font_note.split("(", 1)[-1].split(")", 1)[0]
+                return jsonify({
+                    "error": f"Artwork not accepted: it has live text in a font the file doesn't include ({missing}).",
+                    "code": "font_missing",
+                    "validation": {"ok": False, "warnings": [], "facts": {},
+                                   "errors": [{"code": "font_missing",
+                                               "message": "Artwork not accepted: this file has live text in a font it "
+                                                          f"doesn't include ({missing}). It would print in the wrong font "
+                                                          "or with missing letters.",
+                                               "detail": "Ask the customer for the art with all text converted to "
+                                                         "outlines (Illustrator: select all, Type > Create Outlines), "
+                                                         "then upload that file."}]},
+                }), 400
 
         if ext in {".pdf", ".ai"}:
             rasterized = False
@@ -1458,6 +1506,8 @@ def rasterize():
             # The art will be traced to vector on export. The UI says so, and
             # checks it against the placed size through /api/art-check.
             "traced": bool(trace_raster or trace_multi),
+            # Live text that was converted to outlines (a missing font is refused above).
+            "font_note": font_note,
         })
 
     except Exception as e:
@@ -2549,8 +2599,15 @@ def _artist_fields(raw):
         rev = int(rev)
     except (TypeError, ValueError):
         rev = None
+    def note(key, cap):
+        # Several lines, as typed: each line's spaces tidied, blank lines dropped.
+        v = raw.get(key)
+        v = "" if v is None else str(v)
+        lines = [" ".join(ln.split()) for ln in v.replace("\r", "").split("\n")]
+        v = "\n".join(ln for ln in lines if ln)[:cap]
+        return v or None
     out = {"artist": clean("artist", 60),
-           "artist_note": clean("note", 180),
+           "artist_note": note("note", 600),
            "revision": rev if rev and 0 < rev < 100 else None}
     cust = clean("customer", 80)
     if cust:
@@ -3625,6 +3682,7 @@ def _generic_proof(print_pdf, prefix, serve_dir, pmeta, job, order, artist, mock
         "customer": extra.get("customer"),
         "artist": extra.get("artist"),
         "artist_note": extra.get("artist_note"),
+        "info": {"1side": "1 Side", "2same": "2 Sides Same", "2diff": "2 Sides Different"}.get(pmeta.get("sides")),
         "revision": extra.get("revision"),
         "quantity": extra.get("quantity"),
         "item_color": comps[0] if comps else {},
@@ -5054,7 +5112,9 @@ def _trace_for_one_color(srcp, uploads):
     """Trace a raster upload into per-color vector shapes, once per file."""
     import vectorize
     from screenprint import analyze_separations
-    out = uploads / f"{srcp.stem}.octrace.pdf"
+    # .octrace3: each outline is its own shape (onecolor.split_parts), so the
+    # art editor's lasso can pick one letter of a traced image.
+    out = uploads / f"{srcp.stem}.octrace3.pdf"
     if out.exists() and out.stat().st_mtime >= srcp.stat().st_mtime:
         return out
     if not vectorize.available():
@@ -5070,7 +5130,18 @@ def _trace_for_one_color(srcp, uploads):
     b = str(sep.get("background_hex") or "").lstrip("#")
     if len(b) == 6:
         bg = tuple(int(b[k:k + 2], 16) for k in (0, 2, 4))
-    vectorize.trace(str(srcp), out, colors=colors or None, bg=bg)
+    # A colour that is the background's (a JPG's white facets on its white
+    # page) is background showing through, not art: left out, so it is open.
+    if len(colors) > 1:
+        colors = [c for c in colors if max(abs(c[1][k] - bg[k]) for k in range(3)) > 12] or colors
+    raw = uploads / f"{srcp.stem}.octrace.pdf"
+    vectorize.trace(str(srcp), raw, colors=colors or None, bg=bg)
+    try:
+        import onecolor
+        onecolor.split_parts(raw, out)
+    except Exception as e:
+        print(f"traced parts not split ({srcp.name}): {e}")
+        shutil.copyfile(raw, out)
     return out
 
 
@@ -5107,6 +5178,24 @@ def one_color():
             if len(_ONECOLOR_CACHE) > 64:
                 _ONECOLOR_CACHE.clear()
             an = onecolor.analyze(pdf, uploads / "_onecolor")
+            if raster:
+                # A traced image is split into one shape per outline so the
+                # lasso can pick a letter, but its colour fringe fools the
+                # "inside another colour" test part by part. The automatic
+                # choice stays what it was: made per colour, on the unsplit
+                # trace, and given to every part of that colour.
+                rawp = pdf.with_name(pdf.name.replace(".octrace3.pdf", ".octrace.pdf"))
+                if rawp.exists() and rawp != pdf:
+                    try:
+                        an0 = onecolor.analyze(rawp, uploads / "_onecolor")
+                        by_hex = {}
+                        for s0 in sorted(an0["shapes"], key=lambda x: -x.get("area", 0)):
+                            by_hex.setdefault(s0["hex"], (s0["auto"], s0.get("why", "")))
+                        for sh in an["shapes"]:
+                            if sh["hex"] in by_hex:
+                                sh["auto"], sh["why"] = by_hex[sh["hex"]]
+                    except Exception as e:
+                        print(f"per-colour choice for the trace failed: {e}")
             _ONECOLOR_CACHE[key] = an
         auto = {s["i"]: s["auto"] for s in an["shapes"]}
         raw = body.get("decisions") or {}
@@ -5127,7 +5216,8 @@ def one_color():
             "decisions": effective,
             "idmap_b64": _b64_file(an["idmap_png"]),
             "colour_b64": _b64_file(an["colour_png"]),
-            "grid": {"width": an["width"], "height": an["height"]},
+            "grid": {"width": an["width"], "height": an["height"],
+                     "box": an.get("box"), "dpi": an.get("dpi")},
             "preview_b64": _b64_file(prev),
             "width": pw, "height": ph,
             "saved_path": str(out),
@@ -5135,6 +5225,75 @@ def one_color():
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({"error": f"Could not reduce this artwork: {e}"}), 500
+
+
+@app.route("/api/art-cut", methods=["POST"])
+def art_cut():
+    """Take the shapes the art editor's lasso picked out of vector artwork,
+    or give them a new colour; everything else in the file stays as it was. Shape numbers are the ones
+    /api/one-color's map uses."""
+    import hashlib
+    import onecolor
+    import press_layout
+    body = request.get_json(silent=True) or {}
+    uploads = (HERE / "uploads").resolve()
+    try:
+        srcp = Path(body.get("art_path") or "").resolve()
+    except Exception:
+        return jsonify({"error": "Unknown artwork."}), 400
+    if uploads not in srcp.parents or not srcp.exists():
+        return jsonify({"error": "The uploaded artwork could not be found. Upload it again."}), 404
+    import vectorize
+    raster = vectorize.is_raster(str(srcp))
+    if srcp.suffix.lower() not in {".pdf", ".ai", ".svg", ".eps"} and not raster:
+        return jsonify({"error": "This file type can't be edited here."}), 400
+    try:
+        remove = sorted({int(i) for i in (body.get("remove") or [])})
+        knock = sorted({int(i) for i in (body.get("knockout") or [])} - set(remove))
+        # Filled areas (the editor's paint bucket / shape builder): a mask on
+        # the editor's grid and the colour to paint it.
+        fills, grid = [], body.get("grid") or None
+        for f in (body.get("fills") or [])[:40]:
+            import base64, io
+            import numpy as _np
+            from PIL import Image as _Im
+            raw = str(f.get("mask") or "").split(",")[-1]
+            im = _Im.open(io.BytesIO(base64.b64decode(raw))).convert("L")
+            h = str(f.get("color") or "").lstrip("#")
+            if not re.fullmatch(r"[0-9a-fA-F]{6}", h):
+                raise ValueError(h)
+            fills.append((_np.asarray(im) > 127, tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))))
+        if fills and not (grid and grid.get("box") and grid.get("dpi")):
+            return jsonify({"error": "Open the art editor again and retry - its map of the art is out of date."}), 400
+        recolor = {}
+        for k, h in (body.get("recolor") or {}).items():
+            h = str(h).lstrip("#")
+            if not re.fullmatch(r"[0-9a-fA-F]{6}", h):
+                raise ValueError(h)
+            recolor[int(k)] = tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    except (TypeError, ValueError, AttributeError):
+        return jsonify({"error": "Nothing picked to change."}), 400
+    if not remove and not recolor and not knock and not fills:
+        return jsonify({"error": "Nothing picked to change."}), 400
+    try:
+        # An image is edited as its traced shapes - the same trace, and so the
+        # same shape numbers, /api/one-color showed the lasso.
+        pdf = _trace_for_one_color(srcp, uploads) if raster \
+            else Path(press_layout.art_as_pdf(str(srcp), work_dir=str(uploads)))
+        tag = hashlib.sha1(f"{pdf}:{remove}:{knock}:{sorted(recolor.items())}:{[(int(m.sum()), c) for m, c in fills]}:{body.get('nonce', '')}".encode()).hexdigest()[:8]
+        stem = re.sub(r"(\.cut-[0-9a-f]{8})+$", "", pdf.stem)[:120]
+        out = uploads / f"{stem}.cut-{tag}.pdf"
+        # A knockout is a real hole: the art is clipped around the part, so
+        # nothing under it prints either (onecolor.cut).
+        n, skipped = onecolor.cut(pdf, remove, out, recolor, knock, fills, grid)
+        if remove and len([i for i in remove if 0 <= i < n]) >= n:
+            out.unlink(missing_ok=True)
+            return jsonify({"error": "That removes everything."}), 400
+        return jsonify({"saved_path": str(out), "removed": len(remove), "knocked": len(knock),
+                        "recolored": len(recolor) - len(skipped), "skipped": len(skipped)})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({"error": f"Could not remove that part: {e}"}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -5193,7 +5352,8 @@ def restore_from_proof():
             try:
                 import tif_import
                 stem = re.sub(r"[^A-Za-z0-9_-]+", "_", Path(up.filename).stem)[:40] or "template"
-                snap = tif_import.extract(src, rdir / "art", stem)
+                hint = (request.form.get("product_id") or "").strip() or None
+                snap = tif_import.extract(src, rdir / "art", stem, hint_pid=hint)
             except Exception as e:
                 import traceback; traceback.print_exc()
                 snap = None

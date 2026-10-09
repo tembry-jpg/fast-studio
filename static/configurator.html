@@ -249,6 +249,12 @@ input[type=range].ae-slider{flex:1;accent-color:var(--burgundy);height:4px}
 .ly-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .ly-hd h3{margin:0;font-family:'Playfair Display',serif;font-size:20px;font-weight:600;flex:1}
 .ly-hd select{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);font-size:12px}
+.st-pms-wrap{position:relative;display:inline-flex}
+.st-pms{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--border-hi);background:var(--surface);border-radius:8px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--text,#333)}
+.st-pms i{width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,.2);display:inline-block}
+.st-pms b{font-size:9px;color:var(--muted)}
+.st-pms-pop{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:20;width:300px;max-height:340px;overflow:auto;padding:10px;background:var(--surface);border:1.5px solid var(--border-hi);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.st-pms-pop.open{display:block}
 .st-loc{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .st-hist{font-size:18px;width:32px;height:32px}
 .st-hist:disabled{opacity:.3;cursor:default}
@@ -477,6 +483,91 @@ body.cust #ns-card,body.cust #ns-fa-card,body.cust #export-preview,body.cust #am
 #life-ov button{border:1.5px solid var(--border);background:var(--surface,#fff);border-radius:8px;padding:6px 12px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 /* Sandbox: no pricing, ink coverage or press-file list (none of them ship). */
 #ink-btn,#ink-pop,#export-preview,.sbx-hide{display:none!important}
+.mc-1c{margin:4px 0 8px}
+/* Art editor: one pop-up for every piece of art that comes in */
+.ae-box{background:var(--cream);border-radius:14px;width:100%;max-width:1180px;height:min(860px,94vh);display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(0,0,0,.3);overflow:hidden}
+.ae-top{display:flex;align-items:center;gap:12px;padding:14px 18px 10px;border-bottom:1px solid var(--border)}
+.ae-top .oc-hd{margin:0}
+.ae-file{font-family:var(--mono);font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.ae-body{flex:1;display:flex;min-height:0}
+.ae-prev{flex:1.15;display:flex;flex-direction:column;padding:12px;min-width:0;border-right:1px solid var(--border)}
+.ae-prev .oc-stage{flex:1;min-height:0;padding:6px}
+.ae-prev canvas{max-width:100%;max-height:100%;object-fit:contain}
+.ae-cap{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px;text-align:center}
+.ae-side{flex:1;display:flex;flex-direction:column;min-width:0}
+.ae-tabs{display:flex;border-bottom:1px solid var(--border);padding:0 10px}
+.ae-tabs button{background:none;border:none;border-bottom:3px solid transparent;padding:10px 12px 8px;font-family:var(--sans);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+.ae-tabs button.on{color:var(--text);border-bottom-color:var(--burgundy)}
+.ae-tabs .ae-n{display:inline-block;min-width:16px;padding:0 4px;margin-left:4px;border-radius:8px;background:#b3261e;color:#fff;font-size:10px;line-height:16px}
+.ae-tabs .ae-n:empty{display:none}
+.ae-pane{display:none;flex:1;overflow-y:auto;padding:12px 16px}
+.ae-pane.on{display:block}
+.ae-pane .mc-panel,.ae-pane #sp-ink{margin:0}
+.ae-intro{font-family:var(--sans);font-size:12.5px;color:var(--muted);line-height:1.5;margin:0 0 10px}
+.ae-pane .oc-box{max-width:none;max-height:none;box-shadow:none;padding:0;background:none;overflow:visible}
+.ae-pane .oc-box .oc-hd,.ae-pane .oc-box .oc-acts>button:first-child{display:none}
+.ae-pane .oc-edit-grid{grid-template-columns:1fr}
+.ae-check{display:flex;gap:8px;font-family:var(--sans);font-size:13px;line-height:1.45;padding:8px 0;border-bottom:1px solid var(--border)}
+.ae-check b{font-weight:600}
+.ae-check .ae-i{flex:none;width:18px;text-align:center}
+.ae-check.warn{color:#b3261e}
+.ae-foot{display:flex;align-items:center;gap:10px;padding:10px 18px;border-top:1px solid var(--border)}
+.ae-foot .ae-msg{flex:1;font-family:var(--sans);font-size:12px;color:var(--muted)}
+.ae-cut-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.ae-cut-bar .rd-btn:disabled{opacity:.45;cursor:default}
+.ae-cut-msg{font-family:var(--sans);font-size:12px;color:var(--muted)}
+.ae-cut-stage{position:relative;padding:10px;background:repeating-conic-gradient(#e7e1d8 0% 25%,#f4f0ea 0% 50%) 0 0/16px 16px}
+.ae-cut-stage{cursor:crosshair;touch-action:none;user-select:none}
+.ae-cut-stage[data-mode="add"]{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2228%22%20height%3D%2228%22%3E%3Cpath%20d%3D%22M9%201v16M1%209h16%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22/%3E%3Cpath%20d%3D%22M9%201v16M1%209h16%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.2%22/%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2221%22%20r%3D%226%22%20fill%3D%22%23fff%22/%3E%3Cpath%20d%3D%22M17%2021h8%22%20stroke%3D%22%236B1A2A%22%20stroke-width%3D%222.4%22/%3E%3Cpath%20d%3D%22M21%2017v8%22%20stroke%3D%22%236B1A2A%22%20stroke-width%3D%222.4%22/%3E%3C/svg%3E") 9 9,copy}
+.ae-cut-stage[data-mode="sub"]{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2228%22%20height%3D%2228%22%3E%3Cpath%20d%3D%22M9%201v16M1%209h16%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22/%3E%3Cpath%20d%3D%22M9%201v16M1%209h16%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.2%22/%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2221%22%20r%3D%226%22%20fill%3D%22%23fff%22/%3E%3Cpath%20d%3D%22M17%2021h8%22%20stroke%3D%22%236B1A2A%22%20stroke-width%3D%222.4%22/%3E%3C/svg%3E") 9 9,crosshair}
+.ae-cut-stage canvas{max-width:100%}
+.ae-cut-stage svg{position:absolute;pointer-events:none;overflow:visible}
+.ae-cut-stage svg path{fill:rgba(107,26,42,.12);stroke:#6B1A2A;stroke-width:1.5;stroke-dasharray:5 4}
+.ae-how{font-family:var(--sans);font-size:12.5px;color:var(--text);line-height:1.5;margin:0 0 10px;padding:9px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--border)}
+.ae-how ul{margin:2px 0 0;padding-left:18px;color:var(--muted)}
+.ae-how li b{color:var(--text)}
+.ae-ko-key{display:inline-block;width:22px;height:10px;vertical-align:middle;border:1px solid #6B1A2A;background:repeating-linear-gradient(45deg,#6B1A2A 0 2px,#f4f0ea 2px 5px)}
+.ae-cut-bar .rd-btn{padding:8px 14px}
+.ae-box.ae-wide .ae-prev{display:none}
+.ae-box.ae-wide .ae-side{flex:1}
+#ae-p-layout{padding:10px 14px}
+.ae-pane .ly-box{max-width:none;max-height:none;box-shadow:none;padding:0;background:none;overflow:visible;border-radius:0}
+.ae-pane .ly-hd h3,.ae-pane .ly-hd .rd-btn:not(.pri){display:none}
+.ae-pane .ly-hd{justify-content:flex-end}
+.ae-pane .ly-hd .st-loc{margin-right:auto}
+.ae-pane .st-panel{max-height:none}
+.ae-box{position:relative}
+.ae-hbtn{border:1.5px solid var(--border-hi);background:var(--surface);border-radius:8px;padding:5px 11px;font-family:var(--sans);font-size:12px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap}
+.ae-hbtn:hover{border-color:var(--burgundy);color:var(--burgundy)}
+.ae-over{position:absolute;inset:0;z-index:30;background:rgba(28,22,18,.55);display:none;align-items:center;justify-content:center;padding:20px;border-radius:14px}
+.ae-over.on{display:flex}
+.ae-over-box{background:var(--cream);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.35);padding:14px 18px 18px;max-height:100%;overflow:auto;width:100%}
+.ae-over-hd{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.ae-over-hd b{font-family:var(--serif);font-size:19px;font-weight:600}
+.ae-over-hd span{flex:1;font-family:var(--sans);font-size:12px;color:var(--muted)}
+.ae-tut-box{max-width:980px}
+.ae-tut-box video{width:100%;border-radius:8px;background:#000;display:block}
+.ae-keys-box{max-width:820px}
+.ae-keys-cols{display:grid;grid-template-columns:1fr 1fr;gap:6px 28px}
+.ae-keys-cols h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px;font-weight:500}
+.ae-keys-cols dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-family:var(--sans);font-size:13px;align-items:baseline}
+.ae-keys-cols dt{white-space:nowrap;color:var(--text);font-size:12px}
+.ae-keys-cols dd{margin:0;color:var(--text)}
+.ae-keys-box kbd,.ae-keys-note kbd{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--surface);border:1px solid var(--border-hi);border-bottom-width:2px;border-radius:5px;padding:1px 6px;margin-right:2px}
+.ae-keys-note{font-family:var(--sans);font-size:12px;color:var(--muted);margin:14px 0 0}
+@media (max-width:820px){.ae-keys-cols{grid-template-columns:1fr}}
+.ae-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+.ae-tools button{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--border-hi);background:var(--surface);border-radius:9px;padding:6px 11px;font-family:var(--sans);font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer}
+.ae-tools button.on{background:var(--text);color:var(--surface);border-color:var(--text)}
+.ae-tools kbd,.ae-cut-bar kbd{font-family:var(--mono);font-size:9.5px;font-weight:400;opacity:.65;border:1px solid currentColor;border-radius:4px;padding:0 4px}
+.ae-fillsw{margin-left:auto}
+.ae-fillsw i{width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,.25);display:inline-block}
+.ae-fillsw b{font-size:9px;opacity:.6}
+.ae-rc{display:none;margin:0 0 10px;padding:10px;border:1.5px solid var(--border-hi);border-radius:10px;background:var(--surface);max-height:300px;overflow:auto}
+.ae-rc.open{display:block}
+.ae-cut-tip{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:6px;min-height:14px}
+@media (max-width:820px){.ae-body{flex-direction:column}.ae-prev{flex:none;height:38vh;border-right:none;border-bottom:1px solid var(--border)}}
+.mc-1c button{background:none;border:none;padding:0;font-family:var(--mono);font-size:10px;color:var(--burgundy);text-decoration:underline;cursor:pointer}
 /* Client / Artist view switch */
 .mode-switch{display:inline-flex;margin-right:8px;padding:2px;border:1.5px solid var(--border);border-radius:20px;background:var(--surface)}
 .mode-switch button{border:none;background:none;border-radius:16px;padding:4px 12px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer}
@@ -543,6 +634,8 @@ body.artist span.artist-only{display:inline}
 .am-rev-num.on{display:inline-flex}
 .am-rev-num input{width:56px;padding:5px 8px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:12px;background:var(--surface);color:var(--text);outline:none}
 .am-field label{display:block;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px}
+.am-field textarea{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:12px;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box;resize:vertical;min-height:54px}
+.am-field textarea:focus{border-color:var(--burgundy)}
 .am-field input{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:12px;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box}
 .am-field input:focus{border-color:var(--burgundy)}
 .am-banner{font-family:var(--mono);font-size:10px;color:var(--burgundy);background:var(--burg-lo);border-radius:8px;padding:7px 10px;line-height:1.5}
@@ -753,7 +846,7 @@ body.artist span.artist-only{display:inline}
   </div>
 </div>
 <div class="ly-scrim" id="ly-scrim">
-  <div class="ly-box st-box" role="dialog" aria-modal="true" aria-labelledby="ly-title">
+  <div class="ly-box st-box" id="ly-box" role="dialog" aria-modal="true" aria-labelledby="ly-title">
     <div class="ly-hd">
       <h3 id="ly-title">Design studio</h3>
       <label class="st-loc">Location <select id="ly-slot" onchange="layoutSwitchSlot(this.value)"></select></label>
@@ -782,7 +875,7 @@ body.artist span.artist-only{display:inline}
   </div>
 </div>
 <div class="oc-scrim" id="oc-scrim">
-  <div class="oc-box" role="dialog" aria-modal="true" aria-labelledby="oc-title">
+  <div class="oc-box" id="oc-box" role="dialog" aria-modal="true" aria-labelledby="oc-title">
     <div class="oc-hd" id="oc-title">Make it one color</div>
     <p class="oc-sub" id="oc-sub">Here's your artwork in one ink. Check it looks right.</p>
     <div class="oc-stage"><canvas id="oc-result"></canvas><div class="oc-busy" id="oc-busy">updating…</div></div>
@@ -810,6 +903,117 @@ body.artist span.artist-only{display:inline}
       <button class="rd-btn" onclick="closeOneColor()">Cancel</button>
       <button class="rd-btn" onclick="ocToggleEdit()" id="oc-edit-btn">Edit</button>
       <button class="rd-btn pri" onclick="ocUse()" id="oc-use">Looks good</button>
+    </div>
+  </div>
+</div>
+
+<!-- Art editor: opens on every piece of art that comes in -->
+<div class="oc-scrim" id="ae-scrim">
+  <div class="ae-box" role="dialog" aria-modal="true" aria-labelledby="ae-title">
+    <div class="ae-top">
+      <div class="oc-hd" id="ae-title">Art editor</div>
+      <div class="ae-file" id="ae-file"></div>
+      <button class="ae-hbtn cust-hide" id="ae-tut-btn" onclick="aeTutorial(true)" title="A short video of the art editor">▶ Tutorial</button>
+      <button class="ae-hbtn cust-hide" id="ae-keys-btn" onclick="aeKeys(true)" title="Every keyboard shortcut (?)">⌨ Shortcuts</button>
+      <button class="ap-x" onclick="closeArtEditor()" title="Close">×</button>
+    </div>
+    <div class="ae-over" id="ae-tut" onclick="if(event.target===this)aeTutorial(false)">
+      <div class="ae-over-box ae-tut-box">
+        <div class="ae-over-hd"><b>Art editor tutorial</b><span>1:16 — colors, the Edit tools, Layout, Checks</span><button class="ap-x" onclick="aeTutorial(false)" title="Close">×</button></div>
+        <video id="ae-tut-video" controls playsinline preload="none" poster="/static/tutorial/art-editor-poster.jpg"><source src="/static/tutorial/art-editor.webm" type="video/webm"><source src="/static/tutorial/art-editor.mp4" type="video/mp4"></video>
+      </div>
+    </div>
+    <div class="ae-over" id="ae-keys" onclick="if(event.target===this)aeKeys(false)">
+      <div class="ae-over-box ae-keys-box">
+        <div class="ae-over-hd"><b>Keyboard shortcuts</b><span>the same keys as Illustrator</span><button class="ap-x" id="ae-keys-x" onclick="aeKeys(false)" title="Close">×</button></div>
+        <div class="ae-keys-cols">
+          <div>
+            <h4>Edit tab — tools</h4>
+            <dl>
+              <dt><kbd>Q</kbd></dt><dd>Lasso — loop round parts to pick them</dd>
+              <dt><kbd>Shift</kbd><kbd>M</kbd></dt><dd>Shape Builder — drag across parts and pockets to merge</dd>
+              <dt><kbd>K</kbd></dt><dd>Fill — click a pocket to fill it, a part to repaint it</dd>
+            </dl>
+            <h4>Edit tab — picking</h4>
+            <dl>
+              <dt><kbd>Shift</kbd> + loop</dt><dd>add to what's picked</dd>
+              <dt><kbd>Alt</kbd> + loop</dt><dd>take away from what's picked</dd>
+              <dt><kbd>Alt</kbd> + drag</dt><dd>Shape Builder: take the parts away</dd>
+              <dt><kbd>Delete</kbd></dt><dd>remove what's picked</dd>
+              <dt><kbd>Esc</kbd></dt><dd>clear the picks</dd>
+            </dl>
+          </div>
+          <div>
+            <h4>Layout tab</h4>
+            <dl>
+              <dt><kbd>Alt</kbd> + drag</dt><dd>drag a copy, leaving the original</dd>
+              <dt><kbd>Ctrl</kbd><kbd>C</kbd> / <kbd>Ctrl</kbd><kbd>V</kbd></dt><dd>copy / paste (a little down and right)</dd>
+              <dt><kbd>Ctrl</kbd><kbd>]</kbd> / <kbd>Ctrl</kbd><kbd>[</kbd></dt><dd>bring forward / send back</dd>
+              <dt><kbd>Shift</kbd><kbd>Ctrl</kbd><kbd>]</kbd> / <kbd>[</kbd></dt><dd>to the front / to the back</dd>
+              <dt>arrows</dt><dd>nudge 1 · with <kbd>Shift</kbd> 10</dd>
+              <dt><kbd>Delete</kbd></dt><dd>delete the selected item</dd>
+            </dl>
+            <h4>Everywhere in the editor</h4>
+            <dl>
+              <dt><kbd>Ctrl</kbd><kbd>Z</kbd></dt><dd>undo</dd>
+              <dt><kbd>Shift</kbd><kbd>Ctrl</kbd><kbd>Z</kbd></dt><dd>redo (<kbd>Ctrl</kbd><kbd>Y</kbd> too, in Edit)</dd>
+              <dt><kbd>?</kbd></dt><dd>this list</dd>
+            </dl>
+            <p class="ae-keys-note">On a Mac: <kbd>⌘</kbd> for Ctrl, <kbd>Option</kbd> for Alt.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ae-body">
+      <div class="ae-prev">
+        <div class="oc-stage"><canvas id="ae-cv"></canvas></div>
+        <div class="ae-cap" id="ae-cap">on the item, as it will look</div>
+      </div>
+      <div class="ae-side">
+        <div class="ae-tabs">
+          <button data-t="layout" class="cust-hide" onclick="aeTab('layout')">Layout</button>
+          <button data-t="colors" onclick="aeTab('colors')">Colors</button>
+          <button data-t="cut" class="cust-hide" onclick="aeTab('cut')">Edit</button>
+          <button data-t="checks" class="cust-hide" onclick="aeTab('checks')">Checks<span class="ae-n" id="ae-n"></span></button>
+        </div>
+        <div class="ae-pane" id="ae-p-layout"><div id="ae-layout-host"></div></div>
+        <div class="ae-pane" id="ae-p-colors">
+          <p class="ae-intro" id="ae-colors-intro"></p>
+          <div id="ae-colors-host"></div>
+        </div>
+        <div class="ae-pane" id="ae-p-cut">
+          <div class="ae-tools">
+            <button data-tool="lasso" onclick="aeTool('lasso')" title="Lasso (Q): loop round parts to pick them">➰ Lasso <kbd>Q</kbd></button>
+            <button data-tool="builder" onclick="aeTool('builder')" title="Shape Builder (Shift+M): drag across parts and empty pockets to merge them; Alt-drag to take parts away">⬚ Shape Builder <kbd>⇧M</kbd></button>
+            <button data-tool="fill" onclick="aeTool('fill')" title="Fill (K): click an empty pocket to fill it, or a part to repaint it">🪣 Fill <kbd>K</kbd></button>
+            <button class="ae-fillsw" id="ae-fill-sw" onclick="aeRecolorOpen('fill')" title="The Pantone the Fill tool paints with"><i></i><span></span><b>▾</b></button>
+          </div>
+          <div class="ae-how" id="ae-how"></div>
+          <div class="ae-cut-bar" id="ae-act-bar">
+            <button class="rd-btn" id="ae-act-print" onclick="aeCutApply({kind:'print'})" disabled>Print</button>
+            <button class="rd-btn pri" id="ae-cut-go" onclick="aeCutApply({kind:'remove'})" disabled>Remove <kbd>Del</kbd></button>
+            <button class="rd-btn" id="ae-rc-go" onclick="aeRecolorOpen('recolor')" disabled>Recolor…</button>
+          </div>
+          <div class="ae-cut-bar">
+            <button class="oc-link" id="ae-suggest" onclick="aeCutSuggest()" title="The parts that sit inside another color — a diamond's facets, the inside of a letter">✨ Pick parts inside other colors</button>
+            <button class="oc-link" onclick="aeCutClear()">Clear picks <kbd>Esc</kbd></button>
+            <button class="oc-link" id="ae-cut-undo" onclick="aeCutUndo()" title="Ctrl+Z">↶ Undo</button>
+            <button class="oc-link" id="ae-cut-redo" onclick="aeCutRedo()" title="Shift+Ctrl+Z">↷ Redo</button>
+            <span class="ae-cut-msg" id="ae-cut-msg"></span>
+          </div>
+          <div class="ae-rc" id="ae-rc">
+            <input type="text" class="pms-search" id="ae-rc-q" placeholder="Search PMS number or name… (White, Black 6 C, 186 C)" oninput="aeRecolorList(this.value)">
+            <div id="ae-rc-list"></div>
+          </div>
+          <div class="oc-stage ae-cut-stage"><canvas id="ae-cut-cv"></canvas><svg id="ae-cut-svg"><path id="ae-cut-path"/></svg><div class="oc-busy" id="ae-cut-busy">working…</div></div>
+          <div class="ae-cut-tip" id="ae-cut-tip">&nbsp;</div>
+        </div>
+        <div class="ae-pane" id="ae-p-checks"><div id="ae-checks"></div></div>
+      </div>
+    </div>
+    <div class="ae-foot">
+      <div class="ae-msg" id="ae-msg">Position and size the art on the item after this.</div>
+      <button class="rd-btn pri" onclick="closeArtEditor()">Use this art</button>
     </div>
   </div>
 </div>
@@ -3904,7 +4108,10 @@ function proofPayload(){
     const sl = S.slots[sd.id];
     return sl?.img && !sl.isDefault && !ceEdited(sl.mc);
   });
-  return { product_id: S.pid, order_id: getNsoNumber(), components, full_color: is4 || asSupplied, inks };
+  // 1 Side / 2 Sides Same / 2 Sides Different, for the proof's Info line.
+  const _withArt = Object.keys(S.slots || {}).filter(k => S.slots[k]?.img);
+  return { product_id: S.pid, order_id: getNsoNumber(), components, full_color: is4 || asSupplied, inks,
+           sides: sidesPayload(_withArt) };
 }
 
 // Runs the production-PDF pipeline and returns the finished job id. The file
@@ -4903,7 +5110,7 @@ function openTxtModal(slotId){
   // font, stacked with or without artwork. The old single-line modal below is
   // kept only for re-editing text placed before layouts existed.
   if(!(slotId && S.slots[slotId]?.txtCfg && !S.slots[slotId]?.layout)){
-    openLayout(slotId || null, {addText: true});
+    openLayoutHere(slotId || null, {addText: true});
     return;
   }
   openTxtModalLegacy(slotId);
@@ -5114,6 +5321,7 @@ async function onFile(inp) {
       return;
     }
     await serverRasterize(f, slots, ext);
+    aeAfterImport(slots);
     return;
   }
 
@@ -5179,6 +5387,7 @@ async function onFile(inp) {
     // Vectors, and images on standard multi-color items, go through the server:
     // the inks are found there and images are traced per ink for the press sheets.
     await serverRasterize(f, slots, ext);
+    aeAfterImport(slots);
   } else {
     // Raster — load directly in browser. A JPG (or flat PNG) sitting on a
     // plain background has that background knocked out, the way screen-print
@@ -5234,6 +5443,14 @@ async function serverRasterize(f, slots, ext) {
     const data = await resp.json();
 
     if (!resp.ok || data.error) {
+      if(data.code === "font_missing"){
+        // Live text in a font the file doesn't include: never placed, on any item.
+        const err = (data.validation?.errors || [])[0] || {};
+        if(isScreenPrint()) showArtworkRejection(err.message || data.error, err.detail || "");
+        else fb.textContent = `⛔ ${data.error}`;
+        alert(`⛔ ${err.message || data.error}\n\n${err.detail || ""}`);
+        return;
+      }
       if(isScreenPrint()){
         const err = (data.validation?.errors || [])[0];
         showArtworkRejection(err?.message || data.error, err?.detail || "");
@@ -5417,6 +5634,11 @@ async function serverRasterize(f, slots, ext) {
       if(data.press_issue) fb.textContent += ` ⚠ Mockup only — not press-ready: ${pressIssueText(data.press_issue)}`;
     }
     if(orderNote) fb.textContent += orderNote;
+    if(data.font_note) fb.textContent += " · " + data.font_note;
+    // What the art editor's Checks list shows for these locations.
+    for(const id of slots) if(S.slots[id]) S.slots[id].aeNotes = {
+      warnings: (data.validation?.warnings || []).map(w => w.message).filter(Boolean),
+      font: data.font_note || "", detected: data.separations?.detected || 0, name: f.name || ""};
     R();
   } catch(e) {
     fb.textContent = `⚠ ${e.message}`;
@@ -7215,7 +7437,7 @@ function updateAEPanel() {
       editBtn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit Text';
       panel.querySelector(".ae-header").after(editBtn);
     }
-    editBtn.onclick=()=> S.slots[S.act]?.layout ? openLayout(S.act) : openTxtModal(S.act);
+    editBtn.onclick=()=> S.slots[S.act]?.layout ? openLayoutHere(S.act) : openTxtModal(S.act);
     editBtn.lastChild.textContent = S.slots[S.act]?.layout ? " Edit layout" : " Edit Text";
     editBtn.style.display="";
   } else if(editBtn){
@@ -8393,7 +8615,7 @@ async function openLayout(slotId, opts){
   const sel = document.getElementById("ly-slot");
   const ids = (S.prod?.slots || []).map(s => s.id).filter(id => !(sidesSame() && id === "side2"));
   sel.innerHTML = ids.map(id => `<option value="${id}"${id === (sidesSame() && LY.slot === "side2" ? "side1" : LY.slot) ? " selected" : ""}>${layoutSlotLabel(id)}</option>`).join("");
-  document.getElementById("ly-scrim").classList.add("vis");
+  if(!LY.inAE) document.getElementById("ly-scrim").classList.add("vis");
   studioTab(LY.items.length ? "text" : "templates");
   await Promise.all(LY.items.filter(i => i.type === "text").map(i => layoutEnsureFont(i.font, i.bold, i.italic)));
   studioRender();
@@ -8464,9 +8686,9 @@ function layoutForSave(ly){
   const base = { board: ly.board || null, W: ly.W || null };
   return { ...base, items: (ly.items || []).map(it => it.type === "art"
     ? { type: "art", src: it.src, name: it.name, w: it.w, x: it.x, y: it.y }
-    : it.type === "shape" ? { type: "shape", shape: it.shape, w: it.w, h: it.h, stroke: it.stroke, color: it.color, x: it.x, y: it.y }
+    : it.type === "shape" ? { type: "shape", shape: it.shape, w: it.w, h: it.h, stroke: it.stroke, color: it.color, pms: it.pms || null, x: it.x, y: it.y }
     : { type: "text", text: it.text, font: it.font, size: it.size, bold: !!it.bold, italic: !!it.italic,
-        color: it.color, spacing: it.spacing || 0, curve: it.curve || 0, x: it.x, y: it.y }) };
+        color: it.color, pms: it.pms || null, spacing: it.spacing || 0, curve: it.curve || 0, x: it.x, y: it.y }) };
 }
 
 // ── items ──────────────────────────────────────────────────────────────────
@@ -8474,7 +8696,7 @@ function studioNewText(text, size){
   const prev = [...LY.items].reverse().find(i => i.type === "text");
   return { type: "text", text: text || "Your text", font: prev?.font || "Oswald",
            size: size || Math.max(10, Math.round(LY.H * 0.22)), bold: false, italic: false,
-           color: prev?.color || "#000000", spacing: 0, curve: 0, x: LY.W / 2, y: LY.H / 2 };
+           color: prev?.color || "#000000", pms: prev?.pms || null, spacing: 0, curve: 0, x: LY.W / 2, y: LY.H / 2 };
 }
 function studioPush(){ LY.undo.push(JSON.stringify(studioPlain())); if(LY.undo.length > 60) LY.undo.shift(); LY.redo = []; }
 function studioPlain(){ return LY.items.map(it => { const o = { ...it }; delete o.img; delete o.pendingFile; delete o._uploading; delete o.cb; return o; }); }
@@ -8485,7 +8707,24 @@ function studioRestore(json){
 }
 function studioUndo(){ if(!LY.undo.length) return; LY.redo.push(JSON.stringify(studioPlain())); studioRestore(LY.undo.pop()); }
 function studioRedo(){ if(!LY.redo.length) return; LY.undo.push(JSON.stringify(studioPlain())); studioRestore(LY.redo.pop()); }
-function studioAdd(it){ studioPush(); LY.items.push(it); LY.sel = LY.items.length - 1; studioRender(); }
+function studioAdd(it){ studioPush(); LY.items.push(it); LY.sel = LY.items.length - 1; studioKeepIn(it); studioRender(); }
+// Everything stays on the board (the print area): bigger than the board, it
+// shrinks to fit (about its own centre); past an edge, it moves back in.
+function studioKeepIn(it){
+  if(!it || !LY.W || !LY.H) return;
+  for(let pass = 0; pass < 3; pass++){
+    const b = studioBox(it), bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+    const f = Math.min(1, LY.W / Math.max(bw, 1e-6), LY.H / Math.max(bh, 1e-6));
+    if(f >= 0.999) break;
+    const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+    it.x = cx + (it.x - cx) * f; it.y = cy + (it.y - cy) * f;
+    if(it.size) it.size = Math.max(4, it.size * f * 0.999);
+    if(it.w) it.w *= f * 0.999; if(it.h) it.h *= f * 0.999;
+  }
+  const b = studioBox(it);
+  if(b.x0 < 0) it.x -= b.x0; else if(b.x1 > LY.W) it.x -= b.x1 - LY.W;
+  if(b.y0 < 0) it.y -= b.y0; else if(b.y1 > LY.H) it.y -= b.y1 - LY.H;
+}
 function layoutAddText(){ studioAdd(studioNewText("Your text")); setTimeout(() => document.getElementById("st-text")?.select(), 30); }
 function studioAddShape(shape){
   const s = Math.min(LY.W, LY.H);
@@ -8496,11 +8735,49 @@ function studioAddShape(shape){
   else Object.assign(base, { w: s * 0.18 });
   studioAdd(base);
 }
+function studioPmsToggle(ev){
+  ev?.stopPropagation();
+  LY.pmsOpen = !LY.pmsOpen;
+  document.getElementById("st-pms-pop")?.classList.toggle("open", LY.pmsOpen);
+  if(LY.pmsOpen){ studioPmsList(""); setTimeout(() => document.getElementById("st-pms-q")?.focus(), 0); }
+}
+function studioPmsList(q){ pmsPickerFill(document.getElementById("st-pms-list"), q, "studioPmsPick", studioPmsUsed()); }
+// Pantones already in this design come first: reusing one costs no screen.
+function studioPmsUsed(){
+  const out = [];
+  for(const it of LY.items) if(it.pms && !out.some(u => u.name === it.pms)) out.push({name: it.pms, hex: it.color});
+  for(const ink of (typeof mcAllInks === "function" ? mcAllInks() : []))
+    if(ink.pms && !ink.hidden && !out.some(u => u.name === ink.pms)) out.push({name: ink.pms, hex: ink.pmsHex || ink.hex});
+  return out;
+}
+function studioPmsPick(name, hex){
+  const it = LY.items[LY.sel]; if(!it) return;
+  if(isScreenPrint()){
+    // One ink for the whole item: this sets it, everywhere.
+    setScreenPrintInk(name, hex); LY.pmsOpen = false; studioRender(true); return;
+  }
+  studioPush(); it.color = hex; it.pms = name;
+  LY.pmsOpen = false; studioRender(true);
+}
+document.addEventListener("click", ev => {
+  if(LY?.pmsOpen && !ev.target.closest?.(".st-pms-wrap")){ LY.pmsOpen = false; document.getElementById("st-pms-pop")?.classList.remove("open"); }
+});
+// What colour a design part is drawn in for the server: its Pantone's own,
+// except White (and near-white), which white-in-colour-art would read as a
+// knockout - that gets a stand-in colour only this Pantone uses (_rcPaint).
+function studioPaint(it){ return it.pms ? _rcPaint(it.pms, it.color || "#000000") : (it.color || "#000000"); }
+
 function studioSet(k, v, live){
   const it = LY.items[LY.sel]; if(!it) return;
   if(!live || !LY._liveKey || LY._liveKey !== k){ studioPush(); LY._liveKey = live ? k : null; }
   it[k] = v;
-  if(k === "font" || k === "bold" || k === "italic") layoutEnsureFont(it.font, it.bold, it.italic).then(() => studioRender());
+  const fontKey = k === "font" || k === "bold" || k === "italic";
+  if(fontKey){ layoutEnsureFont(it.font, it.bold, it.italic).then(() => { studioKeepIn(it); studioRender(); }); return; }
+  if(["text", "size", "spacing", "curve", "stroke"].includes(k)) studioKeepIn(it);
+  // Typing or sliding: redraw the board only. Rebuilding the controls would
+  // replace the box being typed in, and the cursor dropped out after every
+  // letter (and a slider let go mid-drag).
+  if(live) studioRenderBoard();
   else studioRender(true);
 }
 function studioDelete(){ if(LY.sel < 0) return; studioPush(); LY.items.splice(LY.sel, 1); LY.sel = LY.items.length - 1; studioRender(); }
@@ -8629,8 +8906,16 @@ function studioProps(){
     <button class="st-ic" title="Send back" onclick="studioLayer(-1)">⬇</button>
     <button class="st-ic" title="Duplicate" onclick="studioDuplicate()">⧉</button>
     <button class="st-ic" title="Delete" onclick="studioDelete()">🗑</button>`;
-  const color = layoutUsesColor() && it ? `<input type="color" title="Color" value="${it.color || "#000000"}" oninput="studioSet('color',this.value,true)">` : "";
-  if(!it){ bar.innerHTML = `<span class="st-hint">Click something on the board to edit it, or add text from the left.</span>`; return; }
+  // Colour is a Pantone: what is picked here is the ink it prints in.
+  // One-color items: the item's one ink, the same as in Colors.
+  const one = isScreenPrint() && it && it.type !== "art";
+  const color = (layoutUsesColor() || one) && it ? `<span class="st-pms-wrap"><button class="st-pms" title="Pantone ink" onclick="studioPmsToggle(event)">
+      <i style="background:${one ? (SP.ink?.hex || "#000000") : (it.color || "#000000")}"></i><span>${one ? "Ink: " + (SP.ink?.short || (SP.ink?.name || "pick").replace(/^PANTONE\s+/i, "")) : it.pms ? it.pms.replace(/^PANTONE\s+/i, "") : "Pick Pantone"}</span><b>▾</b></button>
+      <div class="st-pms-pop${LY.pmsOpen ? " open" : ""}" id="st-pms-pop" onclick="event.stopPropagation()">
+        <input type="text" class="pms-search" id="st-pms-q" placeholder="Search PMS — White, Black 6 C, 186 C…" oninput="studioPmsList(this.value)">
+        <div id="st-pms-list"></div></div></span>` : "";
+  if(!it){ LY.pmsOpen = false; bar.innerHTML = `<span class="st-hint">Click something on the board to edit it, or add text from the left.</span>`; return; }
+  setTimeout(() => { if(LY.pmsOpen) studioPmsList(document.getElementById("st-pms-q")?.value || ""); }, 0);
   if(it.type === "text"){
     const fonts = (LY.fonts || []).map(f => `<option value="${f.key}"${f.key === it.font ? " selected" : ""} style="font-family:'NumoLy-${f.key}-Regular'">${f.label}</option>`).join("");
     const f = (LY.fonts || []).find(x => x.key === it.font);
@@ -8685,9 +8970,24 @@ function studioDrawItem(g, it, k){
     } else g.drawImage(it.img, cb.x, cb.y, cb.w, cb.h, it.x - w / 2, it.y - h / 2, w, h);
   }
 }
+function studioRenderBoard(){
+  studioDraw(); studioCheck();
+  const it = LY.items[LY.sel], sz = document.querySelector("#st-props .st-num input");
+  if(it?.size && sz && document.activeElement !== sz) sz.value = Math.round(it.size);
+  const u = document.getElementById("st-undo"), r = document.getElementById("st-redo");
+  if(u) u.disabled = !LY.undo.length; if(r) r.disabled = !LY.redo.length;
+}
 function studioRender(keepPanel){
   if(!keepPanel) { studioPanel(); }
+  // If the controls are rebuilt while one is being typed in, the cursor goes
+  // back where it was.
+  const ae = document.activeElement, bar = document.getElementById("st-props");
+  const keep = ae && bar && bar.contains(ae) && ae.id ? {id: ae.id, s: ae.selectionStart, e: ae.selectionEnd} : null;
   studioProps();
+  if(keep){
+    const el = document.getElementById(keep.id);
+    if(el){ el.focus(); try{ if(keep.s != null) el.setSelectionRange(keep.s, keep.e); }catch(e){} }
+  }
   studioDraw();
   studioCheck();
   const u = document.getElementById("st-undo"), r = document.getElementById("st-redo");
@@ -8777,7 +9077,12 @@ function studioDown(e){
   if(!h){ LY.sel = -1; studioRender(true); return; }
   e.preventDefault();
   LY.sel = h.i; studioPush();
-  const it = LY.items[h.i];
+  // Alt-drag, as in Illustrator: drag a copy, leaving the original in place.
+  if(e.altKey && !h.handle){
+    const src = LY.items[h.i], copy = { ...src };
+    LY.items.splice(h.i + 1, 0, copy); LY.sel = h.i + 1;
+  }
+  const it = LY.items[LY.sel];
   LY.drag = h.handle
     ? { mode: "size", ax: h.ax, ay: h.ay, d0: Math.hypot(p.x - h.ax, p.y - h.ay), it0: { ...it, img: undefined }, c0: { x: it.x, y: it.y } }
     : { mode: "move", dx: p.x - it.x, dy: p.y - it.y };
@@ -8797,25 +9102,65 @@ function studioMove(e){
     LY.guides = {};
     if(Math.abs(cx_ - LY.W / 2) < snap){ it.x += LY.W / 2 - cx_; LY.guides.v = true; }
     if(Math.abs(cy_ - LY.H / 2) < snap){ it.y += LY.H / 2 - cy_; LY.guides.h = true; }
+    studioKeepIn(it);                       // stops at the edge of the board
   } else {
-    const f = Math.max(0.05, Math.hypot(p.x - LY.drag.ax, p.y - LY.drag.ay) / Math.max(1, LY.drag.d0)), o = LY.drag.it0;
-    if(it.type === "text") it.size = Math.max(4, o.size * f);
-    else { it.w = Math.max(2, o.w * f); if(o.h) it.h = Math.max(2, o.h * f); }
+    const o = LY.drag.it0;
     // Scale about the opposite corner.
-    it.x = LY.drag.ax + (LY.drag.c0.x - LY.drag.ax) * f; it.y = LY.drag.ay + (LY.drag.c0.y - LY.drag.ay) * f;
+    const apply = f => {
+      if(it.type === "text") it.size = Math.max(4, o.size * f);
+      else { it.w = Math.max(2, o.w * f); if(o.h) it.h = Math.max(2, o.h * f); }
+      it.x = LY.drag.ax + (LY.drag.c0.x - LY.drag.ax) * f; it.y = LY.drag.ay + (LY.drag.c0.y - LY.drag.ay) * f;
+    };
+    const inside = () => { const b = studioBox(it); return b.x0 >= -0.5 && b.y0 >= -0.5 && b.x1 <= LY.W + 0.5 && b.y1 <= LY.H + 0.5; };
+    let f = Math.max(0.05, Math.hypot(p.x - LY.drag.ax, p.y - LY.drag.ay) / Math.max(1, LY.drag.d0));
+    apply(f);
+    // Bigger than the board allows: as big as fits, the corner held where it is.
+    if(!inside() && f > 1){
+      let lo = 0.05, hi = f;
+      apply(1); if(inside()) lo = 1;
+      for(let n = 0; n < 18; n++){ const m = (lo + hi) / 2; apply(m); if(inside()) lo = m; else hi = m; }
+      apply(lo);
+      if(!inside()) studioKeepIn(it);
+    }
   }
   studioProps(); studioDraw(); studioCheck();
 }
 function studioUp(){ if(LY.drag){ LY.drag = null; LY.guides = null; studioRender(true); } }
+// The studio is open on its own, or as the art editor's Layout tab.
+function studioOpen(){
+  return !!document.getElementById("ly-scrim")?.classList.contains("vis")
+    || (typeof AE !== "undefined" && AE.open && AE.tab === "layout");
+}
 function studioKey(e){
-  if(!document.getElementById("ly-scrim")?.classList.contains("vis")) return;
+  if(!studioOpen()) return;
   const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || "") && document.activeElement.type !== "range";
-  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ if(!typing){ e.preventDefault(); e.shiftKey ? studioRedo() : studioUndo(); } return; }
+  const mod = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
+  if(mod && key === "z"){ if(!typing){ e.preventDefault(); e.shiftKey ? studioRedo() : studioUndo(); } return; }
   if(typing) return;
+  // Illustrator's: Ctrl+C / Ctrl+V copy and paste (a little down and right),
+  // Ctrl+] / Ctrl+[ forward / back, with Shift to the front / back.
+  if(mod && key === "c" && LY.items[LY.sel]){ e.preventDefault(); LY.clip = { ...LY.items[LY.sel] }; return; }
+  if(mod && key === "v" && LY.clip){
+    e.preventDefault(); studioPush();
+    const k = Math.max(6, Math.min(LY.W, LY.H) * 0.03);
+    const it = { ...LY.clip, x: LY.clip.x + k, y: LY.clip.y + k };
+    LY.clip = it; LY.items.push(it); LY.sel = LY.items.length - 1; studioKeepIn(it); studioRender(); return;
+  }
+  if(mod && (e.key === "]" || e.key === "[" || e.code === "BracketRight" || e.code === "BracketLeft")){
+    e.preventDefault();
+    const up = e.key === "]" || e.code === "BracketRight";
+    if(e.shiftKey){
+      const i = LY.sel; if(i < 0) return; studioPush();
+      const [it] = LY.items.splice(i, 1);
+      if(up){ LY.items.push(it); LY.sel = LY.items.length - 1; } else { LY.items.unshift(it); LY.sel = 0; }
+      studioRender();
+    } else studioLayer(up ? 1 : -1);
+    return;
+  }
   const it = LY.items[LY.sel]; if(!it) return;
   const st = e.shiftKey ? 10 : 1;
   const mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, -st], ArrowDown: [0, st] }[e.key];
-  if(mv){ e.preventDefault(); studioPush(); it.x += mv[0]; it.y += mv[1]; studioRender(true); }
+  if(mv){ e.preventDefault(); studioPush(); it.x += mv[0]; it.y += mv[1]; studioKeepIn(it); studioRender(true); }
   else if(e.key === "Delete" || e.key === "Backspace"){ e.preventDefault(); studioDelete(); }
 }
 (function studioBind(){
@@ -8826,7 +9171,7 @@ function studioKey(e){
     cv.addEventListener("pointermove", studioMove);
     window.addEventListener("pointerup", studioUp);
     document.addEventListener("keydown", studioKey);
-    window.addEventListener("resize", () => { if(document.getElementById("ly-scrim")?.classList.contains("vis")) studioDraw(); });
+    window.addEventListener("resize", () => { if(studioOpen()) studioDraw(); });
   };
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", go); else go();
 })();
@@ -8884,9 +9229,9 @@ async function layoutDone(){
     const payload = { version: 2, slot_id: LY.slot, product_id: S.pid || "", W: LY.W, H: LY.H,
       items: items.map(it => it.type === "art" ? { type: "art", src: it.src, w: it.w, x: it.x, y: it.y }
         : it.type === "shape" ? { type: "shape", shape: it.shape, w: it.w, h: it.h, stroke: it.stroke,
-                                  color: color ? (it.color || "#000000") : "#000000", x: it.x, y: it.y }
+                                  color: color ? studioPaint(it) : "#000000", x: it.x, y: it.y }
         : { type: "text", text: it.text, font: it.font, size: it.size, bold: !!it.bold, italic: !!it.italic,
-            color: color ? (it.color || "#000000") : "#000000", spacing: it.spacing || 0, curve: it.curve || 0, x: it.x, y: it.y }) };
+            color: color ? studioPaint(it) : "#000000", spacing: it.spacing || 0, curve: it.curve || 0, x: it.x, y: it.y }) };
     const r = await fetch("/api/compose", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
     const d = await r.json();
     if(!r.ok || d.error) throw new Error(d.error || "Could not build the design");
@@ -8905,6 +9250,9 @@ async function layoutDone(){
       for(const ink of (sl.mc?.inks || [])){
         const o = oldInks.find(x => mcSameColor(x.hex, ink.hex));
         if(o){ ink.pms = o.pms; ink.pmsHex = o.pmsHex; ink.hidden = o.hidden; }
+        // A Pantone picked in the studio is the ink its parts print in.
+        const p = items.find(x => x.pms && mcSameColor(studioPaint(x), ink.hex));
+        if(p){ ink.pms = p.pms; ink.pmsHex = p.color; ink.hidden = false; }
       }
       if(sl.mc) applySeparationsToSlot(sl);
       const now = artPrintedWidth(id), want = (bx1 - bx0) / 72;
@@ -8918,9 +9266,10 @@ async function layoutDone(){
     }
     S.act = targets[0];
     renderArtworkPanel(); if(mcUsesSets()) renderSeparationsPanel(); updateAEPanel(); R();
+    if(LY.inAE && AE.open) aeLayoutApplied(targets);
   }catch(e){
     studioNote(`⚠ ${e.message}`, true);
-    document.getElementById("ly-scrim").classList.add("vis");
+    if(!LY.inAE) document.getElementById("ly-scrim").classList.add("vis");
   }finally{ btn.disabled = false; }
 }
 
@@ -9028,12 +9377,13 @@ function renderArtworkPanel(){
     }
     // Stack text above/below the art, or build a layout.
     traceHtml += `<div class="az-sub"><button class="oc-link" style="font-size:10px"
-      onclick="event.stopPropagation();openLayout('${id}')">${sl.layout ? "✎ edit layout" : "+ text / layout"}</button></div>`;
+      onclick="event.stopPropagation();openLayoutHere('${id}')">${sl.layout ? "✎ edit layout" : "+ text / layout"}</button>${aeAvailable() ? ` · <button class="oc-link" style="font-size:10px"
+      onclick="event.stopPropagation();openArtEditor(pairedIds('${id}'))">🎨 art editor</button>` : ""}</div>`;
     const lyWarn = layoutTypeWarning(id);
     if(lyWarn) traceHtml += `<div class="az-sub az-trace warn">⚠ ${lyWarn}</div>`;
     if(sl.oneColor){
       traceHtml += `<div class="az-sub"><button class="oc-link" style="font-size:10px"
-        onclick="event.stopPropagation();openOneColor(['${id}'], S.slots['${id}'].oneColor.src, S.slots['${id}'].oneColor.overrides)">edit one color</button></div>`;
+        onclick="event.stopPropagation();openArtEditor(pairedIds('${id}'), 'cut')">edit one color</button></div>`;
     } else if(MC.reduce && OC_PENDING && OC_PENDING.slots.includes(id)){
       traceHtml += `<div class="az-sub az-trace warn">⚠ ${MC.detected || "several"} colors — this item prints one</div>
         <div class="az-sub"><button class="oc-link" style="font-size:10px"
@@ -9215,7 +9565,7 @@ function assetId(){ return S.prod?.asset_id || S.pid; }
 // guaranteed to fetch, so the version rides in the query string.
 //
 // The count under the swatches is the tell: an old list says 3,219 colors.
-const PMS_LIBRARY_VERSION = "2026-09-21";
+const PMS_LIBRARY_VERSION = "2026-10-09";
 
 async function loadPmsLibrary(){
   if(SP.loaded) return;
@@ -9223,6 +9573,8 @@ async function loadPmsLibrary(){
     const d = await(await fetch(`/api/pantone-library?v=${PMS_LIBRARY_VERSION}`)).json();
     SP.library = d.colors || [];
     SP.quick   = d.quick  || [];
+    SP.special = d.special || [];       // 877 C, 871 C, metallic and shimmer inks
+    SP.library = SP.library.concat(SP.special.filter(s => !SP.library.some(c => c.name === s.name)));
     SP.loaded  = true;
   }catch(e){
     console.warn("[screenprint] PMS library failed to load", e);
@@ -9338,6 +9690,7 @@ function renderPmsPicker(query){
     if(!PF.sp){
       html += `<div class="pms-group-lbl">Common screen print inks</div>`;
       html += `<div class="pms-grid">${SP.quick.map(swatch).join("")}</div>`;
+      if((SP.special||[]).length) html += `<div class="pms-group-lbl">Special inks</div><div class="pms-grid">${SP.special.map(swatch).join("")}</div>`;
     }
     html += pmsBrowseHTML("sp", swatch);
     html += `<div class="pms-count">Or search above for any of the ${SP.library.length.toLocaleString()} PMS colors.</div>`;
@@ -9497,6 +9850,12 @@ function recolorToSeparations(srcImg, inks, bgHex){
   const src = inks.map(i => mcHexToRgb(i.hex));
   const dst = inks.map(i => mcHexToRgb(i.pmsHex || i.hex));
   const bg  = bgHex ? mcHexToRgb(bgHex) : null;
+  // White in art that has colour, when no ink is white in the file, is open:
+  // the item shows through it, as on the press files (onecolor.separate).
+  // Without this a diamond's white facets took the nearest ink and filled in
+  // once its colours were set to White.
+  const isW = c => Math.min(c[0], c[1], c[2]) >= 235;
+  const openWhite = src.some(c => !isW(c)) && !src.some(isW);
 
   let id;
   try{ id = g.getImageData(0, 0, c.width, c.height); }
@@ -9519,6 +9878,12 @@ function recolorToSeparations(srcImg, inks, bgHex){
       }
       // An ink the customer marked "don't print" drops out entirely, taking
       // its pixels with it — the neoprene shows through where it was.
+      if(openWhite && d[p] >= 235 && d[p+1] >= 235 && d[p+2] >= 235){
+        t = [0, 0, 0, 0];
+        cache.set(key, t);
+        d[p+3] = 0;
+        continue;
+      }
       if(inks[bi].hidden){
         t = [0, 0, 0, 0];
         cache.set(key, t);
@@ -9722,6 +10087,7 @@ function mcScreenCount(){
 }
 
 function renderSeparationsPanel(){
+  if(typeof AE !== "undefined" && AE?.open) setTimeout(aeChecks, 0);
   if(typeof varRender === "function") setTimeout(varRender, 0);
   if(typeof inkPanelSoon === "function") inkPanelSoon();
   const panel = document.getElementById("mc-panel");
@@ -9922,7 +10288,8 @@ function renderMcPicker(key, i, query){
         ? `<div class="pms-group-lbl">Already on this job — no extra screen</div>`
           + `<div class="pms-grid">${used.map(sw).join("")}</div>` : "")
       + `<div class="pms-group-lbl">Common screen print inks</div>`
-      + `<div class="pms-grid">${(SP.quick||[]).map(sw).join("")}</div>`)
+      + `<div class="pms-grid">${(SP.quick||[]).map(sw).join("")}</div>`
+      + ((SP.special||[]).length ? `<div class="pms-group-lbl">Special inks</div><div class="pms-grid">${SP.special.map(sw).join("")}</div>` : ""))
       + pmsBrowseHTML(pid, sw)
       + `<div class="pms-count">Or search above for any of the `
       + `${(SP.library||[]).length.toLocaleString()} PMS colors.</div>`;
@@ -10654,6 +11021,7 @@ async function apPlace(){
     }
     if(RESTORE.sizes) RESTORE.sizes = Object.keys(RESTORE.sizes).length ? RESTORE.sizes : null;
     renderArtworkPanel(); R();
+    aeAfterImport(Object.keys(d.files));
     const fb = document.getElementById("fb");
     const sized = Object.keys(sizes).length ? "sized as the page states" : "sized to fit — check the size against the order";
     if(fb) fb.textContent = `✓ Art placed on ${done.join(", ")}, ${sized}.`
@@ -10670,6 +11038,8 @@ async function restoreFromProofFile(inp){
   const fb = document.getElementById("fb");
   fb.textContent = "⏳ Reading the file…";
   const fd = new FormData(); fd.append("file", f, f.name);
+  // The item open now: a customer's TIF template is matched to it first.
+  if(S.pid) fd.append("product_id", S.pid);
   try{
     const r = await fetch("/api/restore", {method:"POST", body:fd});
     const b = await r.json();
@@ -11086,24 +11456,50 @@ function _ocImg(b64){
     im.onload = () => res(im); im.onerror = rej; im.src = "data:image/png;base64," + b64; });
 }
 
-function startOneColorFromDialog(){
+// "Make it one color": the automatic one-color edit (parts inside other
+// colors knocked out), then the art editor's Lasso to change any part.
+async function startOneColorFromDialog(){
   if(!OC_PENDING) return;
   closeReductionDialog();
-  openOneColor(OC_PENDING.slots, OC_PENDING.src, {});
+  const {slots, src} = OC_PENDING;
+  const fb = document.getElementById("fb");
+  if(fb) fb.textContent = "⏳ Making it one color…";
+  try{
+    const r = await fetch("/api/one-color", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({art_path: src, decisions: {}})});
+    const d = await r.json();
+    if(!r.ok || d.error) throw new Error(d.error || "could not reduce this artwork");
+    const mask = await _ocImg(d.preview_b64);
+    ocCommit(slots, d, mask, src, {});
+    if(MC.reduce) clearSeparations();
+    OC_PENDING = null;
+    renderArtworkPanel(); renderSeparationsPanel?.(); R();
+    const ko = d.shapes.filter(x => x.area > 0 && (d.decisions || {})[x.i] === "knockout").length;
+    if(fb) fb.textContent = "✓ Artwork made one color. Check it in the art editor.";
+    openArtEditor([...slots], "cut");
+    CUT.note = `Made one color.` + (ko ? ` ${ko} part${ko > 1 ? "s" : ""} inside other colors ${ko > 1 ? "were" : "was"} knocked out (striped).` : "")
+      + " Pick any part to change it.";
+  }catch(e){
+    // The old editor still does the job if this didn't.
+    openOneColor(slots, src, {});
+  }
 }
 
 async function openOneColor(slots, src, overrides){
   OC.slots = slots; OC.src = src; OC.overrides = {...(overrides || {})};
-  OC.data = null; OC.ids = null; OC.hover = -1;
-  document.getElementById("oc-edit").classList.remove("open");
-  document.getElementById("oc-edit-btn").textContent = "Edit";
+  OC.data = null; OC.ids = null; OC.hover = -1; OC.multi = false;
+  const inAE = !!OC.inAE;
+  document.getElementById("oc-edit").classList.toggle("open", inAE);
+  document.getElementById("oc-edit-btn").textContent = inAE ? "Hide editor" : "Edit";
+  document.getElementById("oc-use").textContent = inAE ? "Apply knockouts" : "Looks good";
   document.getElementById("oc-summary").textContent = "Working it out…";
-  document.getElementById("oc-scrim").classList.add("vis");
+  if(!inAE) document.getElementById("oc-scrim").classList.add("vis");
   await ocFetch(true);
 }
 
 function closeOneColor(){
   document.getElementById("oc-scrim").classList.remove("vis");
+  if(OC.multi){ OC.multi = false; return; }
   // Cancelled straight from the upload: back to the choice — reduce it, or
   // upload different art — rather than leaving multi-color art on a
   // one-color product.
@@ -11178,7 +11574,7 @@ function ocToggleEdit(){
   const open = !ed.classList.contains("open");
   ed.classList.toggle("open", open);
   document.getElementById("oc-edit-btn").textContent = open ? "Hide editor" : "Edit";
-  document.getElementById("oc-use").textContent = open ? "Use this" : "Looks good";
+  document.getElementById("oc-use").textContent = OC.inAE ? "Apply knockouts" : open ? "Use this" : "Looks good";
   if(open){ ocDrawEditor(); ocGroups(); }
 }
 
@@ -11262,16 +11658,865 @@ function ocCommit(slots, d, maskImg, src, overrides){
   }
 }
 
-function ocUse(){
+// Multi-color items: one-color art from the knockout editor (d, from
+// /api/one-color) becomes the art of these locations, where it was placed.
+async function mcLoadOneColor(ids, d, mask, src, overrides){
+  const keep = Object.fromEntries(ids.map(k => [k, {ox: S.slots[k]?.ox, oy: S.slots[k]?.oy, sc: S.slots[k]?.sc, rot: S.slots[k]?.rot}]));
+  const stem = String(src || "art").split("/").pop().replace(/\.[^.]+$/, "").slice(0, 40);
+  await serverRasterize({serverPath: d.saved_path, name: `${stem}-1c.pdf`}, ids, ".pdf");
+  for(const k of ids){
+    const sl = S.slots[k]; if(!sl) continue;
+    if(keep[k].sc != null) Object.assign(sl, keep[k]);
+    // The file paints its knockouts white; the editor's mask has them open.
+    // The mockup works from the mask so a White ink doesn't fill them in.
+    if(sl.vectorSavedPath && mask){
+      sl.srcImg = mask; sl.cb = {x:0, y:0, w:d.width, h:d.height};
+      applySeparationsToSlot(sl);
+    }
+    // Where it came from, so the lasso can take more out later.
+    sl.koFrom = {src, overrides: {...(overrides || {})}};
+  }
+  renderArtworkPanel(); renderSeparationsPanel?.(); R();
+}
+
+async function ocUse(){
   const d = OC.data; if(!d || !OC.maskImg) return;
+  if(OC.multi){
+    // Back on a multi-color item: the one-color art is loaded as the art of
+    // these locations (one ink, matched to a Pantone the artist can change),
+    // where it was placed.
+    OC.multi = false;
+    document.getElementById("oc-scrim").classList.remove("vis");
+    await mcLoadOneColor([...OC.slots], d, OC.maskImg, OC.src, OC.overrides);
+    const fb = document.getElementById("fb");
+    if(fb) fb.textContent = "✓ One color, inner shapes knocked out — pick its Pantone in the colors panel.";
+    return;
+  }
   ocCommit(OC.slots, d, OC.maskImg, OC.src, OC.overrides);
   // The reduction is done, so the manual color list no longer applies.
   if(MC.reduce){ clearSeparations(); }
+  const fromUpload = !!OC_PENDING && OC.slots === OC_PENDING.slots;
   OC_PENDING = null;
   document.getElementById("oc-scrim").classList.remove("vis");
   renderArtworkPanel(); renderSeparationsPanel?.(); R();
   const fb = document.getElementById("fb");
   if(fb) fb.textContent = "✓ Artwork reduced to one color. Position it, then check the proof.";
+  // Reduced straight from an upload: on to the editor, to pick the ink and
+  // see it on the item.
+  if(fromUpload && !RESTORE.active) openArtEditor([...OC.slots], "colors");
+}
+
+// ── Art editor ────────────────────────────────────────────────────────────
+// One pop-up for art that has just come in (upload or pick-art): the item with
+// the art on it, live, beside everything that changes how the art prints —
+// its colors and Pantones, knockouts (one ink, inner shapes open), and what
+// still needs fixing. The panels it shows are the configurator's own (the
+// colors panel, the ink picker, the one-color editor), moved in while it is
+// open and put back after, so the editor and the side panel never disagree.
+var AE = {open:false, slots:[], tab:"colors", timer:null, homes:[], koStarted:false};
+
+function aeAvailable(){ return !!S.prod && (isScreenPrint() || mcUsesSets()); }
+
+function aeAfterImport(slots){
+  if(RESTORE.active || AE.open || MC.reduce || !aeAvailable()) return;
+  if(document.querySelector("#rd-scrim.vis, #oc-scrim.vis")) return;
+  const ok = (slots || []).filter(id => S.slots[id]?.img && !S.slots[id]?.isDefault);
+  if(ok.length) openArtEditor(ok, "colors");
+}
+
+function _aeAdopt(hostId, ids){
+  const host = document.getElementById(hostId); if(!host) return;
+  for(const id of ids){
+    const el = document.getElementById(id);
+    if(!el || host.contains(el)) continue;
+    AE.homes.push({el, parent: el.parentNode, next: el.nextSibling});
+    host.appendChild(el);
+  }
+}
+
+function _aeRestore(){
+  for(const h of AE.homes.reverse()){
+    if(h.next && h.next.parentNode === h.parent) h.parent.insertBefore(h.el, h.next);
+    else h.parent.appendChild(h.el);
+  }
+  AE.homes = [];
+}
+
+function openArtEditor(slots, tab, lyOpts){
+  // Layout can start from nothing (text on an empty location); the other
+  // tabs work on art that is there.
+  // Customers see Colors only (the other tabs are artists'): they always
+  // open on it, never on a tab they can't see.
+  if(typeof CUSTOMER !== "undefined" && CUSTOMER && tab && tab !== "colors") tab = "colors";
+  const layout = tab === "layout";
+  slots = (slots || []).filter(id => layout ? (S.prod?.slots || []).some(s => s.id === id) : S.slots[id]?.img);
+  if(!slots.length || !aeAvailable()) return;
+  AE.slots = [...new Set(slots.flatMap(id => pairedIds(id)))].filter(id => layout || S.slots[id]?.img);
+  AE.lyStarted = false; AE.lyOpts = lyOpts || {}; AE.lyApplied = 0;
+  AE.open = true; AE.koStarted = false; CUT.key = null; CUT.undo = []; CUT.redo = []; CUT.tool = "lasso"; CUT.fillPms = null;
+  S.act = AE.slots[0];
+  _aeAdopt("ae-colors-host", ["mc-panel", "sp-ink"]);
+  const names = [...new Set(AE.slots.map(id => S.slots[id]?.aeNotes?.name || S.slots[id]?.file?.name).filter(Boolean))];
+  const where = AE.slots.map(id => (S.prod.slots || []).find(s => s.id === id)?.label || id).join(" · ");
+  document.getElementById("ae-file").textContent = (names.join(", ") || (layout ? "new design" : "artwork")) + " — " + where;
+  document.getElementById("ae-scrim").classList.add("vis");
+  renderSeparationsPanel?.(); R();
+  aeTab(tab || "colors");
+  clearInterval(AE.timer); AE.timer = setInterval(aeMirror, 300); aeMirror();
+}
+
+async function closeArtEditor(){
+  if(!AE.open) return;
+  // Layout changes not put on the item yet: offer to, rather than lose them.
+  if(AE.lyStarted && LY.undo.length !== AE.lyApplied && LY.items.length){
+    if(confirm("Put your layout changes on the item before closing?\n\nOK applies them, Cancel closes without them.")){
+      await layoutDone();
+    }
+  }
+  LY.inAE = false; AE.lyStarted = false;
+  aeTutorial(false); aeKeys(false);
+  AE.open = false;
+  clearInterval(AE.timer);
+  if(OC.inAE){ OC.inAE = false; OC.multi = false; ++OC.reqId; }
+  _aeRestore();
+  const done = document.getElementById("ly-done"); if(done) done.textContent = "Done";
+  document.getElementById("ae-scrim").classList.remove("vis");
+  renderArtworkPanel(); renderSeparationsPanel?.(); R();
+}
+
+function aeTab(t){
+  AE.tab = t;
+  document.querySelectorAll(".ae-tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  document.querySelector(".ae-box")?.classList.toggle("ae-wide", t === "layout");
+  for(const k of ["layout", "colors", "cut", "checks"])
+    document.getElementById("ae-p-" + k).classList.toggle("on", k === t);
+  if(t === "colors") aeColorsIntro();
+  if(t === "cut") aeCutLoad(false);
+  if(t === "layout") aeLayoutStart();
+  aeChecks();
+}
+
+// The design studio as a tab: its own panel, moved in (and back on close).
+async function aeLayoutStart(){
+  if(AE.lyStarted){ studioDraw(); return; }
+  LY.inAE = true;
+  _aeAdopt("ae-layout-host", ["ly-box"]);
+  document.getElementById("ly-done").textContent = "Put it on the item";
+  AE.lyStarted = true;
+  await openLayout(AE.slots[0] || null, AE.lyOpts || {});
+  AE.lyApplied = LY.undo.length;
+  studioDraw();
+}
+function aeLayoutApplied(targets){
+  AE.lyApplied = LY.undo.length;
+  AE.slots = [...new Set(targets.flatMap(id => pairedIds(id)))].filter(id => S.slots[id]?.img);
+  CUT.key = null;
+  aeTab("colors");
+  document.getElementById("ae-msg").textContent = "✓ Layout is on the item. Check its colors here; edit it again in Layout.";
+}
+// Artists get the studio inside the art editor; customers keep it on its own.
+function openLayoutHere(slotId, opts){
+  if(typeof CUSTOMER !== "undefined" && CUSTOMER) return openLayout(slotId, opts);
+  const id = slotId || layoutDefaultSlot();
+  openArtEditor(pairedIds(id), "layout", opts);
+  if(!AE.open) openLayout(slotId, opts);
+}
+
+// The tutorial video and the shortcut list, over the editor.
+function aeTutorial(on){
+  document.getElementById("ae-tut").classList.toggle("on", !!on);
+  const v = document.getElementById("ae-tut-video");
+  if(on){ aeKeys(false); try{ v.currentTime = 0; v.play()?.catch?.(() => {}); }catch(e){} } else { try{ v.pause(); }catch(e){} }
+}
+function aeKeys(on){
+  document.getElementById("ae-keys").classList.toggle("on", !!on);
+  if(on) document.getElementById("ae-tut")?.classList.remove("on");
+}
+document.addEventListener("keydown", ev => {
+  if(!(typeof AE !== "undefined" && AE.open) || (typeof CUSTOMER !== "undefined" && CUSTOMER)) return;
+  const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || "") && document.activeElement.type !== "range";
+  const keys = document.getElementById("ae-keys"), tut = document.getElementById("ae-tut");
+  if(ev.key === "Escape" && (keys.classList.contains("on") || tut.classList.contains("on"))){
+    ev.preventDefault(); ev.stopImmediatePropagation(); aeKeys(false); aeTutorial(false); return;
+  }
+  if(!typing && ev.key === "?"){ ev.preventDefault(); aeKeys(!keys.classList.contains("on")); }
+}, true);
+
+function aeColorsIntro(){
+  const el = document.getElementById("ae-colors-intro");
+  const mcOn = document.getElementById("mc-panel")?.classList.contains("vis");
+  const spOn = document.getElementById("sp-ink")?.style.display !== "none";
+  el.textContent = mcOn
+    ? "Every color found in the art, matched to its closest Pantone. Click one to change its Pantone, give two the same Pantone to print them as one, or choose “don't print” to let the item show through."
+    : spOn ? "This item prints in one ink. Pick its Pantone." + (CUSTOMER ? "" : " To take parts out of the art, use the Lasso.")
+    : "This art keeps its own colors.";
+}
+
+// The configurator's canvas, copied: whatever the item shows, this shows.
+function aeMirror(){
+  if(!AE.open) return;
+  const src = document.getElementById("cv"), dst = document.getElementById("ae-cv");
+  if(!src || !dst || !src.width) return;
+  if(dst.width !== src.width || dst.height !== src.height){ dst.width = src.width; dst.height = src.height; }
+  const g = dst.getContext("2d");
+  g.clearRect(0, 0, dst.width, dst.height);
+  g.drawImage(src, 0, 0);
+}
+
+// ── Clean up: lasso parts of the art away ────────────────────────────────
+// The shapes come from the same map the knockout editor uses (/api/one-color).
+// Plain vector art is cut on the server (/api/art-cut: the shapes are left
+// out, every other shape and colour untouched) and loaded again. Art that the
+// knockout editor made one-color is changed at its source instead: the picked
+// shapes are set to "remove" there, so knockouts and removals stay one edit.
+var CUT = {tool:"lasso", fillPms:null, rcFor:"recolor", redo:[], key:null, data:null, ids:null, gw:0, gh:0, img:null, pick:new Set(), area:{},
+           hover:-1, drag:null, undo:[], busy:false, mode:null, src:null, overrides:{}, slots:[]};
+
+function _cutSource(){
+  const sl = S.slots[AE.slots[0]]; if(!sl) return null;
+  const slots = AE.slots.filter(k => S.slots[k]?.vectorSavedPath && S.slots[k].vectorSavedPath === sl.vectorSavedPath);
+  if(sl.oneColor?.src) return {mode:"oc", src: sl.oneColor.src, overrides: sl.oneColor.overrides || {}, slots};
+  if(sl.koFrom?.src) return {mode:"ko", src: sl.koFrom.src, overrides: sl.koFrom.overrides || {}, slots};
+  // A one-color item prints one ink: its parts print, knock out or go, the
+  // way the one-color edit does it (images are traced for it).
+  if(isScreenPrint() && sl.vectorSavedPath) return {mode:"oc", src: sl.vectorSavedPath, overrides: {}, slots};
+  // Images too: they are edited as their traced shapes.
+  if(sl.vectorSavedPath) return {mode:"cut", src: sl.vectorSavedPath, overrides: {}, slots};
+  return null;
+}
+
+async function aeCutLoad(force){
+  const msg = document.getElementById("ae-cut-msg");
+  const src = _cutSource();
+  if(!src){
+    CUT.key = null; CUT.data = null;
+    const cv = document.getElementById("ae-cut-cv"); cv.width = cv.height = 0;
+    msg.textContent = "This art was made here or kept as a photo, so it has no parts to pick.";
+    return;
+  }
+  const key = src.mode + "|" + src.src + "|" + JSON.stringify(src.overrides);
+  if(!force && key === CUT.key && CUT.data){ aeCutDraw(); return; }
+  Object.assign(CUT, {key, mode: src.mode, src: src.src, overrides: {...src.overrides}, slots: src.slots, pick: new Set(), hover: -1});
+  document.getElementById("ae-cut-busy").classList.add("on");
+  msg.textContent = "Reading the art…";
+  try{
+    const r = await fetch("/api/one-color", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({art_path: src.src, decisions: src.mode === "cut" ? {} : src.overrides})});
+    const d = await r.json();
+    if(!r.ok || d.error) throw new Error(d.error || "could not read this artwork");
+    if(key !== CUT.key) return;
+    CUT.data = d;
+    CUT.eff = d.decisions || {};
+    CUT.img = await _ocImg(d.colour_b64);
+    const idm = await _ocImg(d.idmap_b64);
+    const c = document.createElement("canvas"); c.width = idm.width; c.height = idm.height;
+    const g = c.getContext("2d", {willReadFrequently:true}); g.drawImage(idm, 0, 0);
+    const px = g.getImageData(0, 0, c.width, c.height).data;
+    CUT.ids = new Int32Array(c.width * c.height); CUT.area = {};
+    for(let i = 0, j = 0; i < CUT.ids.length; i++, j += 4){
+      const id = px[j+1] * 256 + px[j+2] - 1; CUT.ids[i] = id;
+      if(id >= 0) CUT.area[id] = (CUT.area[id] || 0) + 1;
+    }
+    CUT.gw = c.width; CUT.gh = c.height;
+    CUT.hasColour = d.shapes.some(x => x.area > 0 && !_cutWhite(x.i));
+    aeCutDraw(); aeCutStatus();
+  }catch(e){
+    msg.textContent = "⚠ " + e.message;
+  }finally{
+    document.getElementById("ae-cut-busy").classList.remove("on");
+  }
+}
+
+// Shapes this tool can still pick: painted, and not already removed.
+function _cutLive(id){ return id >= 0; }
+function _cutWhite(id){
+  const h = (CUT.data?.shapes?.find(x => x.i === id)?.hex || "#000000").replace("#", "");
+  return Math.min(...[0, 2, 4].map(j => parseInt(h.slice(j, j + 2), 16))) >= 235;
+}
+// Does this part print as a hole? One-color edits say so; in plain art a
+// white part inside coloured art is one (the press files leave it open).
+function _cutIsKo(id){
+  if(CUT.mode !== "cut") return CUT.eff[id] === "knockout";
+  return _cutWhite(id) && CUT.hasColour;
+}
+
+function aeCutDraw(){
+  const cv = document.getElementById("ae-cut-cv");
+  if(!CUT.img || !CUT.ids) return;
+  cv.width = CUT.gw; cv.height = CUT.gh;
+  // Sized to the space the tab has, so the whole art is on screen (a drag
+  // can't reach parts scrolled out of sight).
+  const host = document.getElementById("ae-p-cut"), stage = cv.parentElement;
+  const availH = host.clientHeight ? host.clientHeight - (stage.offsetTop - host.offsetTop) - 52 : 0;
+  let wpx = Math.min(CUT.gw * 2, Math.max(260, (host.clientWidth || 520) - 52));
+  if(availH > 160) wpx = Math.min(wpx, Math.max(200, availH * CUT.gw / CUT.gh));
+  cv.style.width = Math.round(wpx) + "px";
+  const g = cv.getContext("2d");
+  g.clearRect(0, 0, cv.width, cv.height);
+  g.drawImage(CUT.img, 0, 0);
+  const img = g.getImageData(0, 0, cv.width, cv.height), px = img.data, W = CUT.gw;
+  // Multi-color items: each part in the Pantone it prints in, not the file's colour.
+  const show = {};
+  const set = CUT.mode === "cut" ? S.slots[CUT.slots[0]]?.mc : null;
+  if(set) for(const sh of (CUT.data?.shapes || [])){
+    const ink = set.inks.find(k => mcSameColor(k.hex, sh.hex));
+    if(ink && !ink.hidden && ink.pmsHex){ const h = ink.pmsHex.replace("#", "");
+      show[sh.i] = [0, 2, 4].map(q => parseInt(h.slice(q, q + 2), 16)); }
+  }
+  for(let i = 0; i < CUT.ids.length; i++){
+    const id = CUT.ids[i]; if(id < 0) continue;
+    const j = i * 4;
+    const sc = show[id]; if(sc){ px[j] = sc[0]; px[j+1] = sc[1]; px[j+2] = sc[2]; }
+    const gone = CUT.mode !== "cut" && CUT.eff[id] === "remove";
+    if(gone && !CUT.pick.has(id) && id !== CUT.hover){ px[j+3] = Math.round(px[j+3] * 0.12); continue; }
+    if(_cutIsKo(id)){
+      const x = i % W, y = (i / W) | 0;
+      if(((x + y) % 7) < 2){ px[j]=107; px[j+1]=26; px[j+2]=42; }
+      else { px[j] = px[j]*0.35+166; px[j+1] = px[j+1]*0.35+166; px[j+2] = px[j+2]*0.35+166; }
+      px[j+3] = 255;
+    }
+    if(CUT.pick.has(id) || (CUT.drag?.alt && CUT.drag.parts?.has(id))){ px[j] = px[j]*0.3 + 179; px[j+1] = px[j+1]*0.3 + 20; px[j+2] = px[j+2]*0.3 + 20; px[j+3] = 255; }
+    else if(id === CUT.hover){ px[j] = px[j]*0.6 + 102; px[j+1] = px[j+1]*0.6 + 10; px[j+2] = px[j+2]*0.6 + 17; px[j+3] = 255; }
+  }
+  // Empty pockets the Shape Builder has crossed, about to be filled.
+  if(CUT.drag?.regions?.length && !CUT.drag.alt){
+    for(const r of CUT.drag.regions) for(let i = 0; i < r.mask.length; i++) if(r.mask[i]){
+      const j = i * 4; px[j] = 179; px[j+1] = 20; px[j+2] = 20; px[j+3] = 120; }
+  }
+  if(CUT.drag?.parts && !CUT.drag.alt) for(let i = 0; i < CUT.ids.length; i++){
+    if(CUT.drag.parts.has(CUT.ids[i])){ const j = i * 4; px[j] = px[j]*0.3 + 179; px[j+1] = px[j+1]*0.3 + 20; px[j+2] = px[j+2]*0.3 + 20; px[j+3] = 255; }
+  }
+  g.putImageData(img, 0, 0);
+  const svg = document.getElementById("ae-cut-svg");
+  svg.style.left = cv.offsetLeft + "px"; svg.style.top = cv.offsetTop + "px";
+  svg.setAttribute("width", cv.clientWidth); svg.setAttribute("height", cv.clientHeight);
+}
+
+function aeCutStatus(){
+  const n = CUT.pick.size, off = !n || CUT.busy;
+  // Plain art on a multi-color item: remove, or its own Pantone.
+  // One-color art: each part prints or goes (and can come back).
+  const recolorable = CUT.mode === "cut" && mcUsesSets();
+  const lasso = CUT.tool === "lasso";
+  document.getElementById("ae-act-bar").style.display = lasso ? "" : "none";
+  for(const [id, show] of [["ae-act-print", CUT.mode !== "cut"], ["ae-cut-go", true], ["ae-rc-go", recolorable]]){
+    const b = document.getElementById(id); b.style.display = show ? "" : "none"; b.disabled = off;
+  }
+  document.querySelectorAll(".ae-tools [data-tool]").forEach(b => b.classList.toggle("on", b.dataset.tool === CUT.tool));
+  // The fill colour: a Pantone on multi-color art; one-color art fills in its one ink.
+  const sw = document.getElementById("ae-fill-sw");
+  sw.style.display = CUT.tool === "fill" && recolorable ? "" : "none";
+  const fp = _cutFillPms();
+  if(fp){ sw.querySelector("i").style.background = fp.hex; sw.querySelector("span").textContent = "Fill: " + fp.name.replace(/^PANTONE\s+/i, ""); }
+  const how = {
+    lasso: `<b>Lasso.</b> Loop round parts, or click one, to pick them. <b>Shift</b> adds, <b>Alt</b> takes away. Then:`
+      + `<ul>${CUT.mode !== "cut" ? "<li><b>Print</b> — back to printing.</li>" : ""}<li><b>Remove</b> — the part is gone; what's under it shows.</li>`
+      + (recolorable ? `<li><b>Recolor</b> — its own Pantone (the diamond in black, the words in white).</li>` : "") + `</ul>`,
+    builder: `<b>Shape Builder.</b> Drag across parts and the empty pockets between them: they merge into one shape in the color of the first part you touch. <b>Alt</b>-drag across parts to take them away.`,
+    fill: `<b>Fill.</b> Click an empty pocket inside the art (an open facet, the inside of a letter) to fill it`
+      + (recolorable ? `, or click a part to repaint it, in the Fill color.` : `${CUT.mode !== "cut" ? "; click a removed or open part to print it again" : ""}.`)
+  }[CUT.tool];
+  document.getElementById("ae-how").innerHTML = how + (CUT.mode !== "cut" ? ` <span class="ae-ko-key"></span> striped parts are open (made one color automatically).` : "");
+  document.getElementById("ae-suggest").style.display = (lasso && !S.slots[CUT.slots?.[0]]?.traced) ? "" : "none";
+  if(!n && CUT.rcFor !== "fill") document.getElementById("ae-rc").classList.remove("open");
+  document.getElementById("ae-cut-undo").style.display = CUT.undo.length ? "" : "none";
+  document.getElementById("ae-cut-redo").style.display = (CUT.redo || []).length ? "" : "none";
+  const msg = document.getElementById("ae-cut-msg");
+  if(!CUT.busy) msg.textContent = n ? `${n} part${n > 1 ? "s" : ""} picked.` : (CUT.note || "")
+    + (CUT.mode === "ko" && !n && mcUsesSets() ? " This art is one ink; to give parts their own colors, undo back to the original first." : "");
+}
+// The Fill tool's Pantone: the one picked, else the art's main ink.
+function _cutFillPms(){
+  if(CUT.fillPms) return CUT.fillPms;
+  const inks = (S.slots[CUT.slots?.[0]]?.mc?.inks || []).filter(i => !i.hidden && i.pms).sort((a, b) => (b.share || 0) - (a.share || 0));
+  return inks[0] ? {name: inks[0].pms, hex: inks[0].pmsHex || inks[0].hex} : (SP.ink?.name ? {name: SP.ink.name, hex: SP.ink.hex} : null);
+}
+function aeTool(t){
+  CUT.tool = t; CUT.drag = null; _cutSvgPath([]);
+  const st = document.querySelector(".ae-cut-stage"); if(st) st.dataset.tool = t;
+  aeCutStatus(); _cutModeTip("new", CUT.hover);
+}
+
+function _cutGridXY(ev){
+  const cv = document.getElementById("ae-cut-cv"), r = cv.getBoundingClientRect();
+  return [(ev.clientX - r.left) * CUT.gw / r.width, (ev.clientY - r.top) * CUT.gh / r.height];
+}
+function _cutIdAt(x, y){
+  x = Math.floor(x); y = Math.floor(y);
+  for(const [dx, dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]){
+    const xx = x + dx, yy = y + dy;
+    if(xx < 0 || yy < 0 || xx >= CUT.gw || yy >= CUT.gh) continue;
+    const id = CUT.ids[yy * CUT.gw + xx]; if(_cutLive(id)) return id;
+  }
+  return -1;
+}
+
+// The hint under the art says what the next loop or click will do, and the
+// pointer shows it (+ / −) the way Adobe's lasso does.
+function _cutModeTip(mode, id){
+  const st = document.querySelector(".ae-cut-stage");
+  if(st) st.dataset.mode = mode;
+  const sh = id >= 0 ? CUT.data?.shapes?.find(s => s.i === id) : null;
+  const what = CUT.tool === "builder" ? (mode === "sub" ? "Alt: drag across parts to take them away" : "drag across parts and pockets to merge them · Alt takes away")
+    : CUT.tool === "fill" ? (id >= 0 ? "click to repaint this part" : "click an empty pocket to fill it")
+    : mode === "add" ? "Shift: adding to what's picked" : mode === "sub" ? "Alt: taking away from what's picked" : "loop or click to pick · Shift adds · Alt takes away";
+  document.getElementById("ae-cut-tip").textContent = (sh ? `${sh.hex}${CUT.pick.has(id) ? " (picked)" : ""} · ` : "") + what;
+}
+
+
+// Every live shape with at least half of it inside the loop.
+function _cutInside(poly){
+  const c = document.createElement("canvas"); c.width = CUT.gw; c.height = CUT.gh;
+  const g = c.getContext("2d", {willReadFrequently:true});
+  g.beginPath(); poly.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath();
+  g.fillStyle = "#000"; g.fill();
+  const a = g.getImageData(0, 0, c.width, c.height).data, inside = {};
+  for(let i = 0; i < CUT.ids.length; i++){
+    const id = CUT.ids[i];
+    if(id >= 0 && a[i * 4 + 3] > 127) inside[id] = (inside[id] || 0) + 1;
+  }
+  return Object.keys(inside).map(Number).filter(id => _cutLive(id) && inside[id] >= 0.5 * (CUT.area[id] || 1));
+}
+
+function _cutSvgPath(pts){
+  const cv = document.getElementById("ae-cut-cv");
+  const k = cv.clientWidth / CUT.gw;
+  document.getElementById("ae-cut-path").setAttribute("d",
+    pts.length ? "M" + pts.map(([x, y]) => `${(x * k).toFixed(1)},${(y * k).toFixed(1)}`).join("L") + "Z" : "");
+}
+
+function aeCutClear(){ CUT.pick.clear(); aeCutDraw(); aeCutStatus(); }
+
+// The parts that sit inside artwork of another color (a diamond's facets, a
+// letter's counter) and are not holes yet: what a one-color print knocks out.
+function aeCutSuggest(){
+  // Specks (a traced JPG's edge noise) aren't suggested: too small to matter.
+  const total = (CUT.data?.shapes || []).reduce((n, x) => n + (x.area || 0), 0);
+  const min = Math.max(40, total * 0.002);
+  const sug = (CUT.data?.shapes || []).filter(x => x.area >= min && x.auto === "knockout" && !_cutIsKo(x.i)
+    && !(CUT.mode !== "cut" && CUT.eff[x.i] === "remove")).map(x => x.i);
+  CUT.pick = new Set(sug);
+  aeCutDraw(); aeCutStatus();
+  if(!sug.length){ CUT.note = "No suggestions — nothing sits inside another color that isn't open already."; aeCutStatus(); }
+  else { CUT.note = ""; aeCutStatus(); }
+}
+
+// An empty pocket at a grid point: every empty pixel connected to it. A
+// pocket that reaches the edge of the art is outside it, not a pocket.
+function _cutRegion(x, y, seen){
+  const W = CUT.gw, H = CUT.gh;
+  x = Math.floor(x); y = Math.floor(y);
+  if(x < 0 || y < 0 || x >= W || y >= H) return null;
+  const s0 = y * W + x;
+  if(CUT.ids[s0] >= 0 || (seen && seen[s0])) return null;
+  const mask = new Uint8Array(W * H), stack = [s0];
+  let open = false, n = 0;
+  mask[s0] = 1;
+  while(stack.length){
+    const i = stack.pop(); n++;
+    if(seen) seen[i] = 1;
+    const xx = i % W, yy = (i / W) | 0;
+    if(xx === 0 || yy === 0 || xx === W - 1 || yy === H - 1) open = true;
+    for(const j of [i - 1, i + 1, i - W, i + W]){
+      if(j < 0 || j >= W * H || mask[j]) continue;
+      if((j === i - 1 && xx === 0) || (j === i + 1 && xx === W - 1)) continue;
+      if(CUT.ids[j] < 0){ mask[j] = 1; stack.push(j); }
+    }
+  }
+  return {mask, n, open};
+}
+// The colour of the parts round a pocket (the most common), as the file has it.
+function _cutAroundHex(mask){
+  const W = CUT.gw, count = {};
+  for(let i = 0; i < mask.length; i++) if(mask[i]){
+    for(const j of [i - 1, i + 1, i - W, i + W]){ const id = CUT.ids[j]; if(id >= 0) count[id] = (count[id] || 0) + 1; }
+  }
+  const best = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
+  return best != null ? (CUT.data.shapes.find(x => x.i === +best)?.hex || "#000000") : "#000000";
+}
+function _cutMaskPng(mask){
+  const c = document.createElement("canvas"); c.width = CUT.gw; c.height = CUT.gh;
+  const g = c.getContext("2d"), im = g.createImageData(CUT.gw, CUT.gh);
+  for(let i = 0; i < mask.length; i++){ const j = i * 4; const v = mask[i] ? 255 : 0; im.data[j] = im.data[j+1] = im.data[j+2] = v; im.data[j+3] = 255; }
+  g.putImageData(im, 0, 0);
+  return c.toDataURL("image/png");
+}
+
+// The buttons: what to do with the picked parts.
+function aeCutApply(op){
+  if(!CUT.pick.size || CUT.busy) return;
+  op = op || {kind: "remove"};
+  let picked = [...CUT.pick];
+  if(op.kind === "remove") return aeCutRun({remove: picked, label: `Removed ${picked.length} part${picked.length > 1 ? "s" : ""}`});
+  if(op.kind === "print") return aeCutRun({prints: picked, label: `${picked.length} part${picked.length > 1 ? "s" : ""} printing again`});
+  // Recolor: white roped in with coloured parts (a diamond's facets) stays open.
+  const col = picked.filter(i => !_cutWhite(i));
+  const keptOpen = col.length && col.length < picked.length ? picked.length - col.length : 0;
+  if(keptOpen) picked = col;
+  return aeCutRun({recolor: Object.fromEntries(picked.map(i => [i, op.paint])), inks: [{paint: op.paint, name: op.name, hex: op.hex}],
+    label: `Recolored ${picked.length} part${picked.length > 1 ? "s" : ""} to ${op.name.replace("PANTONE ", "")}`
+      + (keptOpen ? `. The white part${keptOpen > 1 ? "s" : ""} inside stayed open` : "")});
+}
+
+// Every change goes through here: {remove: [ids], prints: [ids], recolor:
+// {id: hex}, fills: [{mask, paint}], inks: [{paint, name, hex}], label}.
+async function aeCutRun(op){
+  if(CUT.busy) return;
+  const ids = [...CUT.slots];
+  if(!ids.length) return;
+  CUT.note = ""; CUT.busy = true; aeCutStatus();
+  const msg = document.getElementById("ae-cut-msg");
+  msg.textContent = "Working…";
+  document.getElementById("ae-cut-busy").classList.add("on");
+  // What to go back to: the locations exactly as they are now.
+  const snap = Object.fromEntries(ids.map(k => [k, {...S.slots[k]}]));
+  const keep = Object.fromEntries(ids.map(k => [k, {ox: S.slots[k]?.ox, oy: S.slots[k]?.oy, sc: S.slots[k]?.sc, rot: S.slots[k]?.rot}]));
+  const grid = CUT.data?.grid ? {box: CUT.data.grid.box, dpi: CUT.data.grid.dpi} : null;
+  const fills = (op.fills || []).map(f => ({mask: _cutMaskPng(f.mask), color: f.paint}));
+  const place = _cutPlaceBefore(ids, op);
+  const post = async (url, body) => {
+    const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok || d.error) throw new Error(d.error || "could not change that");
+    return d;
+  };
+  try{
+    if(CUT.mode === "cut"){
+      const d = await post("/api/art-cut", {art_path: CUT.src, remove: op.remove || [], recolor: op.recolor || {}, fills, grid, nonce: Date.now()});
+      const nm = (S.slots[ids[0]]?.aeNotes?.name || "art").replace(/\.[^.]+$/, "");
+      await serverRasterize({serverPath: d.saved_path, name: `${nm}-edit.pdf`}, ids, ".pdf");
+      for(const k of ids){ const sl = S.slots[k]; if(sl && keep[k].sc != null) Object.assign(sl, keep[k]);
+        if(sl && snap[k]?.aeNotes) sl.aeNotes = {...snap[k].aeNotes}; }
+      _cutPlaceAfter(ids, place);
+      // A colour picked for parts or fills is the Pantone they print in.
+      for(const k of ids){
+        const sl = S.slots[k];
+        for(const want of (op.inks || []))
+          for(const ink of (sl?.mc?.inks || [])) if(mcSameColor(ink.hex, want.paint)){ ink.pms = want.name; ink.pmsHex = want.hex; ink.hidden = false; }
+        if(sl?.mc) applySeparationsToSlot(sl);
+      }
+      if(d.skipped) CUT.note = `${d.skipped} part${d.skipped > 1 ? "s" : ""} couldn't take a new color (a clipping shape).`;
+    } else {
+      // One-color art is changed at its source; filled pockets are added to
+      // the source first (new shapes come last, so the others keep their numbers).
+      let src = CUT.src;
+      const ov = {...CUT.overrides};
+      if(fills.length){
+        const d0 = await post("/api/art-cut", {art_path: src, fills, grid, nonce: Date.now()});
+        const n0 = CUT.data.shapes.length;
+        fills.forEach((_, j) => { ov[n0 + j] = "print"; });
+        src = d0.saved_path;
+      }
+      for(const i of (op.remove || [])) ov[i] = "remove";
+      for(const i of (op.prints || [])) ov[i] = "print";
+      const d = await post("/api/one-color", {art_path: src, decisions: ov});
+      const mask = await _ocImg(d.preview_b64);
+      if(CUT.mode === "oc") ocCommit(ids, d, mask, src, ov);
+      else await mcLoadOneColor(ids, d, mask, src, ov);
+      for(const k of ids){ const sl = S.slots[k]; if(sl && keep[k].sc != null) Object.assign(sl, keep[k]); }
+      _cutPlaceAfter(ids, place);
+    }
+    CUT.undo.push(snap); CUT.redo = [];
+    renderArtworkPanel(); renderSeparationsPanel?.(); R();
+    CUT.busy = false;
+    await aeCutLoad(true);
+    CUT.note = `✓ ${op.label || "Done"}.` + (CUT.note ? " " + CUT.note : "");
+    const fb = document.getElementById("fb");
+    if(fb) fb.textContent = `✓ ${op.label || "Art changed"}.`;
+  }catch(e){
+    CUT.note = "⚠ " + e.message;
+  }finally{
+    CUT.busy = false;
+    document.getElementById("ae-cut-busy").classList.remove("on");
+    aeCutStatus();
+  }
+}
+
+// Taking parts away shrinks the art's outline, and new art is fitted to its
+// outline - so what was left grew to fill the print area. Before a change:
+// where the parts that stay sit inside the art, and the art's drawn size and
+// place. After: the art sized and placed so those parts don't move.
+function _cutPlaceBefore(ids, op){
+  if(!CUT.ids) return null;
+  const gone = new Set(op.remove || []);
+  if(CUT.mode !== "cut") for(const [i, st] of Object.entries(CUT.eff || {})) if(st === "remove" && !(op.prints || []).includes(+i)) gone.add(+i);
+  const W = CUT.gw, H = CUT.gh;
+  let x0 = W, y0 = H, x1 = -1, y1 = -1;
+  const take = i => { const x = i % W, y = (i / W) | 0; if(x < x0) x0 = x; if(x > x1) x1 = x; if(y < y0) y0 = y; if(y > y1) y1 = y; };
+  for(let i = 0; i < CUT.ids.length; i++){ const id = CUT.ids[i]; if(id >= 0 && !gone.has(id)) take(i); }
+  for(const f of (op.fills || [])) for(let i = 0; i < f.mask.length; i++) if(f.mask[i]) take(i);
+  if(x1 < 0) return null;
+  const box = {u0: x0 / W, v0: y0 / H, u1: (x1 + 1) / W, v1: (y1 + 1) / H};
+  const out = {};
+  for(const k of ids){
+    const sl = S.slots[k], z = S.zones?.[k]; if(!sl?.img || !z) continue;
+    const zw = z.w * S.gW, zh = z.h * S.gH;
+    const cb = sl.cb || {x:0, y:0, w: sl.img.width, h: sl.img.height};
+    const fs = fitBase(k, cb, zw, zh) * (sl.sc || 1);
+    const Wd = cb.w * fs, Hd = cb.h * fs, r = sl.rot || 0;
+    const dx = ((box.u0 + box.u1) / 2 - 0.5) * Wd, dy = ((box.v0 + box.v1) / 2 - 0.5) * Hd;
+    out[k] = {w: (box.u1 - box.u0) * Wd, ox: (sl.ox || 0) + dx * Math.cos(r) - dy * Math.sin(r),
+              oy: (sl.oy || 0) + dx * Math.sin(r) + dy * Math.cos(r)};
+  }
+  return out;
+}
+function _cutPlaceAfter(ids, place){
+  if(!place) return;
+  for(const k of ids){
+    const p = place[k], sl = S.slots[k], z = S.zones?.[k];
+    if(!p || !sl?.img || !z) continue;
+    const zw = z.w * S.gW, zh = z.h * S.gH;
+    const cb = sl.cb || {x:0, y:0, w: sl.img.width, h: sl.img.height};
+    const base = fitBase(k, cb, zw, zh) * cb.w;
+    if(base > 0 && p.w > 0) sl.sc = p.w / base;
+    sl.ox = p.ox; sl.oy = p.oy;
+  }
+}
+
+function _cutSwap(from, to){
+  const snap = from.pop(); if(!snap) return false;
+  to.push(Object.fromEntries(Object.keys(snap).map(k => [k, {...S.slots[k]}])));
+  for(const [k, v] of Object.entries(snap)) S.slots[k] = v;
+  for(const k of Object.keys(snap)){
+    const sl = S.slots[k];
+    if(sl?.mc) applySeparationsToSlot(sl); else if(isScreenPrint() && sl) applyInkToSlot(sl);
+  }
+  renderArtworkPanel(); renderSeparationsPanel?.(); R();
+  return true;
+}
+async function aeCutUndo(){
+  if(CUT.busy || !_cutSwap(CUT.undo, CUT.redo = CUT.redo || [])) return;
+  await aeCutLoad(true); CUT.note = "↶ Undone."; aeCutStatus();
+}
+async function aeCutRedo(){
+  if(CUT.busy || !_cutSwap(CUT.redo = CUT.redo || [], CUT.undo)) return;
+  await aeCutLoad(true); CUT.note = "↷ Redone."; aeCutStatus();
+}
+
+// The Fill tool, on a click: a pocket is filled, a part repainted (or, on
+// one-color art, printed again).
+function _cutFillAt(x, y){
+  // The pixel itself: a click just inside a pocket means the pocket, even
+  // with a part a pixel away.
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const id = (xi >= 0 && yi >= 0 && xi < CUT.gw && yi < CUT.gh) ? CUT.ids[yi * CUT.gw + xi] : -1;
+  const fp = _cutFillPms();
+  const recolorable = CUT.mode === "cut" && mcUsesSets();
+  if(id >= 0){
+    if(CUT.mode !== "cut") return aeCutRun({prints: [id], label: "Part printing again"});
+    if(!recolorable || !fp) return;
+    const paint = _rcPaint(fp.name, fp.hex);
+    return aeCutRun({recolor: {[id]: paint}, inks: [{paint, name: fp.name, hex: fp.hex}], label: `Part repainted ${fp.name.replace("PANTONE ", "")}`});
+  }
+  const r = _cutRegion(x, y);
+  if(!r){ CUT.note = "Click an empty pocket inside the art, or a part."; aeCutStatus(); return; }
+  if(r.open){ CUT.note = "That area is open to the outside of the art, so there's nothing to fill — click a pocket the art closes in."; aeCutStatus(); return; }
+  if(recolorable && fp){
+    const paint = _rcPaint(fp.name, fp.hex);
+    return aeCutRun({fills: [{mask: r.mask, paint}], inks: [{paint, name: fp.name, hex: fp.hex}], label: `Filled a pocket in ${fp.name.replace("PANTONE ", "")}`});
+  }
+  return aeCutRun({fills: [{mask: r.mask, paint: _cutAroundHex(r.mask)}], label: "Filled a pocket"});
+}
+
+// The Shape Builder, as the pointer moves: every part and pocket under it.
+function _cutBuilderTrack(x, y){
+  const d = CUT.drag, W = CUT.gw, H = CUT.gh;
+  const [lx, ly] = d.last || [x, y];
+  const steps = Math.max(1, Math.ceil(Math.hypot(x - lx, y - ly)));
+  let changed = false;
+  for(let t = 0; t <= steps; t++){
+    const px = Math.floor(lx + (x - lx) * t / steps), py = Math.floor(ly + (y - ly) * t / steps);
+    if(px < 0 || py < 0 || px >= W || py >= H) continue;
+    const i = py * W + px, id = CUT.ids[i];
+    if(id >= 0){
+      if(!d.parts.has(id)){ d.parts.add(id); if(d.first == null) d.first = id; changed = true; }
+    } else if(!d.seen[i] && !d.alt){
+      const r = _cutRegion(px, py, d.seen);
+      if(r && !r.open){ d.regions.push(r); changed = true; }
+    }
+  }
+  d.last = [x, y];
+  if(changed) aeCutDraw();
+}
+function _cutBuilderEnd(d){
+  if(d.alt){
+    const parts = [...d.parts];
+    if(parts.length) aeCutRun({remove: parts, label: `Took away ${parts.length} part${parts.length > 1 ? "s" : ""}`});
+    return;
+  }
+  const parts = [...d.parts], regions = d.regions;
+  if(!parts.length && !regions.length) return;
+  // Merged in the colour of the first part touched (a pocket alone takes the
+  // colour round it): the merged parts join that part's ink.
+  const hex = d.first != null ? (CUT.data.shapes.find(x => x.i === d.first)?.hex || "#000000")
+            : _cutAroundHex(regions[0].mask);
+  if(CUT.mode !== "cut"){
+    return aeCutRun({prints: parts, fills: regions.map(r => ({mask: r.mask, paint: hex})),
+      label: `Merged ${parts.length + regions.length} piece${parts.length + regions.length > 1 ? "s" : ""}`});
+  }
+  const recolor = {};
+  for(const id of parts){ const h = CUT.data.shapes.find(x => x.i === id)?.hex; if(h && !mcSameColor(h, hex)) recolor[id] = hex; }
+  if(!Object.keys(recolor).length && !regions.length) return;
+  aeCutRun({recolor, fills: regions.map(r => ({mask: r.mask, paint: hex})),
+    label: `Merged ${parts.length + regions.length} piece${parts.length + regions.length > 1 ? "s" : ""}`});
+}
+
+// ── Recolor picked parts ─────────────────────────────────────────────────
+// The parts are repainted in the file in the Pantone's own colour, so they
+// separate as a colour of their own. White (and near-white) can't be painted
+// as white — white in colour art is read as a knockout — so it is painted in
+// a stand-in colour that only this Pantone uses, and printed as the Pantone.
+const RC_STANDIN = ["#E7D9F2", "#D9F2EC", "#F2E9D9", "#DDE3F5", "#F5DDE8"];
+var RC_USED = {};
+function _rcPaint(name, hex){
+  const h = (hex || "#000000").replace("#", "");
+  const v = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+  if(Math.min(...v) < 0.9) return hex;
+  if(!RC_USED[name]) RC_USED[name] = RC_STANDIN[Object.keys(RC_USED).length % RC_STANDIN.length];
+  return RC_USED[name];
+}
+function aeRecolorOpen(forWhat){
+  CUT.rcFor = forWhat || "recolor";
+  const box = document.getElementById("ae-rc");
+  const open = !box.classList.contains("open");
+  box.classList.toggle("open", open);
+  if(open){ document.getElementById("ae-rc-q").value = ""; aeRecolorList(""); document.getElementById("ae-rc-q").focus(); }
+}
+// One Pantone list for every place that picks an ink by hand (the studio's
+// text and shapes, the lasso's Recolor): used inks first, the common screen
+// print inks, special inks, then search over the whole library.
+function pmsPickerFill(box, query, pickFn, used){
+  if(!box) return;
+  const q = (query || "").trim().toLowerCase();
+  const esc = t => JSON.stringify(t).replace(/"/g, "&quot;");
+  const pick = c => `${pickFn}(${esc(c.name)},${esc(c.hex)})`;
+  const sw = c => `<div class="pms-sw" style="background:${c.hex}" title="${String(c.name).replace(/"/g, "")}" onclick="${pick(c)}"></div>`;
+  if(!q){
+    box.innerHTML = ((used || []).length ? `<div class="pms-group-lbl">Already on this job — no extra screen</div><div class="pms-grid">${used.map(sw).join("")}</div>` : "")
+      + `<div class="pms-group-lbl">Common screen print inks</div><div class="pms-grid">${(SP.quick || []).map(sw).join("")}</div>`
+      + ((SP.special || []).length ? `<div class="pms-group-lbl">Special inks</div><div class="pms-grid">${SP.special.map(sw).join("")}</div>` : "")
+      + `<div class="pms-count">Or search above for any PMS color.</div>`;
+    return;
+  }
+  const hits = (SP.library || []).filter(c => (c.short || "").toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
+    .sort((a, b) => ((a.short || "").toLowerCase().startsWith(q) ? 0 : 1) - ((b.short || "").toLowerCase().startsWith(q) ? 0 : 1)
+      || (a.short || "").localeCompare(b.short || "")).slice(0, 60);
+  box.innerHTML = hits.length
+    ? `<div class="pms-list">${hits.map(c => `<div class="pms-row" onclick="${pick(c)}"><div class="pms-row-sw" style="background:${c.hex}"></div><div class="pms-row-nm">${c.short || c.name}</div></div>`).join("")}</div>`
+    : `<div class="pms-empty">No PMS color matches "${String(query).replace(/[<>&"]/g, "")}".</div>`;
+}
+function aeRecolorList(query){
+  const used = [];
+  for(const ink of (mcAllInks?.() || [])){
+    if(ink.hidden || !ink.pms || used.some(u => u.name === ink.pms)) continue;
+    used.push({name: ink.pms, hex: ink.pmsHex || ink.hex});
+  }
+  pmsPickerFill(document.getElementById("ae-rc-list"), query, "aeRecolorPick", used);
+}
+function aeRecolorPick(name, hex){
+  document.getElementById("ae-rc").classList.remove("open");
+  if(CUT.rcFor === "fill"){ CUT.fillPms = {name, hex}; aeCutStatus(); return; }
+  aeCutApply({kind: "recolor", name, hex, paint: _rcPaint(name, hex)});
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // The whole stage takes the loop: a loop usually starts outside the art.
+  const cv = document.querySelector(".ae-cut-stage"); if(!cv) return;
+  cv.addEventListener("pointerdown", ev => {
+    if(!CUT.ids || CUT.busy || ev.button > 0) return;
+    ev.preventDefault();
+    cv.setPointerCapture(ev.pointerId);
+    const [x, y] = _cutGridXY(ev);
+    if(CUT.tool === "fill"){ CUT.drag = {fill: true, pts: [[x, y]]}; return; }
+    if(CUT.tool === "builder"){
+      CUT.drag = {builder: true, alt: ev.altKey, parts: new Set(), regions: [], seen: new Uint8Array(CUT.gw * CUT.gh), first: null, last: null};
+      _cutBuilderTrack(x, y); return;
+    }
+    // Adobe's keys: Shift adds, Alt / Option takes away, neither starts over.
+    CUT.drag = {pts: [[x, y]], mode: ev.altKey ? "sub" : ev.shiftKey ? "add" : "new", moved: false};
+    _cutModeTip(CUT.drag.mode);
+  });
+  cv.addEventListener("pointermove", ev => {
+    if(!CUT.ids) return;
+    const [x, y] = _cutGridXY(ev);
+    if(CUT.drag?.builder){ _cutBuilderTrack(x, y); return; }
+    if(CUT.drag && !CUT.drag.fill){
+      const p = CUT.drag.pts, [lx, ly] = p[p.length - 1];
+      if(Math.hypot(x - lx, y - ly) > 1.5){ p.push([x, y]); if(p.length > 3) CUT.drag.moved = true; _cutSvgPath(p); }
+      return;
+    }
+    const id = _cutIdAt(x, y);
+    if(id !== CUT.hover){ CUT.hover = id; aeCutDraw(); }
+    _cutModeTip(ev.altKey ? "sub" : ev.shiftKey ? "add" : "new", id);
+  });
+  const end = ev => {
+    const d = CUT.drag; CUT.drag = null; _cutSvgPath([]);
+    if(!d) return;
+    if(d.fill){ _cutFillAt(...d.pts[0]); return; }
+    if(d.builder){ aeCutDraw(); _cutBuilderEnd(d); return; }
+    const hit = (d.moved && d.pts.length > 3) ? _cutInside(d.pts)
+              : [_cutIdAt(...d.pts[0])].filter(id => id >= 0);
+    if(d.mode === "new") CUT.pick = new Set(hit);
+    else if(d.mode === "add") hit.forEach(id => CUT.pick.add(id));
+    else hit.forEach(id => CUT.pick.delete(id));
+    aeCutDraw(); aeCutStatus();
+  };
+  cv.addEventListener("pointerup", end);
+  cv.addEventListener("pointercancel", () => { CUT.drag = null; _cutSvgPath([]); aeCutDraw(); });
+  cv.addEventListener("pointerleave", () => { if(!CUT.drag && CUT.hover !== -1){ CUT.hover = -1; aeCutDraw(); } });
+});
+
+// Illustrator's keys in the Edit tab: Q lasso, Shift+M shape builder, K fill,
+// Ctrl+Z / Shift+Ctrl+Z undo / redo, Delete removes what's picked, Esc clears.
+document.addEventListener("keydown", ev => {
+  if(!(typeof AE !== "undefined" && AE.open && AE.tab === "cut")) return;
+  const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || "") && document.activeElement.type !== "range";
+  if(typing) return;
+  const k = ev.key.toLowerCase(), mod = ev.ctrlKey || ev.metaKey;
+  if(mod && k === "z"){ ev.preventDefault(); ev.shiftKey ? aeCutRedo() : aeCutUndo(); return; }
+  if(mod && k === "y"){ ev.preventDefault(); aeCutRedo(); return; }
+  if(mod) return;
+  if(k === "q"){ aeTool("lasso"); return; }
+  if(k === "k"){ aeTool("fill"); return; }
+  if(k === "m" && ev.shiftKey){ aeTool("builder"); return; }
+  if((ev.key === "Delete" || ev.key === "Backspace") && CUT.pick.size){ ev.preventDefault(); aeCutApply({kind: "remove"}); return; }
+  if(ev.key === "Escape"){ ev.preventDefault(); ev.stopPropagation(); aeCutClear(); return; }
+  if((ev.key === "Shift" || ev.key === "Alt") && !CUT.drag){ if(ev.key === "Alt") ev.preventDefault(); _cutModeTip(ev.key === "Alt" ? "sub" : "add", CUT.hover); }
+}, true);
+document.addEventListener("keyup", ev => {
+  if(typeof AE !== "undefined" && AE.open && AE.tab === "cut" && !CUT.drag && (ev.key === "Shift" || ev.key === "Alt"))
+    _cutModeTip(ev.altKey ? "sub" : ev.shiftKey ? "add" : "new", CUT.hover);
+});
+
+function aeChecks(){
+  const box = document.getElementById("ae-checks"); if(!box || !AE.open) return;
+  const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const out = [];
+  const add = (warn, text) => out.push({warn, text});
+  for(const id of AE.slots){
+    const sl = S.slots[id]; if(!sl) continue;
+    const lbl = (S.prod.slots || []).find(s => s.id === id)?.label || id;
+    const n = sl.aeNotes || {};
+    for(const w of (n.warnings || [])) add(true, `<b>${esc(lbl)}:</b> ${esc(w)}`);
+    if(n.font) add(!/converted to outlines/i.test(n.font), `<b>${esc(lbl)}:</b> ${esc(n.font)}`);
+    if(sl.pressIssue) add(true, `<b>${esc(lbl)}:</b> mockup only, not press-ready — ${esc(pressIssueText(sl.pressIssue))}`);
+    const tc = sl.traceCheck;
+    if(sl.traced) add(!!tc && tc.verdict !== "ok", `<b>${esc(lbl)}:</b> ${tc ? (tc.verdict === "ok"
+        ? `image art, traced to vector · ${Math.round(tc.effective_dpi)} DPI at this size` : esc(tc.notes?.[0] || "check this artwork"))
+        : "image art — traced to vector for the press files; check its DPI once it is sized"}`);
+    if(artFitsZone(id) === false) add(true, `<b>${esc(lbl)}:</b> the art runs outside the imprint area`);
+    const lw = layoutTypeWarning(id); if(lw) add(true, `<b>${esc(lbl)}:</b> ${esc(lw)}`);
+  }
+  if(mcUsesSets() && !colorEditable()){
+    const n = mcScreenCount();
+    add(n > MC.maxInks, n > MC.maxInks
+      ? `<b>${n} screens</b> — this item prints up to ${MC.maxInks}. Combine colors or don't print one (Colors), or take parts out with the Lasso.`
+      : `${n} screen${n === 1 ? "" : "s"} — within this item's ${MC.maxInks}.`);
+  }
+  const warns = out.filter(x => x.warn).length;
+  if(!out.length) add(false, "Nothing to fix.");
+  box.innerHTML = out.map(x => `<div class="ae-check${x.warn ? " warn" : ""}"><span class="ae-i">${x.warn ? "⚠" : "✓"}</span><span>${x.text}</span></div>`).join("");
+  document.getElementById("ae-n").textContent = warns ? String(warns) : "";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -11562,7 +12807,7 @@ function artistPayload(){
     // customer, and who to reach in the note.
     const nm = custVal("cu-name"), co = custVal("cu-company"), em = custVal("cu-email"), nt = custVal("cu-notes");
     return {artist: "", customer: co || nm,
-            note: [`From ${nm}${co ? ", " + co : ""} · ${em}`, nt].filter(Boolean).join(" — ").slice(0, 180),
+            note: [`From ${nm}${co ? ", " + co : ""} · ${em}`, nt].filter(Boolean).join(" — ").slice(0, 600),
             revision: null};
   }
   if(!ARTIST.on) return null;
@@ -12129,7 +13374,7 @@ function zonesMouseUp(){
         <label class="am-check"><input type="checkbox" id="am-is-rev" onchange="artistRevToggled()"> This is a revision</label>
         <span class="am-rev-num" id="am-rev-wrap">R <input id="am-rev" type="number" min="1" max="99" value="1" oninput="this.dataset.touched='1';updateExportPreview()"></span>
       </div>
-      <div class="am-field"><label for="am-note">Note on the proof <span style="text-transform:none;letter-spacing:0">(optional)</span></label><input id="am-note" maxlength="180" placeholder="e.g. Art resized to fit Side 2 per rep"></div>
+      <div class="am-field"><label for="am-note">Note on the proof <span style="text-transform:none;letter-spacing:0">(optional)</span></label><textarea id="am-note" maxlength="600" rows="3" placeholder="e.g. Art resized to fit Side 2 per rep"></textarea></div>
     </div>
   </div>
   <!-- Price toggle inside modal -->

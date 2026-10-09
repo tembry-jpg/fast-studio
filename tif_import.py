@@ -75,6 +75,12 @@ def _walk(owner, res, ctm, out, owner_key="page", seen_stack=()):
                 gs = stack.pop() if stack else gs
             elif o == "cm":
                 gs["ctm"] = _mul([float(x) for x in a], gs["ctm"])
+            elif o in ("g", "rg", "k", "sc", "scn"):
+                # The fill colour, to tell the template's own labels (outlined
+                # by the customer's app) from art drawn over them.
+                gs["fc"] = (gs.get("cs", ""),) + tuple(round(float(x), 3) for x in a if not isinstance(x, pikepdf.Name))
+            elif o == "cs":
+                gs["cs"] = str(a[0]) if a else ""
             elif o in ("m", "l"):
                 path.append(pt(float(a[0]), float(a[1])))
             elif o == "c":
@@ -88,7 +94,7 @@ def _walk(owner, res, ctm, out, owner_key="page", seen_stack=()):
                 if path:
                     xs = [p[0] for p in path]; ys = [p[1] for p in path]
                     out.append({"kind": "path", "owner": owner_key, "idx": i, "op": o,
-                                "bbox": (min(xs), min(ys), max(xs), max(ys)), "n": len(path)})
+                                "bbox": (min(xs), min(ys), max(xs), max(ys)), "n": len(path), "fc": gs.get("fc")})
                 path = []
             elif o == "n":
                 path = []
@@ -122,7 +128,7 @@ def _walk(owner, res, ctm, out, owner_key="page", seen_stack=()):
                 if tb["pts"]:
                     xs = [p[0] for p in tb["pts"]]; ys = [p[1] for p in tb["pts"]]
                     out.append({"kind": "text", "owner": owner_key, "idx": tb["start"], "end": i,
-                                "op": "BT", "text": tb["text"].strip(),
+                                "op": "BT", "text": tb["text"].strip(), "fc": gs.get("fc"),
                                 "bbox": (min(xs), min(ys), max(xs), max(ys)), "n": 0})
                 tb = None
             elif o == "Do":
@@ -207,14 +213,36 @@ def _blank_objects(tpl, pno):
     return _BLANK_CACHE[key]
 
 
-def identify(pdf_path, page_index=0):
+_OWNERS = {}
+
+
+def _owners():
+    """For every template shape (by kind and size): which items' templates
+    have it. Most of a TIF template is the same on every item - the legend,
+    the arrows, the instructions - so only the shapes one item alone has
+    (its die line, its title) can tell the items apart."""
+    if not _OWNERS:
+        for pid, tpl, spec, pno in _templates():
+            for r in _blank_objects(tpl, pno):
+                _OWNERS.setdefault(_size_key(r), set()).add(pid)
+    return _OWNERS
+
+
+def identify(pdf_path, page_index=0, hint_pid=None):
     """Which TIF template a page of the file is filled in on: (pid, spec,
-    guide page, offset, customer objects, template objects) or None."""
+    guide page, offset, customer objects, template objects) or None.
+
+    Each template is scored twice: on the shapes only that item's template
+    has (its die line - what tells a 0070 from a 1080), and on all its
+    shapes. The item-only score decides; the overall one breaks ties and
+    must clear the bar. `hint_pid` (the item open in the configurator) wins
+    when it matches about as well as the best."""
     with pikepdf.open(str(pdf_path)) as pdf:
         if page_index >= len(pdf.pages):
             return None
         cust = _page_objects(pdf, page_index)
-    best = None
+    owners = _owners()
+    cands = []
     for pid, tpl, spec, pno in _templates():
         blank = _blank_objects(tpl, pno)
         if not blank:
@@ -223,11 +251,19 @@ def identify(pdf_path, page_index=0):
         bk = {_match_key(r) for r in blank}
         hits = sum(1 for r in cust if _match_key(r, off) in bk)
         score = hits / max(1, len(bk))
-        if best is None or score > best[0]:
-            best = (score, pid, spec, pno, off, blank)
-    if not best or best[0] < 0.35:
+        own = {_match_key(r) for r in blank if owners.get(_size_key(r)) == {pid}}
+        own_score = (sum(1 for r in cust if _match_key(r, off) in own) / len(own)) if own else 0.0
+        cands.append((own_score, score, pid, spec, pno, off, blank))
+    cands = [c for c in cands if c[1] >= 0.35]
+    if not cands:
         return None
-    score, pid, spec, pno, off, blank = best
+    cands.sort(key=lambda c: (round(c[0], 3), c[1]), reverse=True)
+    best = cands[0]
+    if hint_pid:
+        h = next((c for c in cands if c[2] == hint_pid), None)
+        if h and h[0] >= best[0] - 0.1 and h[1] >= best[1] - 0.1:
+            best = h
+    own_score, score, pid, spec, pno, off, blank = best
     return {"pid": pid, "spec": spec, "page": pno, "offset": off, "score": score,
             "objects": cust, "blank": blank}
 
@@ -369,7 +405,7 @@ def _main_color(img):
 PAGES_TO_CHECK = 3     # art is on page 1 or 2; press sheets follow
 
 
-def extract(pdf_path, work_dir, filename_stem="template"):
+def extract(pdf_path, work_dir, filename_stem="template", hint_pid=None):
     """Open a filled TIF template as a job snapshot, or None if it isn't one.
     Location art files are written to work_dir. The art is on page 1 or 2
     (some templates have two placement pages before the press sheets): each
@@ -377,7 +413,7 @@ def extract(pdf_path, work_dir, filename_stem="template"):
     best, empty_pid = None, None
     for pi in range(PAGES_TO_CHECK):
         try:
-            plan = _plan(pdf_path, pi)
+            plan = _plan(pdf_path, pi, hint_pid)
         except Exception as e:
             print(f"⚠️ TIF import: page {pi + 1} not read: {e}")
             continue
@@ -394,10 +430,10 @@ def extract(pdf_path, work_dir, filename_stem="template"):
     return _build(best[1], pdf_path, work_dir, filename_stem)
 
 
-def _plan(pdf_path, page_index):
+def _plan(pdf_path, page_index, hint_pid=None):
     """Identify one page and sort its art into locations (no files yet)."""
     from products import PRODUCTS
-    info = identify(pdf_path, page_index)
+    info = identify(pdf_path, page_index, hint_pid)
     if not info:
         return None
     pid, spec, pno, off = info["pid"], info["spec"], info["page"], info["offset"]
@@ -420,10 +456,73 @@ def _plan(pdf_path, page_index):
             if (b[2] - b[0]) >= 0.9 * (dx1 - dx0) and (b[3] - b[1]) >= 0.8 * span_y:
                 body_obj = (r["owner"], r["idx"])
 
+    # The template's own shapes, a fraction of a point off: the customer's
+    # copy of the template is often saved again, which moves everything by
+    # a rounding. And its labels ("ART", "Bottom"), which the customer's app
+    # may have turned into outlines: shapes inside a label's box, in that
+    # label's own colour.
+    TOL = 1.2
+    grid = {}
+    for r in info["blank"]:
+        bb = r["bbox"]
+        grid.setdefault((r["kind"], round(bb[0] / 4), round(bb[1] / 4)), []).append(bb)
+    labels = [r for r in info["blank"] if r["kind"] == "text" and r.get("fc") is not None]
+
+    def near_blank(r):
+        b = tcoord(r["bbox"])
+        gx, gy = round(b[0] / 4), round(b[1] / 4)
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for bb in grid.get((r["kind"], gx + dx, gy + dy), ()):
+                    if all(abs(b[i] - bb[i]) <= TOL for i in range(4)):
+                        return True
+        return False
+
+    def rgb(fc):
+        v = [x for x in (fc or ())[1:] if isinstance(x, float)]
+        if len(v) == 4:
+            c, m, y, k = v
+            return ((1 - c) * (1 - k), (1 - m) * (1 - k), (1 - y) * (1 - k))
+        if len(v) == 3:
+            return tuple(v)
+        if len(v) == 1:
+            return (v[0],) * 3
+        return None
+
+    # An outlined label is its letters: as many shapes as the word has
+    # letters, all inside the label's box, near its colour, spanning most of
+    # its width. Art that only overlaps a label is never all inside it.
+    label_parts = set()
+    for t in labels:
+        tb, want = t["bbox"], len((t.get("text") or "").replace(" ", ""))
+        if not want:
+            continue
+        tc = rgb(t["fc"])
+        group = []
+        for r in info["objects"]:
+            if r["kind"] != "path" or r["op"] in ("S", "s"):
+                continue
+            b = tcoord(r["bbox"])
+            if not (b[0] >= tb[0] - 4 and b[1] >= tb[1] - 4 and b[2] <= tb[2] + 4 and b[3] <= tb[3] + 4):
+                continue
+            rc = rgb(r.get("fc"))
+            if tc and rc and sum((p - q) ** 2 for p, q in zip(tc, rc)) ** 0.5 > 0.3:
+                continue
+            group.append((r, b))
+        if want - 1 <= len(group) <= want + 2:
+            x0 = min(b[0] for _, b in group); x1 = max(b[2] for _, b in group)
+            if (x1 - x0) >= 0.6 * (tb[2] - tb[0]):
+                label_parts.update((r["owner"], r["idx"]) for r, _ in group)
+
+    def in_label(r):
+        return (r["owner"], r["idx"]) in label_parts
+
     # Art, by location.
     placed = {}
     for r in info["objects"]:
         if _match_key(r, off) in blank_keys or (r["owner"], r["idx"]) == body_obj:
+            continue
+        if near_blank(r) or in_label(r):
             continue
         b = tcoord(r["bbox"])
         # Stroke-only straight lines and boxes the customer's app redrew are

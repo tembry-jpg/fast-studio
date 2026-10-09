@@ -23,7 +23,7 @@ THREADS = {
 
 NEOPRENE = {
     "Red": "#AE0D2E", "Garnet": "#8A2432", "Maroon": "#6D1A36", "Texas Orange": "#A6541B", "Brown": "#674230", "Orange": "#FF8200",
-    "Blaze Orange": "#FF8200",
+    "Blaze Orange": "#FF5715",
     "Mustard": "#D4AE40", "Goldenrod": "#F3BF08", "Bright Yellow": "#F2DE2A",
     "Citron": "#D5DD43", "Fluor Green": "#93DC4A", "Lime": "#70BB78", "Emerald Green": "#007549",
     "Deep Green": "#005749", "Evergreen": "#006745", "Jungle Green": "#2D5A27", "Dark Spruce": "#3B5C2A",

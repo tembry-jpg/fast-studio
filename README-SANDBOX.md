@@ -62,3 +62,22 @@ comes as the files that differ from the main app.
    numo-4cp-fiery (2).zip if it is there, and uploads/, _serve/, _ns_cache/ if
    they are there.
 3. Add the files from the zip (they replace the copy's own).
+
+## Update 2026-10-09 (from the main app)
+Today's main-app changes, merged into this copy's own files (nothing
+NetSuite came across). What clients see:
+- The art editor: opens when art comes in, with the item on the left and
+  the art's colors (or the one ink) on the right. Clients see the Colors tab
+  only; "Make it one color" applies the automatic one-color edit and opens it.
+- Special inks in the ink pickers (877 C, Metallic Silver, 871 C, Metallic
+  Gold, Shimmer Gold). Blaze Orange is its own color (#FF5715, in
+  data/colors_app.json).
+- Uploads with live text: outlined automatically when the font is inside
+  the file; refused with the font's name when it isn't.
+- The proof's Info line (1 Side / 2 Sides Same / 2 Sides Different) and the
+  full note, wrapped.
+- Adding text: the cursor stays in the text box while typing, and nothing
+  can be dragged, sized or typed off the print area.
+Files: static/configurator.html, server.py, engine.py (merged); press_layout.py,
+onecolor.py, tif_import.py (the main app's, same as before today plus
+today's changes); text_outline.py (new); data/colors_app.json.
