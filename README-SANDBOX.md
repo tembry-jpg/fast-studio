@@ -104,3 +104,5 @@ products.py, press_layout.py, onecolor.py, tif_import.py, vectorize.py (the
 main app's); press/ (5010, 5020 templates and specs; press/tif/ sources);
 static/assets/ (the four 4CP items, 5010/5020 items); static/sandbox/items/
 (the four tote photos); tools/ (5010, 5020, camo builders).
+- New getting-started guide (static/configurator.html): four short pages for
+  the item that is open, replacing the old one-color pop-up.

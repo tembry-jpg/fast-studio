@@ -693,6 +693,31 @@ body.artist span.artist-only{display:inline}
 .tut-skip:hover{border-color:var(--burgundy);color:var(--burgundy)}
 .tut-start{padding:10px 20px;border:none;border-radius:8px;background:var(--burgundy);color:#fff;font-family:var(--sans);font-size:12.5px;font-weight:600;cursor:pointer;transition:opacity .15s}
 .tut-start:hover{opacity:.87}
+#tut-page{min-height:290px}
+.tut-dots{flex:1;display:flex;gap:6px;align-items:center}
+.tut-dots i{width:7px;height:7px;border-radius:50%;background:var(--border-hi);cursor:pointer}
+.tut-dots i.on{background:var(--burgundy);width:18px;border-radius:4px}
+.tut-lead{font-family:var(--sans);font-size:14px;line-height:1.55;color:var(--text);margin:0}
+.tut-flow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tut-flow>div{border:1px solid var(--border);border-radius:12px;background:var(--cream);padding:14px 14px 13px;position:relative}
+.tut-flow b.n{display:inline-flex;width:24px;height:24px;border-radius:50%;background:var(--burgundy);color:#fff;font:600 11px var(--mono);align-items:center;justify-content:center;margin-bottom:8px}
+.tut-flow .hd{font:600 13.5px var(--sans);color:var(--text);margin-bottom:3px}
+.tut-flow .bd{font:12px/1.45 var(--sans);color:var(--muted)}
+.tut-list{display:flex;flex-direction:column;gap:9px;margin:0;padding:0;list-style:none}
+.tut-list li{display:flex;gap:11px;align-items:flex-start;font:13px/1.5 var(--sans);color:var(--text)}
+.tut-list li .ic{width:24px;height:24px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font:600 12px var(--sans)}
+.tut-list li .ic.ok{background:#e3f1e5;color:#2d6a3a}
+.tut-list li .ic.auto{background:var(--burg-lo);color:var(--burgundy)}
+.tut-list li .ic.mind{background:#fbefd9;color:#8a5a00}
+.tut-list li span.t b{font-weight:600}
+.tut-list li span.t small{display:block;color:var(--muted);font-size:12px;margin-top:1px}
+.tut-tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.tut-tiles>div{border:1px solid var(--border);border-radius:12px;background:var(--cream);padding:13px 14px}
+.tut-tiles .hd{font:600 13px var(--sans);color:var(--text);margin:6px 0 3px}
+.tut-tiles .bd{font:12px/1.45 var(--sans);color:var(--muted)}
+.tut-tiles svg{color:var(--burgundy)}
+.tut-note{font:12px/1.5 var(--sans);color:var(--muted);border-left:3px solid var(--burg-lo);padding:2px 0 2px 10px}
+@media (max-width:640px){.tut-flow,.tut-tiles{grid-template-columns:1fr}.tut-foot{flex-wrap:wrap}}
 
 
 /* ── Phone layout ────────────────────────────────────────────────────────────
@@ -9631,19 +9656,8 @@ function removeArtFromSlot(id){
 // product (4CP, pens) takes the original code paths untouched.
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ── Replaceable tutorial media ─────────────────────────────────────────────
-// Drop the recorded walkthrough in /static/tutorial/ and point `src` at it.
-// `type` accepts "gif" (or any still image), "video", or "placeholder".
-// Nothing else in the tutorial UI needs to change when the asset is swapped.
-const TUTORIAL_MEDIA = {
-  type: "gif",                      // "gif" | "video" | "placeholder"
-  src:  "/static/tutorial/this-is-fast-walkthrough.gif",
-  poster: "",                       // optional still frame for video
-  alt:  "Upload artwork, position it, choose a PMS ink, preview the product",
-};
-// An MP4 of the same walkthrough sits beside it at
-// /static/tutorial/this-is-fast-walkthrough.mp4 — switch type to "video" and
-// point src at it if you would rather serve video.
+// The getting-started guide is tutPages() (the old walkthrough GIF showed a
+// screen that no longer exists and is no longer used).
 
 const SP = {
   ink: null,          // {name, short, hex} — selected PMS screen print ink
@@ -10546,6 +10560,7 @@ async function applyScreenPrintMode(){
       }catch(e){}
     }
     // Every item's proof carries its job now, so any of them can be reopened.
+    maybeShowTutorial();
     maybeRestoreFromUrl();
   }
 }
@@ -10724,50 +10739,122 @@ function markTutorialSeen(){
   try{ sessionStorage.setItem(tutorialStateKey(), "1"); }catch(e){}
 }
 
-function renderTutorialMedia(){
-  const box = document.getElementById("tut-media");
-  if(!box) return;
-  const m = TUTORIAL_MEDIA || {};
-  const alt = (m.alt || "Configurator walkthrough").replace(/"/g,"&quot;");
-
-  if(m.type === "video" && m.src){
-    box.innerHTML = `<video src="${m.src}" ${m.poster?`poster="${m.poster}"`:""} `
-      + `autoplay muted loop playsinline controls aria-label="${alt}"></video>`;
-  } else if(m.type === "gif" && m.src){
-    box.innerHTML = `<img src="${m.src}" alt="${alt}" onerror="tutorialMediaFallback()">`;
-  } else {
-    box.innerHTML = `<div class="tut-media-ph">
-        <div class="tut-media-badge">Placeholder — walkthrough not yet recorded</div>
-        <div class="tut-media-note">The recorded walkthrough drops in here.
-          Save it to <code>/static/tutorial/</code> and set
-          <code>TUTORIAL_MEDIA</code> in configurator.html to
-          <code>{type:"gif", src:"…"}</code>. No other change is needed.</div>
-      </div>`;
-  }
+// ── Getting-started guide ───────────────────────────────────────────────────
+// A few short pages written for the kind of item that is open. The copy says
+// what the configurator does now (images are traced, several colors are made
+// one color, live text is outlined), not what it used to refuse.
+const TUT = {page: 0, pages: []};
+function tutKind(){
+  if(isScreenPrint()) return "onecolor";
+  if(S.prod?.is_4cp || S.prod?.material?.includes("4cp")) return "fullcolor";
+  if(S.prod?.printing_label && /full color/i.test(S.prod.printing_label)) return "digital";
+  if(S.prod?.material === "jotter" || S.prod?.material === "three_way_pen") return "digital";
+  if(typeof isMultiColor === "function" && isMultiColor()) return "spot";
+  return "spot";
 }
-
-// If the configured asset is missing, fall back to the labeled placeholder
-// rather than showing the customer a broken image.
-function tutorialMediaFallback(){
-  const box = document.getElementById("tut-media");
-  if(box) box.innerHTML = `<div class="tut-media-ph">
-      <div class="tut-media-badge">Walkthrough media not found</div>
-      <div class="tut-media-note">Expected at <code>${(TUTORIAL_MEDIA.src||"")}</code>.</div>
-    </div>`;
+function tutIcon(k){
+  const p = {
+    color: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18"/>',
+    upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>',
+    move: '<path d="M12 3v18M3 12h18M8 7l4-4 4 4M8 17l4 4 4-4"/>',
+    text: '<path d="M5 6V4h14v2M12 4v16M9 20h6"/>',
+    ink: '<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/>',
+    bg: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/>',
+    proof: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 13l2 2 4-4"/>'
+  }[k] || "";
+  return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+}
+function tutPages(){
+  const k = tutKind(), cust = typeof CUSTOMER !== "undefined" && CUSTOMER;
+  const name = (S.prod?.display_label || S.prod?.label || "this item").replace(/\s*-\s*[0-9][\w-]*$/, "")
+    .replace(/^This Is Fast\s+/i, "");
+  const tif = S.prod?.program === "This Is Fast" || (isScreenPrint() && S.prod?.program !== "Standard")
+            || /-24HR-|TIF/.test(S.pid || "");
+  const prog = tif ? "This Is Fast · 24 HR · " : "";
+  const how = { onecolor: "one-color screen print", fullcolor: "full color (4CP)", digital: "full color digital print", spot: "spot-color screen print" }[k];
+  const li = (cls, sym, t, sm) => `<li><span class="ic ${cls}">${sym}</span><span class="t">${t}${sm ? `<small>${sm}</small>` : ""}</span></li>`;
+  const pages = [];
+  // 1 — the whole job at a glance
+  const flow = cust
+    ? [["Product color", k === "fullcolor" ? "Pick the item's color — or a background: a color, a stock pattern or your own." : "Choose the color of the item."],
+       ["Your logo", "Upload it, place it and size it. Add text if you like."],
+       ["Review & send", "Check the proof — it shows exactly what prints — and send it to us."]]
+    : [["Upload the art", "Drop a file on the item, or open the customer's This Is Fast template."],
+       ["Place & color", "Size and place it; set the ink in the art editor."],
+       ["Export", "Proof, virtual and press files in one zip."]];
+  pages.push({ kicker: `${prog}${how}`, title: `Your ${name}, in three steps`, html:
+    `<p class="tut-lead">${cust ? "It takes a couple of minutes. You'll see the finished item the whole way through, so there are no surprises." : "The same three steps for every item; the art editor opens when art comes in."}</p>
+     <div class="tut-flow">${flow.map((f, i) => `<div><b class="n">${i + 1}</b><div class="hd">${f[0]}</div><div class="bd">${f[1]}</div></div>`).join("")}</div>` });
+  // 2 — the artwork, for this kind of item
+  let items;
+  if(k === "onecolor") items = [
+    li("ok", "✓", "<b>Any logo file works.</b>", "AI, EPS, PDF or SVG print sharpest. PNG and JPG work too — we trace them into clean shapes."),
+    li("auto", "✦", "<b>Several colors? We make it one color for you.</b>", "Parts sitting inside other colors are left open so the item shows through. Check the preview."),
+    li("ok", "✓", "<b>You pick one Pantone ink</b>", "Your logo prints in that one color."),
+    li("auto", "✦", "<b>Fonts are handled</b>", "Text in your file is turned into shapes automatically. If the font isn't in the file, we'll ask for it with the text outlined."),
+    li("mind", "!", "<b>Small details:</b> keep text 12 pt or bigger and lines at least 1 pt", "Anything finer can fill in or drop out when printed.")];
+  else if(k === "fullcolor") items = [
+    li("ok", "✓", "<b>Full color, any number of colors</b>", "Photos and gradients print as they are."),
+    li("ok", "✓", "<b>PNG or JPG at 300 dpi at the printed size</b>", "Or vector (AI, EPS, PDF, SVG) for the crispest edges."),
+    li("ok", "✓", "<b>The whole item can be printed</b>", "Pick a background color, a stock pattern (camo, wood, stripes…), upload your own, or design the whole item."),
+    li("mind", "!", "<b>Keep important text away from edges and seams</b>", "A little of the edge is trimmed or sewn.")];
+  else if(k === "digital") items = [
+    li("ok", "✓", "<b>Full color on the barrel</b>", "PNG, JPG (300 dpi) or vector art."),
+    li("mind", "!", "<b>Small and slim print area</b>", "Short text and simple logos read best at this size.")];
+  else items = [
+    li("ok", "✓", "<b>Up to 5 spot colors</b>", "Every color in your art is matched to its closest Pantone — change any of them."),
+    li("ok", "✓", "<b>Vector art prints sharpest</b>", "AI, EPS, PDF or SVG; PNG and JPG are traced."),
+    li("mind", "!", "<b>Keep text 12 pt or bigger and lines at least 1 pt</b>", "")];
+  pages.push({ kicker: "Your artwork", title: "What to upload", html: `<ul class="tut-list">${items.join("")}</ul>` });
+  // 3 — making it look right
+  const tiles = [
+    ["move", "Place it", "Drag it on the item; pull a corner to size it. It always stays inside the print area."],
+    ["text", "Add text", "“+ text / layout” on your logo's card adds text, shapes and more art around it."],
+    k === "onecolor" ? ["ink", "Pick the ink", "Choose the Pantone your logo prints in. The preview updates right away."]
+      : k === "fullcolor" ? ["bg", "Background", "Stock patterns, your own image, or “Design background” to lay out the whole item."]
+      : ["color", "Colors", "Each color of your art is a Pantone — change any of them, or switch one off."],
+    ["color", "Product color", "Change the item's color any time; the preview follows."]];
+  pages.push({ kicker: "Make it yours", title: "Getting it just right", html:
+    `<div class="tut-tiles">${tiles.map(t => `<div>${tutIcon(t[0])}<div class="hd">${t[1]}</div><div class="bd">${t[2]}</div></div>`).join("")}</div>` });
+  // 4 — review and send
+  pages.push({ kicker: cust ? "Review & send" : "Export", title: cust ? "Check the proof, then send it" : "Check, then export", html:
+    `<ul class="tut-list">
+      ${li("ok", "✓", "<b>The proof is what prints</b>", "Your art at its printed size, the ink and the item color — on a flat layout and on the product.")}
+      ${cust ? li("ok", "✓", "<b>We check every proof before anything prints</b>", "If something needs a change, we'll be in touch.")
+             : li("ok", "✓", "<b>One zip</b>", "Proof, virtual and press files, named for the NSO. The proof carries the job, so “Revise from proof” reopens it.")}
+     </ul>
+     <div class="tut-note">You can open this guide again any time with <b>? Tutorial</b> above the item.</div>` });
+  return pages;
+}
+function tutRender(){
+  const p = TUT.pages[TUT.page]; if(!p) return;
+  document.getElementById("tut-kicker").textContent = p.kicker;
+  document.getElementById("tut-title").textContent = p.title;
+  document.getElementById("tut-page").innerHTML = p.html;
+  document.getElementById("tut-dots").innerHTML = TUT.pages.map((_, i) =>
+    `<i class="${i === TUT.page ? "on" : ""}" onclick="TUT.page=${i};tutRender()" title="${i + 1}"></i>`).join("");
+  const back = document.getElementById("tut-back"), next = document.getElementById("tut-next");
+  back.style.visibility = TUT.page ? "visible" : "hidden";
+  next.textContent = TUT.page === TUT.pages.length - 1 ? "Let's go" : "Next";
+}
+function tutGo(d){
+  if(d > 0 && TUT.page >= TUT.pages.length - 1){ startConfiguring(); return; }
+  TUT.page = Math.max(0, Math.min(TUT.pages.length - 1, TUT.page + d)); tutRender();
+}
+function tutorialStateKey(){ return `numo_guide_seen_${tutKind()}`; }
+function tutorialSeen(){
+  try{ return localStorage.getItem(tutorialStateKey()) === "1" || sessionStorage.getItem(tutorialStateKey()) === "1"; }
+  catch(e){ return false; }
+}
+function markTutorialSeen(){
+  try{ localStorage.setItem(tutorialStateKey(), "1"); }catch(e){ try{ sessionStorage.setItem(tutorialStateKey(), "1"); }catch(e2){} }
 }
 
 // Informational only — never reads or writes configuration state.
 function openTutorial(mode){
-  renderTutorialMedia();
-  // One-colour items outside This Is Fast (the bank bags) aren't 24 HR.
-  {const k=document.querySelector("#tut-bg .tut-kicker");
-   if(k) k.textContent = S.prod?.program === "Standard" ? "One-Color Screen Print" : "This Is Fast · 24 Hour One-Color Screen Print";}
-  const sub = document.getElementById("tut-sub");
-  if(sub){
-    sub.textContent = mode === "requirements"
-      ? "Your artwork needs to meet these requirements before it can be printed."
-      : "Upload one-color vector art, place it, pick your PMS ink, and see the finished product before you submit.";
-  }
+  TUT.pages = tutPages();
+  TUT.page = mode === "requirements" ? 1 : 0;
+  tutRender();
   document.getElementById("tut-bg")?.classList.add("open");
 }
 
@@ -10780,12 +10867,12 @@ function skipTutorial(){ closeTutorial(); }
 
 function startConfiguring(){
   closeTutorial();
-  const fb = document.getElementById("fb");
-  if(fb) fb.textContent = "Step 1 — upload your one-color vector artwork";
 }
 
+// Shown once per kind of item (one color, full color, …) in this browser,
+// to anyone not in artist mode; "? Tutorial" opens it any time.
 function maybeShowTutorial(){
-  if(!isScreenPrint() || tutorialSeen() || ARTIST.on || ORD.busy || ordOn()
+  if(tutorialSeen() || (typeof ARTIST !== "undefined" && ARTIST.on) || ORD.busy || ordOn()
      || new URLSearchParams(location.search).get("restore")) return;
   openTutorial("onboarding");
 }
@@ -13674,84 +13761,24 @@ function zonesMouseUp(){
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     This Is Fast / -3M onboarding + tutorial dialog
-
-     Purely informational: opening or closing it never touches the customer's
-     configuration. The walkthrough media is a replaceable asset — see
-     TUTORIAL_MEDIA near the top of the script block.
+     Getting-started guide: a few short pages written for the item that is
+     open (one-color screen print, full color, multi-color, pen). Purely
+     informational: it never touches the configuration. Pages: tutPages().
      ══════════════════════════════════════════════════════════════════════════ -->
 <div class="tut-bg" id="tut-bg" onclick="if(event.target===this)closeTutorial()">
 <div class="tut" role="dialog" aria-modal="true" aria-labelledby="tut-title">
   <div class="tut-head">
     <div class="tut-head-txt">
-      <div class="tut-kicker">This Is Fast · 24 Hour One-Color Screen Print</div>
-      <h3 class="tut-title" id="tut-title">Set up your artwork</h3>
-      <div class="tut-sub" id="tut-sub">Upload one-color vector art, place it, pick your PMS ink, and see the finished product before you submit.</div>
+      <div class="tut-kicker" id="tut-kicker">Getting started</div>
+      <h3 class="tut-title" id="tut-title">Getting started</h3>
     </div>
     <button class="tut-x" onclick="closeTutorial()" aria-label="Close">×</button>
   </div>
-
-  <div class="tut-body">
-    <!-- Replaceable walkthrough media -->
-    <div>
-      <div class="tut-sec-lbl">Watch the workflow</div>
-      <div class="tut-media" id="tut-media"></div>
-    </div>
-
-    <!-- Artwork requirements -->
-    <div id="tut-reqs-sec">
-      <div class="tut-sec-lbl">Artwork requirements</div>
-      <div class="tut-reqs">
-        <div class="tut-req">
-          <div class="tut-req-ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>
-          <div><div class="tut-req-hd">One-color vector art only</div>
-          <div class="tut-req-bd">Production-ready vector artwork — AI, EPS, PDF or SVG. Photos, JPGs and PNGs can't be screen printed.</div></div>
-        </div>
-        <div class="tut-req">
-          <div class="tut-req-ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
-          <div><div class="tut-req-hd">12 pt minimum type</div>
-          <div class="tut-req-bd">All fonts and type must be 12 pt or larger so they stay legible once printed.</div></div>
-        </div>
-        <div class="tut-req">
-          <div class="tut-req-ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="18" x2="20" y2="18"/><line x1="4" y1="12" x2="20" y2="12" stroke-width="3.5"/><line x1="4" y1="6" x2="20" y2="6" stroke-width="0.8"/></svg></div>
-          <div><div class="tut-req-hd">Strokes greater than 1 pt</div>
-          <div class="tut-req-bd">Fine lines below 1 pt can drop out or fill in on press. Thicken them before uploading.</div></div>
-        </div>
-        <div class="tut-req">
-          <div class="tut-req-ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg></div>
-          <div><div class="tut-req-hd">Transparent background</div>
-          <div class="tut-req-bd">No white or colored background box. Anything behind your design is treated as part of the printed artwork.</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Five-step workflow -->
-    <div>
-      <div class="tut-sec-lbl">Five steps</div>
-      <div class="tut-steps">
-        <div class="tut-step"><div class="tut-step-n">1</div><div>
-          <div class="tut-step-hd">Upload your artwork</div>
-          <div class="tut-step-bd">One-color vector art with a transparent background. We check the file as it uploads and tell you if something needs fixing.</div></div></div>
-        <div class="tut-step"><div class="tut-step-n">2</div><div>
-          <div class="tut-step-hd">Position your design</div>
-          <div class="tut-step-bd">Drag to move, then scale and rotate to fit inside the approved imprint area.</div></div></div>
-        <div class="tut-step"><div class="tut-step-n">3</div><div>
-          <div class="tut-step-hd">Choose your PMS color</div>
-          <div class="tut-step-bd">Pick the screen-print ink from the approved PMS library. Your artwork recolors instantly — the shape never changes.</div></div></div>
-        <div class="tut-step"><div class="tut-step-n">4</div><div>
-          <div class="tut-step-hd">Preview your product</div>
-          <div class="tut-step-bd">Switch to Proof to see a realistic mockup with your product options, placement and ink color.</div></div></div>
-        <div class="tut-step"><div class="tut-step-n">5</div><div>
-          <div class="tut-step-hd">Review &amp; submit</div>
-          <div class="tut-step-bd">Confirm artwork, placement, product options and PMS color, then submit your configuration.</div></div></div>
-      </div>
-    </div>
-  </div>
-
+  <div class="tut-body" id="tut-page"></div>
   <div class="tut-foot">
-    <div class="tut-foot-note">You can reopen this any time with <b>? Tutorial</b> above the product view.</div>
-    <button class="tut-skip" onclick="skipTutorial()">Skip Tutorial</button>
-    <button class="tut-start" onclick="startConfiguring()">Start Configuring</button>
+    <div class="tut-dots" id="tut-dots"></div>
+    <button class="tut-skip" id="tut-back" onclick="tutGo(-1)">Back</button>
+    <button class="tut-start" id="tut-next" onclick="tutGo(1)">Next</button>
   </div>
 </div>
 </div>
