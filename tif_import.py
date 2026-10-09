@@ -184,12 +184,34 @@ def _match_key(r, off=(0, 0)):
     return k + ((r.get("text", ""),) if r["kind"] == "text" else ())
 
 
+# This Is Fast items that aren't one-color screen print, so have no press
+# template to read the customer's template from: the blank template the
+# customer fills in, and where its imprint area is on it (page coordinates,
+# PDF points, y up). "rot": how far the art is turned on the template - 90
+# means it reads bottom to top, as on the pen, and is turned upright here.
+EXTRA_TEMPLATES = {
+    # The 24 HR Jotter. The gray area is the Mimaki jig's box, 4.28" x 0.25"
+    # (308.16 x 18 pt), drawn up the pen.
+    "0837-24HR-IMP": {
+        "template": "press/tif/0837-24HR-IMP.pdf",
+        "guide_pages": {"1": {"sides": ["side1"], "zones": {
+            "side1": {"cx": 475.26, "cy": 475.505, "w": 18.0, "h": 308.16, "rot": 90}}}},
+    },
+}
+
+
 def _templates():
     """(pid, template pdf, spec, guide page number) for every TIF item with a
-    press template on the server."""
+    press template on the server, and the ones in EXTRA_TEMPLATES."""
     import press_layout
     from products import is_screenprint, PRODUCTS
     out = []
+    for pid, t in EXTRA_TEMPLATES.items():
+        tpl = HERE / t["template"]
+        if pid in PRODUCTS and tpl.exists():
+            spec = {"product": pid, "guide_pages": t["guide_pages"]}
+            for pno in sorted(t["guide_pages"].keys(), key=int):
+                out.append((pid, tpl, spec, pno))
     for pid, t in press_layout.PRESS_TEMPLATES.items():
         if pid not in PRODUCTS or not is_screenprint(pid):
             continue
@@ -298,7 +320,7 @@ def _regions(spec, pno):
     else:          # flat items (the tote): the zone itself, with room around it
         for sid, z in zones.items():
             m = 0.08 * max(z["w"], z["h"])
-            regs[sid] = {"shape": "rect", "rot": 0, "zone": (z["cx"], z["cy"]),
+            regs[sid] = {"shape": "rect", "rot": int(z.get("rot") or 0), "zone": (z["cx"], z["cy"]),
                          "box": (z["cx"] - z["w"] / 2 - m, z["cy"] - z["h"] / 2 - m,
                                  z["cx"] + z["w"] / 2 + m, z["cy"] + z["h"] / 2 + m)}
     return regs, die
@@ -367,9 +389,12 @@ def _rewrite(pdf, keep_fn, page_index=0):
 
 def _crop(src_pdf, box, rot, out_path, page_index=0):
     """A new one-page PDF of `box` (page coordinates) from src_pdf's page 1,
-    turned 180 when rot says so, the art upright and at its true size."""
+    turned 180 when rot says so (90: art reading bottom to top, turned a
+    quarter clockwise), the art upright and at its true size."""
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
+    if rot == 90:
+        w, h = h, w
     with pikepdf.open(str(src_pdf)) as src:
         new = pikepdf.new()
         form = new.copy_foreign(src.pages[page_index].as_form_xobject())
@@ -377,6 +402,9 @@ def _crop(src_pdf, box, rot, out_path, page_index=0):
         page.obj.Resources = pikepdf.Dictionary(XObject=pikepdf.Dictionary(Fm0=form))
         if rot == 180:
             cm = f"-1 0 0 -1 {x1:.4f} {y1:.4f} cm"
+        elif rot == 90:
+            # (x, y) -> (y - y0, x1 - x): what read upwards reads left to right.
+            cm = f"0 -1 1 0 {-y0:.4f} {x1:.4f} cm"
         else:
             cm = f"1 0 0 1 {-x0:.4f} {-y0:.4f} cm"
         page.obj.Contents = new.make_stream(
@@ -583,6 +611,8 @@ def _build(plan, pdf_path, work_dir, filename_stem):
             slot = next(s for s in prod["art_slots"] if s["id"] == sid)
             x0, y0, x1, y1 = reg["box"]
             w, h = x1 - x0, y1 - y0
+            if reg["rot"] == 90:
+                w, h = h, w
             ib = ink_bbox_points(str(f), (0, 0, w, h))
             if not ib:
                 continue
@@ -591,6 +621,8 @@ def _build(plan, pdf_path, work_dir, filename_stem):
             zx, zy = reg["zone"]
             if reg["rot"] == 180:
                 zx, zy = x1 - zx, y1 - zy
+            elif reg["rot"] == 90:
+                zx, zy = zy - y0, x1 - zx
             else:
                 zx, zy = zx - x0, zy - y0
             dx = (ax0 + ax1) / 2 - zx
@@ -657,7 +689,10 @@ def _build(plan, pdf_path, work_dir, filename_stem):
                              "offset": list(off)}}
         if neo:
             snap["neo"] = neo
-        ink = _nearest_ink(ink_hex) if ink_hex else None
+        # The one ink of a one-color item, from the art's color. Items printed
+        # in full color (the 24 HR Jotter) keep the art's own colors.
+        from products import is_screenprint
+        ink = _nearest_ink(ink_hex) if ink_hex and is_screenprint(pid) else None
         if ink:
             snap["ink"] = ink
         return snap

@@ -81,3 +81,26 @@ NetSuite came across). What clients see:
 Files: static/configurator.html, server.py, engine.py (merged); press_layout.py,
 onecolor.py, tif_import.py (the main app's, same as before today plus
 today's changes); text_outline.py (new); data/colors_app.json.
+
+## Update 2026-10-09, afternoon (from the main app)
+Merged into this repo as it was on 2026-10-09 at 4:20 pm (nothing NetSuite
+came across). What clients see:
+- All 16 This Is Fast items on the items page; 15 open, only the Duplex
+  Kolder Kaddy is still "Coming soon".
+  - The 4CP items (0070-3w, 1080-3w, 9100-4CP, 0472-4CP) open now: their
+    mockups (static/assets/<item>) were not in this repo.
+  - New: Daily Grind (5010-TIF-10-1C, 5010-TIF-CC-1C) and Shamwow
+    (5020-TIF-10-1C, 5020-TIF-CC-1C) totes, Side 1 (Front).
+  - The Jotter is the 24 HR one, 0837-24HR-IMP (Mimaki guides).
+- 4CP: Spring Camo and Fall Camo stock backgrounds; "Design background"
+  lays out the whole item (background, text, shapes, art); vector
+  backgrounds (PDF/AI/EPS/SVG) now print; the background picker shows small
+  previews instead of downloading every full-size background (about 25 MB);
+  a stock background prints from the server's own file.
+- Multi-color art on a one-color item is made one color on upload (no
+  pop-up); JPG/PNG art opens in the art editor much faster.
+Files: server.py, static/configurator.html (merged; CLIENT_CATALOG updated);
+products.py, press_layout.py, onecolor.py, tif_import.py, vectorize.py (the
+main app's); press/ (5010, 5020 templates and specs; press/tif/ sources);
+static/assets/ (the four 4CP items, 5010/5020 items); static/sandbox/items/
+(the four tote photos); tools/ (5010, 5020, camo builders).

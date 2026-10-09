@@ -193,6 +193,36 @@ def get_raster_visible_bbox(path):
         return (0, 0, im.width, im.height), im.size
 
 
+def _bleed_raster(path, page_w, page_h, bleed_sc=1.0):
+    """A 4CP background as an image the print can place.
+
+    A background uploaded as vector art (PDF, AI, EPS, SVG) used to be handed
+    straight to the image cropper, which can't open it: the error was printed
+    and the print and the proof went out without the background, though the
+    preview showed it. It is rendered here instead, at 300 dpi of the size it
+    prints at (it covers the whole page, at the customer's scale), and the
+    render is kept beside the upload so a second export reuses it.
+    """
+    import vectorize
+    p = Path(path)
+    if vectorize.is_raster(str(p)):
+        return str(p)
+    import press_layout
+    pdf = Path(press_layout.art_as_pdf(str(p)))
+    import pikepdf
+    with pikepdf.open(str(pdf)) as d:
+        bx = [float(v) for v in (d.pages[0].obj.get("/CropBox") or d.pages[0].MediaBox)]
+    w_pt, h_pt = max(bx[2] - bx[0], 1.0), max(bx[3] - bx[1], 1.0)
+    cover = max(page_w / w_pt, page_h / h_pt) * max(float(bleed_sc or 1), 0.1)
+    dpi = int(max(72, min(600, round(300 * cover))))
+    import subprocess
+    out = p.with_name(f"{p.stem}.bleed{dpi}.png")
+    if not out.exists() or out.stat().st_mtime < p.stat().st_mtime:
+        subprocess.run(["pdftocairo", "-png", "-singlefile", "-transp", "-r", str(dpi),
+                        str(pdf), str(out)[:-4]], check=True, capture_output=True, timeout=180)
+    return str(out)
+
+
 def crop_raster_to_visible(path):
     with Image.open(path) as im:
         im = im.convert("RGBA")
@@ -204,7 +234,14 @@ def crop_raster_to_visible(path):
 
         cropped = im.crop(bbox)
 
-        out_path = str(Path(path).with_name(Path(path).stem + "_tight.png"))
+        out_path = Path(path).with_name(Path(path).stem + "_tight.png")
+        # A stock background is a file of the app's own: its cropped copy goes
+        # in uploads, never beside it (the picker lists that folder).
+        _up = (HERE / "uploads").resolve()
+        if _up not in Path(path).resolve().parents:
+            (_up / "_bleed").mkdir(parents=True, exist_ok=True)
+            out_path = _up / "_bleed" / out_path.name
+        out_path = str(out_path)
         cropped.save(out_path)
         return out_path, cropped.width, cropped.height
 
@@ -474,7 +511,9 @@ def _catalog_meta(pid, p, slot_labels):
     # says so with "program": "Standard"; it keeps the one-colour artwork
     # rules and press sheets but is not a This Is Fast item.
     program = p.get("program") or ("This Is Fast" if is_screenprint(pid) else "Standard")
-    if is_screenprint(pid):
+    if p.get("printing_label"):
+        printing = p["printing_label"]
+    elif is_screenprint(pid):
         printing = "One color · 24 HR" if program == "This Is Fast" else "One color"
     elif p.get("is_4cp") or "4cp" in mat:
         printing = "Full color (4CP)"
@@ -522,8 +561,8 @@ def _catalog_meta(pid, p, slot_labels):
 
 # ── The client catalog ─────────────────────────────────────────────────────
 # Exactly the This Is Fast items on numomfg.com, by their site names. The ones
-# set up here open in the configurator; the rest (and every 4CP item) show as
-# "Coming soon" with the site's photo and can't be opened. Every other product
+# set up here open in the configurator (the 4CP items too, since 2026-10-09);
+# the rest show as "Coming soon" with the site's photo and can't be opened. Every other product
 # is still in the app, just not listed. To open one up: give it its product
 # id here instead of None.
 CLIENT_CATALOG = [
@@ -534,16 +573,16 @@ CLIENT_CATALOG = [
     ("0472-24HR-1c", "This Is Fast Pocket Coolie for Slim Cans", "items/0472-24HR-1c.jpg"),
     ("5001-TIF-7-1C", "This Is Fast Main Squeeze - Natural Canvas", "items/5001-TIF-7-1C.jpg"),
     ("5001-TIF-CC-1C", "This Is Fast Main Squeeze - Colored Canvas", "items/5001-TIF-CC-1C.jpg"),
-    ("0837", "This Is Fast Jotter Pen", "items/jotter-pen.jpg"),   # the 0837 Jotter as it is
+    ("0837-24HR-IMP", "This Is Fast Jotter Pen", "items/jotter-pen.jpg"),   # the 24 HR Jotter (Mimaki guides)
     ("0070-3w", "This Is Fast 4CP Kolder Kaddy", "items/kolder-kaddy-4cp.jpg"),
     ("1080-3w", "This Is Fast Kolder Kaddy Neoprene for Slim Cans - 4CP", "items/kolder-kaddy-slim-4cp.jpg"),
     ("9100-4CP", "This Is Fast 4CP Pocket Coolie", "items/pocket-coolie-4cp.jpg"),
     ("0472-4CP", "This Is Fast Pocket Coolie for Slim Cans - 4CP", "items/pocket-coolie-slim-4cp.jpg"),
     (None, "This Is Fast Duplex Kolder Kaddy", "soon/duplex-kolder-kaddy.jpg"),
-    (None, "This Is Fast Shamwow - Natural Canvas", "soon/shamwow-natural.jpg"),
-    (None, "This Is Fast Shamwow - Colored Canvas", "soon/shamwow-colored.jpg"),
-    (None, "This Is Fast Daily Grind - Natural Canvas", "soon/daily-grind-natural.jpg"),
-    (None, "This Is Fast Daily Grind - Colored Canvas", "soon/daily-grind-colored.jpg"),
+    ("5020-TIF-10-1C", "This Is Fast Shamwow - Natural Canvas", "items/5020-TIF-10-1C.jpg"),
+    ("5020-TIF-CC-1C", "This Is Fast Shamwow - Colored Canvas", "items/5020-TIF-CC-1C.jpg"),
+    ("5010-TIF-10-1C", "This Is Fast Daily Grind - Natural Canvas", "items/5010-TIF-10-1C.jpg"),
+    ("5010-TIF-CC-1C", "This Is Fast Daily Grind - Colored Canvas", "items/5010-TIF-CC-1C.jpg"),
 ]
 
 
@@ -581,6 +620,8 @@ def get_products_lite():
     """Minimal product data for home page — no zones, slots, bleed data."""
     out = []
     for pid, p in PRODUCTS.items():
+        if p.get("alias_of"):
+            continue        # another number for an item already listed (5001-10 = 5001-7)
         slots = p.get("art_slots") or []
         slot_labels = [s.get("label", s.get("id","")) for s in slots]
         out.append({
@@ -676,6 +717,9 @@ def get_products():
             "ink_black_only": p.get("ink_black_only", []),
             "is_4cp": p.get("is_4cp", False),
             "bleed_zone_full": p.get("bleed_zone_full", {}),
+            # The printed page in points: a 4CP background design is drawn
+            # on a board this size.
+            "page_w": p.get("page_w"), "page_h": p.get("page_h"),
             "bleed_placement": p.get("bleed_placement", {}),
             "color_components": p.get("color_components", []),
             "shows_inside": bool(p.get("shows_inside")),
@@ -1667,6 +1711,11 @@ def render_pdf():
     saved_paths = {k: str(p) for k, v in (raw_paths.items() if isinstance(raw_paths, dict) else [])
                    if (p := _in_uploads(v))}
     body["bleed_path"] = str(_in_uploads(body.get("bleed_path")) or "") or None
+    # A stock background is printed from its own file on the server, by name,
+    # instead of the browser re-encoding and uploading it (a PNG of several MB
+    # on every export).
+    if not body["bleed_path"] and body.get("bleed_stock"):
+        body["bleed_path"] = _stock_bg_path(body.get("product_id"), body.get("bleed_stock"))
 
     job_id = _unique_id("job")
     new_job(job_id, {})
@@ -1836,7 +1885,8 @@ def _pdf_worker(job_id, product, order_id, saved_paths, body):
             # ── Bleed background image ────────────────────────────────────
             if bleed_path and os.path.exists(bleed_path):
                 try:
-                    tight_path, iw, ih = crop_raster_to_visible(bleed_path)
+                    tight_path, iw, ih = crop_raster_to_visible(
+                        _bleed_raster(bleed_path, page_w, page_h, bleed_sc))
 
                     # ── Match canvas RT() logic exactly ──────────────────
                     # Canvas scales to cover the FULL canvas (cw × ch), not just
@@ -2231,6 +2281,26 @@ def _upload_path(slot_id, filename):
 
 
 UPLOADS_DIR = (HERE / "uploads").resolve()
+
+
+def _stock_bg_path(product_id, name):
+    """The file of the stock background `name` for this product (the folder the
+    picker lists), or None. Only a plain file name inside that folder."""
+    name = str(name or "")
+    if not name or "/" in name or "\\" in name or name.startswith("."):
+        return None
+    try:
+        pid = asset_id_for(str(product_id or ""))
+        own = HERE / "static" / "assets" / pid / "stockbackgrounds"
+        twin = (PRODUCTS.get(str(product_id or "")) or {}).get("twin_of")
+        if not own.exists() and twin:
+            own = HERE / "static" / "assets" / asset_id_for(twin) / "stockbackgrounds"
+        f = (own / name).resolve()
+        if own.resolve() in f.parents and f.is_file():
+            return str(f)
+    except Exception:
+        pass
+    return None
 
 
 def _in_uploads(raw):
@@ -4740,7 +4810,7 @@ def _board_text_glyphs(it, font):
 
 def _board_shape(c, sh, H, HexColor):
     """A board shape on the reportlab canvas (y up). Same shapes as the
-    browser: line, ring, frame, star, dot."""
+    browser: line, ring, frame, block, star, dot."""
     import math
     kind = sh.get("shape")
     x, y = float(sh.get("x") or 0), H - float(sh.get("y") or 0)
@@ -4757,6 +4827,8 @@ def _board_shape(c, sh, H, HexColor):
         c.roundRect(x - w / 2 + t / 2, y - h / 2 + t / 2, w - t, h - t, r, stroke=1, fill=0)
     elif kind == "dot":
         c.circle(x, y, w / 2, stroke=0, fill=1)
+    elif kind == "block":
+        c.rect(x - w / 2, y - h / 2, w, h, stroke=0, fill=1)
     elif kind == "star":
         p = c.beginPath(); ro, ri = w / 2, w / 2 * 0.45
         for k in range(10):
@@ -4792,12 +4864,19 @@ def _compose_board(body):
     uploads = (HERE / "uploads").resolve()
     _pp = PRODUCTS.get(str(body.get("product_id") or "")) or {}
     full_color = bool(_pp.get("is_4cp") or "4cp" in str(_pp.get("material") or ""))
-    key = hashlib.sha1(json.dumps([items, W, H, full_color, 2], sort_keys=True).encode()).hexdigest()[:12]
+    key = hashlib.sha1(json.dumps([items, W, H, full_color, 2, str(body.get("background") or "")],
+                                  sort_keys=True).encode()).hexdigest()[:12]
     out = uploads / f"{slot}_{key}_design.pdf"
     try:
         if not out.exists():
             c = rlcanvas.Canvas(str(out), pagesize=(W, H))
             drawn = 0
+            # A 4CP background design: the item's own colour under everything,
+            # edge to edge, so the design covers the whole item.
+            bgc = str(body.get("background") or "")
+            if re.fullmatch(r"#[0-9A-Fa-f]{6}", bgc):
+                c.saveState(); c.setFillColor(HexColor(bgc)); c.rect(0, 0, W, H, stroke=0, fill=1)
+                c.restoreState(); drawn += 1
             for it in items:
                 kind = it.get("type")
                 if kind == "text":
@@ -5117,6 +5196,20 @@ def _trace_for_one_color(srcp, uploads):
     out = uploads / f"{srcp.stem}.octrace3.pdf"
     if out.exists() and out.stat().st_mtime >= srcp.stat().st_mtime:
         return out
+    # One trace per file at a time, across workers: the art editor starts
+    # reading an image in the background when it opens, and a click on Edit
+    # meanwhile waits for that trace instead of starting a second one.
+    import fcntl
+    with open(uploads / f"{srcp.stem}.octrace.lock", "w") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        if out.exists() and out.stat().st_mtime >= srcp.stat().st_mtime:
+            return out
+        return _trace_for_one_color_now(srcp, uploads, out)
+
+
+def _trace_for_one_color_now(srcp, uploads, out):
+    import vectorize
+    from screenprint import analyze_separations
     if not vectorize.available():
         raise RuntimeError("the image tracer is not installed on this server")
     sep = analyze_separations(str(srcp), max_inks=12)
@@ -5143,6 +5236,31 @@ def _trace_for_one_color(srcp, uploads):
         print(f"traced parts not split ({srcp.name}): {e}")
         shutil.copyfile(raw, out)
     return out
+
+
+def _onecolor_disk_cache(pdf, key, an=None):
+    """The shape map of `pdf`, kept beside its images in uploads/_onecolor so
+    every worker has it (the in-memory cache is per worker: the art editor's
+    background read could land on one and the Edit tab's on the other).
+    With `an`, store it; without, return it or None."""
+    f = HERE / "uploads" / "_onecolor" / f"{Path(pdf).stem}.an.json"
+    try:
+        if an is not None:
+            f.parent.mkdir(parents=True, exist_ok=True)
+            tmp = f.with_suffix(".tmp")
+            tmp.write_text(json.dumps({"key": [key[0], key[1]], "an": an}))
+            tmp.replace(f)
+            return an
+        if f.exists():
+            d = json.loads(f.read_text())
+            got = d.get("an") or {}
+            if d.get("key") == [key[0], key[1]] and all(
+                    Path(got.get(k) or "").exists() for k in ("idmap_png", "colour_png")):
+                _ONECOLOR_CACHE[key] = got
+                return got
+    except Exception as e:
+        print(f"one-color cache: {e}")
+    return None
 
 
 @app.route("/api/one-color", methods=["POST"])
@@ -5173,7 +5291,7 @@ def one_color():
         else:
             pdf = Path(press_layout.art_as_pdf(str(srcp), work_dir=str(uploads)))
         key = (str(pdf), pdf.stat().st_mtime)
-        an = _ONECOLOR_CACHE.get(key)
+        an = _ONECOLOR_CACHE.get(key) or _onecolor_disk_cache(pdf, key)
         if an is None:
             if len(_ONECOLOR_CACHE) > 64:
                 _ONECOLOR_CACHE.clear()
@@ -5197,6 +5315,7 @@ def one_color():
                     except Exception as e:
                         print(f"per-colour choice for the trace failed: {e}")
             _ONECOLOR_CACHE[key] = an
+            _onecolor_disk_cache(pdf, key, an)
         auto = {s["i"]: s["auto"] for s in an["shapes"]}
         raw = body.get("decisions") or {}
         decisions = {str(k): v for k, v in raw.items()
@@ -5853,7 +5972,28 @@ def stock_backgrounds(product_id):
         except Exception:
             pass
 
-    result = {"files": files, "base_url": base_url, "first_w": first_w, "first_h": first_h}
+    # Small previews for the picker. Its list showed each background as its
+    # full-size print file (about 2.5 MB each), so opening the list downloaded
+    # every one - some 25 MB. The previews (_thumbs/, 160 px wide, a few KB)
+    # are made here the first time if they are missing.
+    thumb_base = None
+    try:
+        tdir = folder / "_thumbs"
+        tdir.mkdir(exist_ok=True)
+        from PIL import Image as _PILImage
+        for fn in files:
+            t = tdir / (Path(fn).stem + ".jpg")
+            if not t.exists() or t.stat().st_mtime < (folder / fn).stat().st_mtime:
+                with _PILImage.open(str(folder / fn)) as _im:
+                    _im.draft("RGB", (320, 320))
+                    _im = _im.convert("RGB")
+                    _im.thumbnail((160, 400))
+                    _im.save(str(t), quality=80)
+        thumb_base = f"{base_url}/_thumbs"
+    except Exception as e:
+        print(f"stock background previews not made: {e}")
+    result = {"files": files, "base_url": base_url, "thumb_base": thumb_base,
+              "first_w": first_w, "first_h": first_h}
     _STOCK_BG_CACHE[product_id] = result
 
     from flask import make_response

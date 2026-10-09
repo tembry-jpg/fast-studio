@@ -978,6 +978,117 @@ PRODUCTS["5001-cc"].update({
     "asset_id": "5001-7",
 })
 
+# ── Daily Grind tote: 5010-10 natural, 5010-cc colour canvas ────────────────
+#
+# A gusseted canvas tote (12" W face, 4" bottom). One die, laid flat 17" x 34":
+# Front half on top, Back half below, a 1.26" hem at each end that folds
+# inside, the bottom between them. Imprint 11.03" x 11.5" (793.8 x 828 pt),
+# centred on each face, as drawn by the cyan boxes on Numo's 1-up
+# (press/tif/5010-1up.pdf) and the TIF template.
+#
+# Template space = the die on the TIF template (press/5010-TIF-1C.pdf page 1,
+# die [573.5, 74.4, 1797.5, 2522.3] pt): 1224 x 2447.9 pt, top-down.
+# Mockup: Numo's photo layers in static/assets/5010-10 (tools/
+# make_5010_assets.py), right bag = Side 1 (Front), left = Side 2 (Back);
+# proof_bounds: the cyan boxes on Numo's placement image of that mockup.
+# The full item prints both sides; the This Is Fast twins print the Front
+# (SCREENPRINT_SLOT_LIMITS).
+_DG_W, _DG_H = 1224.0, 2447.9
+PRODUCTS["5010-10"] = {
+    "label":         "Daily Grind Tote - 5010-10",
+    "material":      "cotton_canvas",
+    "asset_id":      "5010-10",
+    "has_neoprene":  False,
+    "has_stitching": False,
+    "proof_shape":   "flat",
+    "proof_warp":    0,
+    "page_w":        _DG_W,
+    "page_h":        _DG_H,
+    "template_zones": {
+        "side1": {"x": round(216.5 / _DG_W, 4), "y": round(205.5 / _DG_H, 4),
+                  "w": round(793.8 / _DG_W, 4), "h": round(828.0 / _DG_H, 4), "l": "Side 1 (Front)"},
+        "side2": {"x": round(216.5 / _DG_W, 4), "y": round(1412.6 / _DG_H, 4),
+                  "w": round(793.8 / _DG_W, 4), "h": round(828.0 / _DG_H, 4), "l": "Side 2 (Back)"},
+    },
+    # On the 1350 px mockup canvas: Numo's placement image (2400 px) cyan
+    # boxes x 1381 / 314, y 1578 / 897, 710 x 741, scaled by 1350/2400.
+    "proof_bounds": {
+        "side1": {"x": 777, "y": 888, "w": 399, "h": 417},
+        "side2": {"x": 177, "y": 505, "w": 399, "h": 417},
+    },
+    "bleed_zones": {},
+    "art_slots": [
+        {"id": "side1", "label": "Side 1 (Front)", "size": '11.03" W × 11.5" H',
+         "left_pt": 216.5, "top_pt": -205.5, "w_pt": 793.8, "h_pt": 828.0,
+         "rotation": 0, "shape": "rect"},
+        # The Back half of the die, head-down on the flat die (it shares the
+        # bag's opening with the Front), like the Main Squeeze's Side 2.
+        {"id": "side2", "label": "Side 2 (Back)", "size": '11.03" W × 11.5" H',
+         "left_pt": 216.5, "top_pt": -1412.6, "w_pt": 793.8, "h_pt": 828.0,
+         "rotation": 180, "shape": "rect"},
+    ],
+}
+PRODUCTS["5010-cc"] = copy.deepcopy(PRODUCTS["5010-10"])
+PRODUCTS["5010-cc"].update({
+    "label":    "Daily Grind Tote - 5010-cc",
+    "material": "cotton_canvas_dyed",
+    "asset_id": "5010-10",
+})
+
+# ── Shamwow tote: 5020-10 natural, 5020-cc colour canvas ────────────────────
+#
+# A bigger tote with a boxed bottom. One die laid flat 17" x 37.5": Front
+# half on top, Back half below, a hem at each end, the bottom between.
+# Imprint 15" x 13" (1080 x 936 pt) on each face, its two lower corners cut
+# off (2.06" x 3") where the bottom folds - the zone is the 15" x 13" box,
+# so keep art clear of those corners. From Numo's 1-up
+# (press/tif/5020-1up.pdf) and the TIF template.
+#
+# Template space = the die on the TIF template (press/5020-TIF-1C.pdf page 1,
+# die [1069.1, 191.2, 2293.2, 2891.5] pt): 1224.1 x 2700.3 pt, top-down.
+# Mockup: Numo's photo layers in static/assets/5020-10 (tools/
+# make_5020_assets.py), right bag = Side 1 (Front), left = Side 2 (Back);
+# proof_bounds: the cyan boxes on Numo's placement image (2400 px: x 1313.5 /
+# 134.5, y 1335 / 873, 930 x 818.5), scaled by 1350/2400.
+# The full item prints both sides; the This Is Fast twins print the Front.
+_SW_W, _SW_H = 1224.1, 2700.3
+PRODUCTS["5020-10"] = {
+    "label":         "Shamwow Tote - 5020-10",
+    "material":      "cotton_canvas",
+    "asset_id":      "5020-10",
+    "has_neoprene":  False,
+    "has_stitching": False,
+    "proof_shape":   "flat",
+    "proof_warp":    0,
+    "page_w":        _SW_W,
+    "page_h":        _SW_H,
+    "template_zones": {
+        "side1": {"x": round(72.0 / _SW_W, 4), "y": round(197.6 / _SW_H, 4),
+                  "w": round(1080.0 / _SW_W, 4), "h": round(936.0 / _SW_H, 4), "l": "Side 1 (Front)"},
+        "side2": {"x": round(72.0 / _SW_W, 4), "y": round(1566.65 / _SW_H, 4),
+                  "w": round(1080.0 / _SW_W, 4), "h": round(936.0 / _SW_H, 4), "l": "Side 2 (Back)"},
+    },
+    "proof_bounds": {
+        "side1": {"x": 739, "y": 751, "w": 523, "h": 460},
+        "side2": {"x": 76,  "y": 491, "w": 523, "h": 460},
+    },
+    "bleed_zones": {},
+    "art_slots": [
+        {"id": "side1", "label": "Side 1 (Front)", "size": '15" W × 13" H',
+         "left_pt": 72.0, "top_pt": -197.6, "w_pt": 1080.0, "h_pt": 936.0,
+         "rotation": 0, "shape": "rect"},
+        {"id": "side2", "label": "Side 2 (Back)", "size": '15" W × 13" H',
+         "left_pt": 72.0, "top_pt": -1566.65, "w_pt": 1080.0, "h_pt": 936.0,
+         "rotation": 180, "shape": "rect"},
+    ],
+}
+PRODUCTS["5020-cc"] = copy.deepcopy(PRODUCTS["5020-10"])
+PRODUCTS["5020-cc"].update({
+    "label":    "Shamwow Tote - 5020-cc",
+    "material": "cotton_canvas_dyed",
+    "asset_id": "5020-10",
+})
+
 # ── Metallic neoprene: 0070-3l and 1080-3l ──────────────────────────────────
 #
 # The same can coolers as 0070-3m and 1080-3m — same die, same imprint areas,
@@ -1191,6 +1302,10 @@ SCREENPRINT_BASE_IDS = [
     "9100",      # Pocket Coolie
     "5001-7",    # Main Squeeze tote, natural canvas — first flat-goods item
     "5001-cc",   # Main Squeeze tote, colour canvas
+    "5010-10",   # Daily Grind tote, natural canvas
+    "5010-cc",   # Daily Grind tote, colour canvas
+    "5020-10",   # Shamwow tote, natural canvas
+    "5020-cc",   # Shamwow tote, colour canvas
 ]
 
 # Vector formats accepted for one-color screen-print artwork.
@@ -1219,6 +1334,10 @@ SCREENPRINT_SLOT_OVERRIDES = {
 SCREENPRINT_SLOT_LIMITS = {
     "5001-7":  ["side1"],
     "5001-cc": ["side1"],
+    "5010-10": ["side1"],
+    "5010-cc": ["side1"],
+    "5020-10": ["side1"],
+    "5020-cc": ["side1"],
 }
 
 
@@ -1231,6 +1350,10 @@ SCREENPRINT_SLOT_LIMITS = {
 SCREENPRINT_TWIN_IDS = {
     "5001-7":  "5001-TIF-7-1C",
     "5001-cc": "5001-TIF-CC-1C",
+    "5010-10": "5010-TIF-10-1C",
+    "5010-cc": "5010-TIF-CC-1C",
+    "5020-10": "5020-TIF-10-1C",
+    "5020-cc": "5020-TIF-CC-1C",
 }
 
 
@@ -1270,6 +1393,8 @@ for _bid in SCREENPRINT_BASE_IDS:
         _v["art_slots"] = [s for s in _v.get("art_slots", []) if s["id"] in _keep]
         _v["template_zones"] = {k: z for k, z in (_v.get("template_zones") or {}).items()
                                 if k in _keep}
+        if _v.get("proof_bounds"):
+            _v["proof_bounds"] = {k: b for k, b in _v["proof_bounds"].items() if k in _keep}
     for _slot in _v.get("art_slots", []):
         _fix = (SCREENPRINT_SLOT_OVERRIDES.get(_bid) or {}).get(_slot["id"])
         if _fix:
@@ -1278,6 +1403,24 @@ for _bid in SCREENPRINT_BASE_IDS:
 
 SCREENPRINT_PRODUCT_IDS = {_variant_id(b) for b in SCREENPRINT_BASE_IDS
                            if _variant_id(b) in PRODUCTS}
+
+
+# ── This Is Fast Jotter: 0837-24HR-IMP ─────────────────────────────────────
+#
+# The 0837 Jotter in the 24-hour programme: the same pen, printed the same way
+# (multi-color digital, Mimaki, the jig's 4.28" x 0.25" box, up to two sides),
+# under its own item number. Not one of the one-color screen-print twins above,
+# so it is derived here rather than through SCREENPRINT_BASE_IDS. It keeps
+# asset_id "0837" (one set of mockup layers) and the 0837's Mimaki jig.
+# The customer's filled-in template is read by tif_import (EXTRA_TEMPLATES).
+PRODUCTS["0837-24HR-IMP"] = copy.deepcopy(PRODUCTS["0837"])
+PRODUCTS["0837-24HR-IMP"].update({
+    "label":          "Jotter Retractable Pen - 0837-24HR-IMP",
+    "asset_id":       "0837",
+    "base_id":        "0837",
+    "program":        "This Is Fast",
+    "printing_label": "Full color · digital",
+})
 
 
 # ── multi-color spot assignment ─────────────────────────────────────────────
@@ -1865,3 +2008,26 @@ if "0799-3m" not in PMS_ASSIGN_PRODUCT_IDS:
 # configurator's "Lifestyle" button. 0070-3m only for now; set after every
 # copy of the 0070-3m above so its twins don't inherit it.
 PRODUCTS["0070-3m"]["lifestyle_assets"] = "0070-3m-life"
+
+
+# ── Item numbers that name the same item ────────────────────────────────────
+#
+# The Main Squeeze tote's item number changed in NetSuite: 5001-7 and 5001-10
+# are the same bag, and orders come in under either. The second number is the
+# same item - same mockup, imprint areas and press set-up - so an order line
+# for it opens, and its files carry the number on the order. Copied last, from
+# the finished item, so a change to one always reaches the other. Not listed
+# again in the catalog ("alias_of").
+ITEM_NUMBER_ALIASES = {
+    "5001-10": "5001-7",
+}
+for _alias, _target in ITEM_NUMBER_ALIASES.items():
+    if _target in PRODUCTS and _alias not in PRODUCTS:
+        _a = copy.deepcopy(PRODUCTS[_target])
+        _lab = _a.get("label") or _target
+        _a.update({
+            "label":    _lab[:-len(_target)] + _alias if _lab.endswith(_target) else f"{_lab} ({_alias})",
+            "asset_id": _a.get("asset_id") or _target,
+            "alias_of": _target,
+        })
+        PRODUCTS[_alias] = _a

@@ -45,6 +45,12 @@ DPI = 150                    # same as the upload preview, so pixels line up
 WHITE_MIN = 0.92             # lightness at/above which a colour is "white"
 DETAIL_FRAC = 0.5            # share of a shape's outline touching other colours
 RING_PX = 3
+# The art editor's pixel grid (analyze) is at most this many pixels on its
+# longer side. A traced JPG's page is as many points as the image has pixels,
+# so a 1800 px photo came out 3552 x 2761 at 150 dpi: ten million pixels to
+# number, ship and read back in the browser, and the Edit tab took half a
+# minute to open. The grid carries its own dpi, so every edit maps back.
+GRID_MAX_PX = 1600
 
 _FILL_OPS = {"f", "F", "f*", "B", "B*", "b", "b*"}
 _STROKE_ONLY = {"S", "s"}
@@ -318,8 +324,8 @@ def _id_rgb(idx):
 
 # ── rendering ──────────────────────────────────────────────────────────────
 
-def _render(pdf_path, out_png, transparent=False, antialias=True):
-    args = ["pdftocairo", "-png", "-singlefile", "-r", str(DPI)]
+def _render(pdf_path, out_png, transparent=False, antialias=True, dpi=None):
+    args = ["pdftocairo", "-png", "-singlefile", "-r", str(dpi or DPI)]
     if transparent:
         args.append("-transp")
     if not antialias:
@@ -379,8 +385,17 @@ def analyze(pdf_path, work_dir):
     n = _rewrite(pdf, record_keep)
     id_pdf = work / f"{tag}.ids.pdf"
     pdf.save(str(id_pdf))
-    id_png = _render(id_pdf, work / f"{tag}.ids.png", transparent=False, antialias=False)
-    col_png = _render(pdf_path, work / f"{tag}.color.png", transparent=True)
+    # Grid resolution: DPI, or less for a big page (see GRID_MAX_PX).
+    try:
+        mb = [float(v) for v in pdf.pages[0].MediaBox]
+        longest = max(mb[2] - mb[0], mb[3] - mb[1])
+    except Exception:
+        longest = 0
+    dpi = DPI
+    if longest > 0 and longest / 72 * DPI > GRID_MAX_PX:
+        dpi = max(36, int(GRID_MAX_PX * 72 / longest))
+    id_png = _render(id_pdf, work / f"{tag}.ids.png", transparent=False, antialias=False, dpi=dpi)
+    col_png = _render(pdf_path, work / f"{tag}.color.png", transparent=True, dpi=dpi)
 
     box = Image.open(col_png).convert("RGBA").getchannel("A").getbbox() \
         or (0, 0) + Image.open(col_png).size
@@ -402,10 +417,28 @@ def analyze(pdf_path, work_dir):
         col_ids = [j for j, w in white.items() if not w]
         colour_px = np.isin(ids, col_ids)
 
+    # Every shape's area and box in one pass over the grid. Comparing the whole
+    # grid against each shape in turn cost shapes x pixels: a traced JPG has
+    # hundreds of shapes.
+    yy, xx = np.nonzero(ids >= 0)
+    lab = ids[yy, xx]
+    areas = np.bincount(lab, minlength=max(n, 1)) if len(lab) else np.zeros(max(n, 1), int)
+    boxes = {}
+    if len(lab):
+        order = np.argsort(lab, kind="stable")
+        ls, ys_s, xs_s = lab[order], yy[order], xx[order]
+        starts = np.flatnonzero(np.r_[True, ls[1:] != ls[:-1]])
+        for k, a, b, c, d in zip(ls[starts].tolist(),
+                                 np.minimum.reduceat(ys_s, starts).tolist(),
+                                 np.maximum.reduceat(ys_s, starts).tolist(),
+                                 np.minimum.reduceat(xs_s, starts).tolist(),
+                                 np.maximum.reduceat(xs_s, starts).tolist()):
+            boxes[k] = (a, b, c, d)
+    colour_total = int(colour_px.sum()) if colour_px is not None else 0
+
     for s in shapes:
         i = s["i"]
-        mask = ids == i
-        area = int(mask.sum())
+        area = int(areas[i]) if 0 <= i < len(areas) else 0
         s["area"] = area
         s["hex"] = hexes[i]
         s.pop("rgb", None)
@@ -416,12 +449,12 @@ def analyze(pdf_path, work_dir):
             s["auto"], s["why"] = (("knockout", "white inside colour") if any_colour
                                    else ("print", "white-only artwork"))
             if any_colour:
-                s["white_role"] = _white_role(mask, ids, white, colour_px)
+                s["white_role"] = _white_role(i, boxes[i], ids, colour_px, colour_total)
             continue
-        ys, xs = np.nonzero(mask)
-        y0, y1 = max(ys.min() - RING_PX - 1, 0), ys.max() + RING_PX + 2
-        x0, x1 = max(xs.min() - RING_PX - 1, 0), xs.max() + RING_PX + 2
-        m = mask[y0:y1, x0:x1]
+        ymin, ymax, xmin, xmax = boxes[i]
+        y0, y1 = max(ymin - RING_PX - 1, 0), ymax + RING_PX + 2
+        x0, x1 = max(xmin - RING_PX - 1, 0), xmax + RING_PX + 2
+        m = ids[y0:y1, x0:x1] == i
         ring = _dilate(m, RING_PX) & ~m
         rid = ids[y0:y1, x0:x1][ring]
         if not len(rid):
@@ -469,7 +502,7 @@ def analyze(pdf_path, work_dir):
             "groups": sorted(groups.values(), key=lambda g: -g["area"]),
             "idmap_png": str(idmap_png), "colour_png": str(colour_png),
             "width": col.width, "height": col.height, "count": n,
-            "box": [int(box[0]), int(box[1])], "dpi": DPI}
+            "box": [int(box[0]), int(box[1])], "dpi": dpi}
 
 
 def _drop_unused_spots(page):
@@ -521,7 +554,7 @@ def _drop_unused_spots(page):
     walk(page)
 
 
-def _white_role(mask, ids, white, colour_px):
+def _white_role(i, bbox, ids, colour_px, total):
     """
     What a white (non-spot) shape in art that also has colour is for:
 
@@ -535,21 +568,18 @@ def _white_role(mask, ids, white, colour_px):
     coloured shapes means inside them. A white whose box holds most of the
     coloured art is the background it was drawn on.
     """
-    if not mask.any():
-        return "knockout"
-    ys, xs = np.nonzero(mask)
-    y0, y1 = max(ys.min() - RING_PX - 1, 0), ys.max() + RING_PX + 2
-    x0, x1 = max(xs.min() - RING_PX - 1, 0), xs.max() + RING_PX + 2
-    m = mask[y0:y1, x0:x1]
+    ymin, ymax, xmin, xmax = bbox          # shape i's box on the grid
+    y0, y1 = max(ymin - RING_PX - 1, 0), ymax + RING_PX + 2
+    x0, x1 = max(xmin - RING_PX - 1, 0), xmax + RING_PX + 2
+    m = ids[y0:y1, x0:x1] == i
     ring = _dilate(m, RING_PX) & ~m
     near = ids[y0:y1, x0:x1][ring]
     if len(near):
         touching = colour_px[y0:y1, x0:x1][ring]
         if float(touching.mean()) >= DETAIL_FRAC:
             return "knockout"
-    total = int(colour_px.sum())
     if total:
-        inside = int(colour_px[ys.min():ys.max() + 1, xs.min():xs.max() + 1].sum())
+        inside = int(colour_px[ymin:ymax + 1, xmin:xmax + 1].sum())
         if inside >= 0.5 * total:
             return "knockout"
     return "ink"

@@ -189,6 +189,17 @@ PRESS_TEMPLATES = {
         "spec":     PRESS_DIR / "press_spec_5001-TIF-7-1C.json",
         "stitched": False,
     },
+    # Daily Grind tote (5010), natural and colour canvas: one TIF template
+    # and one mass export (tools/make_5010_template.py).
+    "5010-TIF-10-1C": {"template": PRESS_DIR / "5010-TIF-1C.pdf",
+                       "spec": PRESS_DIR / "press_spec_5010.json", "stitched": False},
+    "5010-TIF-CC-1C": {"template": PRESS_DIR / "5010-TIF-1C.pdf",
+                       "spec": PRESS_DIR / "press_spec_5010.json", "stitched": False},
+    # Shamwow tote (5020): tools/make_5020_template.py.
+    "5020-TIF-10-1C": {"template": PRESS_DIR / "5020-TIF-1C.pdf",
+                       "spec": PRESS_DIR / "press_spec_5020.json", "stitched": False},
+    "5020-TIF-CC-1C": {"template": PRESS_DIR / "5020-TIF-1C.pdf",
+                       "spec": PRESS_DIR / "press_spec_5020.json", "stitched": False},
 }
 
 # On rotated press positions, which way along the sheet Side 1 sits.

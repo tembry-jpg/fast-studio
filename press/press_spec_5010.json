@@ -1,0 +1,339 @@
+{
+ "_scope": "5010 Daily Grind tote, This Is Fast: 5010-TIF-10-1C (natural) and 5010-TIF-CC-1C (colored canvas) - one die, one template, one mass export; only the canvas colour differs.",
+ "_template_file": "5010-TIF-1C.pdf (tools/make_5010_template.py): page 1 = '5010-CC - Daily Grind - THIS IS FAST' (1 Side, Front); pages 2-8 = '5010 - Canvas Mass Export' with NSO NUMBER / SPOT COLOR captions added.",
+ "_measured_by": "each sheet's registration targets (the die's own, 504 pt apart, 54.07 pt in from the hem edge); the imprint is 566.30 pt from them along the die, centred across it, as on the 1-up and the TIF template.",
+ "_unverified": "Never checked against a printed sheet. Confirm on the first job: the art lands in the imprint, and on the sideways sheets it reads toward the hem (the targets' side).",
+ "template": "5010 - Daily Grind",
+ "product": "5010-TIF-10-1C",
+ "products": [
+  "5010-TIF-10-1C",
+  "5010-TIF-CC-1C"
+ ],
+ "guide_pages": {
+  "1": {
+   "sides": [
+    "side1"
+   ],
+   "zones": {
+    "side1": {
+     "cx": 1186.9,
+     "cy": 1902.8,
+     "w": 793.8,
+     "h": 828.0,
+     "left": 790.0,
+     "top": 2316.8
+    }
+   }
+  }
+ },
+ "offsets": {
+  "side_w": 793.8,
+  "side_h": 828.0,
+  "circle_d": 0.0,
+  "d_side1": 603.57,
+  "d_side2": -603.57
+ },
+ "press_pages": {
+  "2": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "rotation": 0,
+   "positions": [
+    {
+     "cx": 828.0,
+     "cy": 576.0,
+     "gap": 0.0,
+     "vertical": true,
+     "axis": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "cx": 828.0,
+     "cy": 1800.0,
+     "gap": 0.0,
+     "vertical": true,
+     "axis": [
+      0,
+      0
+     ],
+     "rot": 90
+    }
+   ],
+   "artboard": "STRYKER 2 pz Front",
+   "machine": "STRYKER",
+   "layout": "1side",
+   "sides": [
+    "side1"
+   ],
+   "name_at": [
+    480,
+    1176,
+    180
+   ]
+  },
+  "3": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "rotation": 0,
+   "positions": [
+    {
+     "cx": 828.0,
+     "cy": 576.0,
+     "gap": 0.0,
+     "vertical": true,
+     "axis": [
+      0,
+      0
+     ],
+     "rot": -90
+    },
+    {
+     "cx": 828.0,
+     "cy": 1800.0,
+     "gap": 0.0,
+     "vertical": true,
+     "axis": [
+      0,
+      0
+     ],
+     "rot": -90
+    }
+   ],
+   "artboard": "STRYKER 2 pz Back",
+   "machine": "STRYKER",
+   "layout": "1side",
+   "sides": [
+    "side2"
+   ],
+   "name_at": [
+    480,
+    1176,
+    180
+   ]
+  },
+  "4": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "rotation": 0,
+   "positions": [
+    {
+     "cx": 828.0,
+     "cy": 1188.0,
+     "gap": 0.0,
+     "vertical": true,
+     "axis": [
+      0,
+      0
+     ],
+     "rot": 90
+    }
+   ],
+   "artboard": "STRYKER 1 pz Front",
+   "machine": "STRYKER",
+   "layout": "1side",
+   "sides": [
+    "side1"
+   ],
+   "name_at": [
+    480,
+    1788,
+    180
+   ]
+  },
+  "5": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "rotation": 0,
+   "positions": [
+    {
+     "cx": 828.0,
+     "cy": 1188.0,
+     "gap": 0.0,
+     "vertical": true,
+     "axis": [
+      0,
+      0
+     ],
+     "rot": -90
+    }
+   ],
+   "artboard": "STRYKER 1 pz Back",
+   "machine": "STRYKER",
+   "layout": "1side",
+   "sides": [
+    "side2"
+   ],
+   "name_at": [
+    480,
+    1788,
+    180
+   ]
+  },
+  "6": {
+   "page": [
+    1656.0,
+    2376.0
+   ],
+   "rotation": 0,
+   "positions": [
+    {
+     "cx": 828.0,
+     "cy": 1188.03,
+     "gap": 0.0,
+     "vertical": true,
+     "axis": [
+      0,
+      1
+     ],
+     "rot": 0
+    }
+   ],
+   "artboard": "STRYKER 1 pz 2 Side diff",
+   "machine": "STRYKER",
+   "layout": "2diff",
+   "sides": [
+    "side1",
+    "side2"
+   ],
+   "name_at": [
+    1426,
+    2120,
+    90
+   ]
+  },
+  "7": {
+   "page": [
+    1152.0,
+    1656.0
+   ],
+   "rotation": 0,
+   "positions": [
+    {
+     "cx": 651.2,
+     "cy": 828.0,
+     "gap": 0.0,
+     "vertical": true,
+     "axis": [
+      0,
+      0
+     ],
+     "rot": 90
+    }
+   ],
+   "artboard": "AUTO Front",
+   "machine": "AUTO",
+   "layout": "1side",
+   "sides": [
+    "side1"
+   ],
+   "name_at": [
+    340,
+    1428,
+    180
+   ]
+  },
+  "8": {
+   "page": [
+    1152.0,
+    1656.0
+   ],
+   "rotation": 0,
+   "positions": [
+    {
+     "cx": 651.2,
+     "cy": 828.0,
+     "gap": 0.0,
+     "vertical": true,
+     "axis": [
+      0,
+      0
+     ],
+     "rot": -90
+    }
+   ],
+   "artboard": "AUTO Back",
+   "machine": "AUTO",
+   "layout": "1side",
+   "sides": [
+    "side2"
+   ],
+   "name_at": [
+    340,
+    1428,
+    180
+   ]
+  }
+ },
+ "proof_cover": [
+  0,
+  0,
+  0,
+  0
+ ],
+ "info_panel": {
+  "x": 30,
+  "y_top": 1400,
+  "w": 520,
+  "scale": 1.0
+ },
+ "flat_proof": {
+  "always_show": [
+   "side1",
+   "side2"
+  ],
+  "handles": true
+ },
+ "die_fill": [
+  [
+   573.5,
+   1419.9,
+   1224.0,
+   1102.4
+  ],
+  [
+   726.5,
+   1176.8,
+   918.0,
+   243.1
+  ],
+  [
+   573.5,
+   74.4,
+   1224.0,
+   1102.4
+  ]
+ ],
+ "die_folds": [
+  1447.0,
+  1149.6
+ ],
+ "die_regions": {
+  "1": {
+   "x": [
+    752.6,
+    1618.4
+   ],
+   "panels": [
+    [
+     1447.0,
+     2432.3
+    ],
+    [
+     164.3,
+     1149.6
+    ]
+   ]
+  }
+ }
+}

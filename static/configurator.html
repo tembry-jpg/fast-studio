@@ -820,28 +820,26 @@ body.artist span.artist-only{display:inline}
   <div class="mc-note" id="mc-note"></div>
 </div>
 
-<!-- Multi-color art on a one-color product: warn before offering to reduce it -->
+<!-- Multi-color art on a one-color product is made one color automatically
+     (startOneColorFromDialog). This shows only if that could not be done. -->
 <div class="rd-scrim" id="rd-scrim">
   <div class="rd-box" role="dialog" aria-modal="true" aria-labelledby="rd-title">
     <div class="rd-hd" id="rd-title">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
-      More than one color detected
+      Couldn't make this art one color
     </div>
     <div class="rd-body">
       <p id="rd-msg"></p>
-      <p>This product prints in a <b>single PMS ink</b>. Use the color tool to
-         reduce your artwork to one color — assign the colors to the same
-         Pantone to combine them, or mark a color <b>don't print</b> to remove
-         it from the design.</p>
+      <p>This product prints in a <b>single PMS ink</b>. Try again, or upload
+         artwork that is already one color.</p>
       <div class="rd-advice">
-        Using this tool is at your own discretion. We recommend recoloring your
-        artwork to one color in a vector program before uploading, to be sure
-        no detail is lost. Check the preview carefully before you place the order.
+        We recommend recoloring your artwork to one color in a vector program
+        before uploading, to be sure no detail is lost.
       </div>
     </div>
     <div class="rd-acts">
       <button class="rd-btn" onclick="cancelReduction()">Upload different art</button>
-      <button class="rd-btn pri" onclick="startOneColorFromDialog()" id="rd-auto">✨ Make it one color</button>
+      <button class="rd-btn pri" onclick="startOneColorFromDialog()" id="rd-auto">Try again</button>
     </div>
   </div>
 </div>
@@ -1021,7 +1019,7 @@ body.artist span.artist-only{display:inline}
 <!-- Artwork upload panel — shown when no slot active -->
 <div id="pa" style="display:none"><div class="lbl">Artwork</div><div class="card">
 <input type="file" id="fi" accept=".ai,.eps,.pdf,.svg,.png,.jpg,.jpeg,.webp" style="display:none" onchange="onFile(this)">
-<div class="br" id="bleed-btn-row" style="display:none"><button class="bt b1" onclick="upBleed()" style="flex:1;background:#2d5a27">↑ Upload Full-Bleed Background</button></div>
+<div class="br" id="bleed-btn-row" style="display:none"><button class="bt b1" onclick="upBleed()" style="flex:1;background:#2d5a27">↑ Upload Full-Bleed Background</button><button class="bt b1" onclick="openBgDesigner()" style="flex:1;margin-left:6px" title="Design the whole item - background, text, art and shapes - in the art editor">✎ Design background</button></div>
 
 <div class="az-sides" id="az-sides" style="display:none"></div>
 <!-- Dropzone — the obvious first action, applies art to every location -->
@@ -4138,7 +4136,12 @@ async function buildPrintJob(){
     ar = {order_id:"ORDER", saved_paths:{}, pantone_colors:[], pantone_suggestions:[]};
   }
   let bleedSavedPath = null;
-  if(S.prod?.is_4cp && S.bleed?.img){
+  let bleedStock = null;
+  if(S.prod?.is_4cp && S.bleed?._fromLayout && S.bleed.savedPath){
+    bleedSavedPath = S.bleed.savedPath;
+  } else if(S.prod?.is_4cp && S.bleed?._isStockBg && S.bleed._stockFile){
+    bleedStock = S.bleed._stockFile;         // printed from the server's own file
+  } else if(S.prod?.is_4cp && S.bleed?.img){
     const bfd = new FormData();
     if(S.bleed.file){ bfd.append("file", S.bleed.file, S.bleed.file.name); }
     else {
@@ -4179,7 +4182,7 @@ async function buildPrintJob(){
       fill_stock_name:(S._fill_stock&&(S._fill_stock.hex||"").toLowerCase()===(S_FILL.solid.hex||"").toLowerCase())?S._fill_stock.name:null,
       fill_gradient_stops:S_FILL.gradient.stops.map(s=>s.hex),
       fill_gradient_dir:S_FILL.gradient.dir,
-      bleed_path:bleedSavedPath||null,
+      bleed_path:bleedSavedPath||null, bleed_stock:bleedStock,
       bleed_ox:S.bleed?.ox||0, bleed_oy:S.bleed?.oy||0, bleed_sc:S.bleed?.sc||1,
       screen_print:isScreenPrint(),
       screen_print_ink:isScreenPrint()?(SP.ink?.name||""):"",
@@ -5608,12 +5611,11 @@ async function serverRasterize(f, slots, ext) {
       // The easy button needs the vector file; traced images keep the manual tool.
       // Images get the same editor: the server traces them first.
       OC_PENDING = {slots: [...slots], src: data.saved_path, vector: true};
-      const auto = document.getElementById("rd-auto");
-      if(auto) auto.style.display = OC_PENDING.vector ? "" : "none";
-      // A restore re-applies the saved reduction itself; asking again would
-      // put a dialog in front of a job that was already approved.
-      if(!RESTORE.active) openReductionDialog(MC.detected || MC.inks.length);
-      fb.textContent = `⚠ ${f.name} — ${MC.detected} colors found. Reduce to one to continue.`;
+      fb.textContent = `${f.name} — ${MC.detected} colors found. Making it one color…`;
+      // Made one color straight away, as images already are; every part
+      // stays in the art editor to be printed again. A restore re-applies the
+      // saved reduction itself, so it is left alone.
+      if(!RESTORE.active) startOneColorFromDialog();
     } else if(sp){
       clearArtworkRejection();
       const warns = data.validation?.warnings || [];
@@ -8297,7 +8299,10 @@ async function loadStockBackgrounds(){
       el.style.cssText="padding:5px 8px;cursor:pointer;border-radius:4px;font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:8px";
       const thumb = document.createElement("div");
       thumb.style.cssText="width:32px;height:20px;border-radius:3px;border:1px solid var(--border);flex-shrink:0;background-size:cover;background-position:center";
-      thumb.style.backgroundImage=`url('/static/assets/${assetId()}/stockbackgrounds/${encodeURIComponent(fname)}')`;
+      // The small preview, not the print file (each is about 2.5 MB).
+      thumb.style.backgroundImage = resp.thumb_base
+        ? `url('${resp.thumb_base}/${encodeURIComponent(fname.replace(/\.(jpg|jpeg|png)$/i, ""))}.jpg')`
+        : `url('${baseUrl}/${encodeURIComponent(fname)}')`;
       const label = document.createElement("span");
       label.textContent = fname.replace(/\.(jpg|jpeg|png)$/i,"");
       el.appendChild(thumb); el.appendChild(label);
@@ -8536,7 +8541,21 @@ async function layoutEnsureFont(key, bold, italic){
 }
 function studioFam(it){ const st = layoutStyle(it.font, it.bold, it.italic); return st ? st.family : "sans-serif"; }
 
+// 4CP items: the whole item as one design board ("__bg"), the full-bleed
+// background. What is designed on it becomes the background (S.bleed), at
+// the item's printed size; the imprint locations stay where they are, on top.
+const BG_SLOT = "__bg";
+function bgBoardOk(){ return !!(S.prod?.is_4cp || S.prod?.material?.includes("4cp")) && S.prod?.page_w > 0 && S.prod?.page_h > 0; }
+function bgBaseColor(){ return (S_FILL?.mode === "solid" && /^#[0-9a-f]{6}$/i.test(S_FILL.solid?.hex || "")) ? S_FILL.solid.hex : "#ffffff"; }
+function openBgDesigner(){
+  if(!bgBoardOk()) return;
+  if(typeof CUSTOMER !== "undefined" && CUSTOMER) return openLayout(BG_SLOT, {bg: true});
+  const first = (S.prod?.slots || [])[0]?.id;
+  openArtEditor(first ? [first] : [], "layout", {bg: true});
+  if(!AE.open) openLayout(BG_SLOT, {bg: true});
+}
 function layoutSlotLabel(id){
+  if(id === BG_SLOT) return "Background · whole item";
   if(sidesSame() && (id === "side1" || id === "side2")) return "Sides 1 & 2";
   return S.prod?.slots?.find(s => s.id === id)?.label || id;
 }
@@ -8599,21 +8618,23 @@ function studioBox(it){
     return { x0, y0, x1, y1 };
   }
   const w = it.type === "art" ? it.w : (it.w || 40);
-  const h = it.type === "art" ? it.w * studioArtAspect(it) : (it.shape === "line" ? Math.max(it.stroke || 3, 4) : (it.shape === "frame" ? (it.h || w) : w));
+  const h = it.type === "art" ? it.w * studioArtAspect(it) : (it.shape === "line" ? Math.max(it.stroke || 3, 4) : ((it.shape === "frame" || it.shape === "block") ? (it.h || w) : w));
   return { x0: it.x - w / 2, y0: it.y - h / 2, x1: it.x + w / 2, y1: it.y + h / 2 };
 }
 
 // ── open / load / save ─────────────────────────────────────────────────────
 function studioBoardFor(id){
+  if(id === BG_SLOT) return { W: S.prod.page_w, H: S.prod.page_h, circle: false };
   const sa = S.safe?.[id] || {}, iw = sa.iw || 3, ih = sa.ih || 3;
   return { W: iw * 72, H: ih * 72, circle: isCircleSlot(id) };
 }
 async function openLayout(slotId, opts){
   await layoutFonts();
-  LY.slot = slotId || layoutDefaultSlot();
+  LY.slot = (opts?.bg && bgBoardOk()) ? BG_SLOT : (slotId || layoutDefaultSlot());
   studioLoad(LY.slot, opts || {});
   const sel = document.getElementById("ly-slot");
   const ids = (S.prod?.slots || []).map(s => s.id).filter(id => !(sidesSame() && id === "side2"));
+  if(bgBoardOk()) ids.push(BG_SLOT);
   sel.innerHTML = ids.map(id => `<option value="${id}"${id === (sidesSame() && LY.slot === "side2" ? "side1" : LY.slot) ? " selected" : ""}>${layoutSlotLabel(id)}</option>`).join("");
   if(!LY.inAE) document.getElementById("ly-scrim").classList.add("vis");
   studioTab(LY.items.length ? "text" : "templates");
@@ -8623,8 +8644,15 @@ async function openLayout(slotId, opts){
 }
 async function layoutUploadPending(){
   for(const it of LY.items){
-    if(it.type !== "art" || it.src || !it.pendingFile || it._uploading) continue;
+    if(it.type !== "art" || it.src || !(it.pendingFile || it.needsBlob) || it._uploading) continue;
     it._uploading = (async () => {
+      if(!it.pendingFile && it.needsBlob){
+        const c = document.createElement("canvas"); c.width = it.img.naturalWidth || it.img.width; c.height = it.img.naturalHeight || it.img.height;
+        c.getContext("2d").drawImage(it.img, 0, 0);
+        const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.95));
+        it.pendingFile = new File([blob], (it.name || "background") + ".jpg", {type: "image/jpeg"});
+        delete it.needsBlob;
+      }
       const fd = new FormData();
       fd.append("file", it.pendingFile, it.pendingFile.name);
       fd.append("slot_id", LY.slot || "layout");
@@ -8663,6 +8691,7 @@ function studioFromStack(old, W, H){
 }
 function studioLoad(id, opts){
   const b = studioBoardFor(id); LY.W = b.W; LY.H = b.H; LY.circle = b.circle;
+  if(id === BG_SLOT) return studioLoadBg(opts);
   const sl = S.slots[id];
   LY.undo = []; LY.redo = []; LY.sel = -1;
   if(sl?.layout?.board){
@@ -8677,6 +8706,29 @@ function studioLoad(id, opts){
     if(art){ art.w = Math.min(LY.W * 0.7, LY.H * 0.7 / studioArtAspect(art)); art.x = LY.W / 2; art.y = LY.H / 2; LY.items.push(art); }
   }
   if(opts?.addText && !LY.items.some(i => i.type === "text")) LY.items.push(studioNewText("Your text"));
+  LY.sel = LY.items.length - 1;
+}
+// The background board: what was designed there last time, else the current
+// background (uploaded or stock) as a picture covering the item, placed where
+// it sits now, ready to add text, shapes and art over it.
+function studioLoadBg(opts){
+  LY.undo = []; LY.redo = []; LY.sel = -1; LY.items = [];
+  const bl = S.bleed;
+  if(bl?.layout?.board){
+    const f = Math.min(LY.W / bl.layout.board.W, LY.H / bl.layout.board.H);
+    LY.items = bl.layout.items.map(it => ({ ...it, x: it.x * f, y: it.y * f,
+      ...(it.size ? { size: it.size * f } : {}), ...(it.w ? { w: it.w * f } : {}), ...(it.h ? { h: it.h * f } : {}) }));
+  } else if(bl?.img){
+    const it = { type: "art", name: bl._stockFile ? bl._stockFile.replace(/\.(jpg|jpeg|png)$/i, "") : (bl.file?.name || "Background"),
+                 img: bl.img, cb: bl.cb, src: bl.savedPath || null };
+    if(!it.src) it.pendingFile = bl.file || null;
+    if(!it.src && !it.pendingFile) it.needsBlob = true;
+    const asp = studioArtAspect(it), k = LY.W / (S.gW || LY.W);
+    it.w = Math.max(LY.W, LY.H / asp) * (bl.sc || 1);
+    it.x = LY.W / 2 + (bl.ox || 0) * k; it.y = LY.H / 2 + (bl.oy || 0) * k;
+    LY.items.push(it);
+  }
+  if(opts?.addText) LY.items.push(studioNewText("Your text"));
   LY.sel = LY.items.length - 1;
 }
 function layoutSwitchSlot(id){ LY.slot = id; studioLoad(id, {}); studioRender(); layoutUploadPending(); }
@@ -8712,6 +8764,7 @@ function studioAdd(it){ studioPush(); LY.items.push(it); LY.sel = LY.items.lengt
 // shrinks to fit (about its own centre); past an edge, it moves back in.
 function studioKeepIn(it){
   if(!it || !LY.W || !LY.H) return;
+  if(LY.slot === BG_SLOT) return;     // a background runs off the edges; the item trims it
   for(let pass = 0; pass < 3; pass++){
     const b = studioBox(it), bw = b.x1 - b.x0, bh = b.y1 - b.y0;
     const f = Math.min(1, LY.W / Math.max(bw, 1e-6), LY.H / Math.max(bh, 1e-6));
@@ -8731,6 +8784,7 @@ function studioAddShape(shape){
   const base = { type: "shape", shape, color: "#000000", x: LY.W / 2, y: LY.H / 2, stroke: Math.max(1.5, s * 0.02) };
   if(shape === "line") Object.assign(base, { w: LY.W * 0.6 });
   else if(shape === "frame") Object.assign(base, { w: LY.W * 0.92, h: LY.H * 0.88 });
+  else if(shape === "block") Object.assign(base, { w: LY.W * 0.6, h: LY.H * 0.3 });
   else if(shape === "ring") Object.assign(base, { w: s * 0.9 });
   else Object.assign(base, { w: s * 0.18 });
   studioAdd(base);
@@ -8773,7 +8827,7 @@ function studioSet(k, v, live){
   it[k] = v;
   const fontKey = k === "font" || k === "bold" || k === "italic";
   if(fontKey){ layoutEnsureFont(it.font, it.bold, it.italic).then(() => { studioKeepIn(it); studioRender(); }); return; }
-  if(["text", "size", "spacing", "curve", "stroke"].includes(k)) studioKeepIn(it);
+  if(["text", "size", "spacing", "curve", "stroke", "w", "h"].includes(k)) studioKeepIn(it);
   // Typing or sliding: redraw the board only. Rebuilding the controls would
   // replace the box being typed in, and the cursor dropped out after every
   // letter (and a slider let go mid-drag).
@@ -8859,7 +8913,7 @@ function studioPanel(){
       studioTemplates().map((t, i) => `<button class="st-tpl" onclick="studioApplyTemplate(${i})"><canvas data-tpl="${i}" width="150" height="${Math.round(150 * LY.H / LY.W)}"></canvas><span>${t.name}</span></button>`).join("") + `</div>`;
     studioDrawTemplateThumbs();
   } else if(LY.tab === "elements"){
-    const sh = [["line","Line"],["ring","Circle"],["frame","Frame"],["star","Star"],["dot","Dot"]];
+    const sh = [["line","Line"],["ring","Circle"],["frame","Frame"],["block","Block"],["star","Star"],["dot","Dot"]];
     p.innerHTML = `<div class="st-hint">Simple shapes that print in your ink.</div><div class="st-shapes">` +
       sh.map(([k, l]) => `<button onclick="studioAddShape('${k}')">${studioShapeIcon(k)}<span>${l}</span></button>`).join("") + `</div>`;
   } else if(LY.tab === "uploads"){
@@ -8879,7 +8933,8 @@ function studioShapeIcon(k){
     ring: '<circle cx="14" cy="14" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/>',
     frame: '<rect x="4" y="7" width="20" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/>',
     star: '<path d="M14 3l3.2 7 7.6.6-5.8 5 1.8 7.4L14 19l-6.6 4 1.8-7.4-5.8-5 7.6-.6z" fill="currentColor"/>',
-    dot: '<circle cx="14" cy="14" r="6" fill="currentColor"/>' }[k];
+    dot: '<circle cx="14" cy="14" r="6" fill="currentColor"/>',
+    block: '<rect x="4" y="8" width="20" height="12" fill="currentColor"/>' }[k];
   return `<svg width="28" height="28" viewBox="0 0 28 28">${s}</svg>`;
 }
 async function studioDrawTemplateThumbs(){
@@ -8929,7 +8984,8 @@ function studioProps(){
       <label class="st-sl" title="Letter spacing">Spacing<input type="range" min="-50" max="500" step="5" value="${it.spacing || 0}" oninput="studioSet('spacing',+this.value,true)"></label>
       <label class="st-sl" title="Curve — double-click to straighten">Curve<input type="range" min="-100" max="100" step="1" value="${it.curve || 0}" oninput="studioSet('curve',+this.value,true)" ondblclick="studioSet('curve',0)"></label>` + common;
   } else if(it.type === "shape"){
-    bar.innerHTML = `<span class="st-lbl">${{line:"Line",ring:"Circle",frame:"Frame",star:"Star",dot:"Dot"}[it.shape]}</span>${color}` +
+    bar.innerHTML = `<span class="st-lbl">${{line:"Line",ring:"Circle",frame:"Frame",block:"Block",star:"Star",dot:"Dot"}[it.shape]}</span>${color}` +
+      (it.shape === "block" ? `<label class="st-num" title="Width (in)"><input type="number" min="0.05" step="0.05" value="${(it.w / 72).toFixed(2)}" oninput="studioSet('w',Math.max(3.6,(+this.value||0.05)*72),true)"><span>W"</span></label><label class="st-num" title="Height (in)"><input type="number" min="0.05" step="0.05" value="${((it.h || it.w) / 72).toFixed(2)}" oninput="studioSet('h',Math.max(3.6,(+this.value||0.05)*72),true)"><span>H"</span></label>` : "") +
       (["line","ring","frame"].includes(it.shape) ? `<label class="st-sl" title="Thickness">Weight<input type="range" min="0.5" max="${Math.max(4, Math.min(LY.W, LY.H) * 0.1).toFixed(1)}" step="0.5" value="${it.stroke}" oninput="studioSet('stroke',+this.value,true)"></label>` : "") + common;
   } else {
     bar.innerHTML = `<span class="st-lbl">${it.name || "Artwork"}</span><span class="st-hint">Drag a corner to resize.</span>` + common;
@@ -8938,6 +8994,7 @@ function studioProps(){
 
 // ── drawing ────────────────────────────────────────────────────────────────
 function studioBg(){
+  if(LY.slot === BG_SLOT) return bgBaseColor();
   const hex = S.prod?.material === "jotter" ? S.jotter?.hex : S.neo?.hex;
   return /^#[0-9a-f]{6}$/i.test(hex || "") ? hex : "#f4f0ea";
 }
@@ -8956,6 +9013,7 @@ function studioDrawItem(g, it, k){
     else if(it.shape === "ring"){ g.beginPath(); g.arc(it.x, it.y, Math.max(0.5, w / 2 - g.lineWidth / 2), 0, Math.PI * 2); g.stroke(); }
     else if(it.shape === "frame"){ const t = g.lineWidth, r = Math.min(w, h) * 0.12; g.beginPath(); g.roundRect(it.x - w / 2 + t / 2, it.y - h / 2 + t / 2, w - t, h - t, r); g.stroke(); }
     else if(it.shape === "dot"){ g.beginPath(); g.arc(it.x, it.y, w / 2, 0, Math.PI * 2); g.fill(); }
+    else if(it.shape === "block"){ g.fillRect(it.x - w / 2, it.y - h / 2, w, h); }
     else if(it.shape === "star"){ g.beginPath(); for(let q = 0; q < 10; q++){ const r = q % 2 ? w / 2 * 0.45 : w / 2, a = -Math.PI / 2 + q * Math.PI / 5; q ? g.lineTo(it.x + r * Math.cos(a), it.y + r * Math.sin(a)) : g.moveTo(it.x + r * Math.cos(a), it.y + r * Math.sin(a)); } g.closePath(); g.fill(); }
     g.restore();
   } else if(it.img){
@@ -9012,6 +9070,23 @@ function studioDraw(){
   if(LY.circle){ g.beginPath(); g.arc(LY.W / 2, LY.H / 2, Math.min(LY.W, LY.H) / 2, 0, Math.PI * 2); g.clip(); }
   for(const it of LY.items) studioDrawItem(g, it, k);
   g.restore();
+  // The background board: where the item's pieces and imprint areas fall,
+  // so a background can be laid out around them (the template, faintly, and
+  // each imprint area dashed with its name).
+  if(LY.slot === BG_SLOT){
+    g.save();
+    if(S.guide?.complete && S.guide.naturalWidth){ g.globalAlpha = 0.28; g.drawImage(S.guide, 0, 0, LY.W, LY.H); g.globalAlpha = 1; }
+    g.setLineDash([6 / k, 4 / k]); g.lineWidth = 1.2 / k; g.strokeStyle = "rgba(120,40,50,.85)";
+    g.fillStyle = "rgba(120,40,50,.9)"; g.font = `${11 / k}px Inter, sans-serif`;
+    for(const sl of (S.prod?.slots || [])){
+      const z = S.zones?.[sl.id]; if(!z) continue;
+      const x = z.x * LY.W, y = z.y * LY.H, w = z.w * LY.W, h = z.h * LY.H;
+      if(isCircleSlot(sl.id)){ g.beginPath(); g.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); g.stroke(); }
+      else g.strokeRect(x, y, w, h);
+      g.fillText(sl.label || sl.id, x + 3 / k, y + 13 / k);
+    }
+    g.restore();
+  }
   g.restore();
   // Print-area edge, outside the board shading.
   g.save(); g.setLineDash([5, 4]); g.strokeStyle = "rgba(120,40,50,.55)"; g.lineWidth = 1;
@@ -9041,8 +9116,13 @@ function studioDraw(){
 function studioCheck(){
   const msgs = [];
   for(const it of LY.items){
+    if(LY.slot === BG_SLOT) break;
     const b = studioBox(it);
     if(b.x0 < -0.5 || b.y0 < -0.5 || b.x1 > LY.W + 0.5 || b.y1 > LY.H + 0.5){ msgs.push("Part of the design is outside the print area — it won't print."); break; }
+  }
+  if(LY.slot === BG_SLOT && !msgs.length){
+    studioNote("The whole item, edge to edge: anything past the edge is trimmed. The imprint art goes on top of this.");
+    return;
   }
   if(isScreenPrint() || isMultiColor()){
     const small = LY.items.filter(i => i.type === "text" && (i.text || "").trim() && i.size < 12);
@@ -9232,9 +9312,11 @@ async function layoutDone(){
                                   color: color ? studioPaint(it) : "#000000", x: it.x, y: it.y }
         : { type: "text", text: it.text, font: it.font, size: it.size, bold: !!it.bold, italic: !!it.italic,
             color: color ? studioPaint(it) : "#000000", spacing: it.spacing || 0, curve: it.curve || 0, x: it.x, y: it.y }) };
+    if(LY.slot === BG_SLOT) payload.background = bgBaseColor();
     const r = await fetch("/api/compose", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
     const d = await r.json();
     if(!r.ok || d.error) throw new Error(d.error || "Could not build the design");
+    if(LY.slot === BG_SLOT){ await bgDesignApply(d, items); return; }
     const targets = pairedIds(LY.slot);
     const keep = { board: { W: LY.W, H: LY.H }, items: items.map(it => ({...it})) };
     const oldInks = S.slots[targets[0]]?.mc?.inks || [];
@@ -9271,6 +9353,31 @@ async function layoutDone(){
     studioNote(`⚠ ${e.message}`, true);
     if(!LY.inAE) document.getElementById("ly-scrim").classList.add("vis");
   }finally{ btn.disabled = false; }
+}
+
+// The background design onto the item: the composed PDF (the whole item, at
+// its printed size) becomes the full-bleed background, placed edge to edge.
+// The print uses the PDF itself (rendered at 300 dpi), the preview its render.
+async function bgDesignApply(d, items){
+  const fd = new FormData();
+  fd.append("server_path", d.saved_path); fd.append("slot_id", "bleed");
+  if(S.pid) fd.append("product_id", S.pid);
+  const r = await (await fetch("/api/rasterize", {method:"POST", body: fd})).json();
+  if(r.error) throw new Error(r.error);
+  const img = new Image();
+  await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = `data:${r.preview_mime};base64,${r.preview_b64}`; });
+  S.bleed = { img, ox: 0, oy: 0, sc: 1, rot: 0, file: null, cb: {x: 0, y: 0, w: img.width, h: img.height},
+              savedPath: d.saved_path, _fromLayout: true,
+              layout: { board: { W: LY.W, H: LY.H }, items: items.map(it => ({...it})) } };
+  const nm = document.getElementById("fill-stock-bg-name"); if(nm) nm.textContent = "— Designed —";
+  closeLayout();
+  if(typeof showBleedWarpPanel === "function") showBleedWarpPanel(true);
+  const fb = document.getElementById("fb"); if(fb) fb.textContent = "✓ Background design is on the item.";
+  R();
+  if(LY.inAE && AE.open){
+    AE.lyApplied = LY.undo.length;
+    document.getElementById("ae-msg").textContent = "✓ Background design is on the item. Edit it again here, or pick an imprint location above.";
+  }
 }
 
 function renderArtworkPanel(){
@@ -9387,7 +9494,7 @@ function renderArtworkPanel(){
     } else if(MC.reduce && OC_PENDING && OC_PENDING.slots.includes(id)){
       traceHtml += `<div class="az-sub az-trace warn">⚠ ${MC.detected || "several"} colors — this item prints one</div>
         <div class="az-sub"><button class="oc-link" style="font-size:10px"
-        onclick="event.stopPropagation();startOneColorFromDialog()">✨ make it one color</button></div>`;
+        onclick="event.stopPropagation();startOneColorFromDialog()">make it one color again</button></div>`;
     }
     return `<div class="az-card${sel}" data-slot="${id}" onclick="selectArtSlot('${id}')">
       <div class="az-thumb">${thumb?`<img src="${thumb}" alt="">`:""}</div>
@@ -10194,11 +10301,11 @@ function renderSeparationsPanel(){
 }
 
 // ── reduce-to-one-color dialog ─────────────────────────────────────────────
-function openReductionDialog(detected){
+function openReductionDialog(detected, why){
   const msg = document.getElementById("rd-msg");
   if(msg){
     msg.innerHTML = `We found <b>${detected} colors</b> in the artwork you just `
-      + `uploaded.`;
+      + `uploaded and couldn't reduce it to one` + (why ? ` (${String(why).replace(/[<>&]/g, "")}).` : ".");
   }
   document.getElementById("rd-scrim")?.classList.add("vis");
 }
@@ -11334,6 +11441,10 @@ async function _restoreBundleCore(b){
         const file = new File([blob], name, {type: blob.type});
         const ext = name.slice(name.lastIndexOf(".")).toLowerCase();
         await serverRasterize(file, slots, ext);
+        // Refused (live text in a missing font, art the item can't take): say
+        // so, rather than reporting the art as opened.
+        const refused = slots.filter(id => !S.slots[id]?.img);
+        if(refused.length){ missing.push(...refused); RESTORE.refused = (RESTORE.refused || "") || (document.getElementById("fb")?.textContent || ""); continue; }
         // One-color edits, per group of locations that shared them.
         const groups = {};
         for(const id of slots){
@@ -11389,14 +11500,22 @@ async function _restoreBundleCore(b){
     if(job.source === "tif_template"){
       const names = id => S.prod?.slots?.find(s => s.id === id)?.label || id;
       const order = (S.prod?.slots || []).map(s => s.id);
-      const locs = Object.keys(job.slots || {}).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      const locs = Object.keys(job.slots || {}).filter(id => !missing.includes(id)).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      if(!locs.length && missing.length){
+        // Nothing could be placed: the reason the art was refused, not "opened".
+        fb.textContent = RESTORE.tifMsg = `⚠ The customer's template was read, but its art wasn't accepted for ${missing.map(names).join(", ")}. `
+          + (RESTORE.refused || "");
+        RESTORE.refused = "";
+        return;
+      }
       const parts = [`✓ Opened the customer's template: art on ${locs.map(names).join(", ")}`
                      + (job.sides === "same" && locs.includes("side2") ? " (same art both sides)" : "")
                      + ", at the size they drew it."];
       if(job.neo) parts.push(`${getMatLabel(S.prod?.material || "")}: ${job.neo.name} (their template was filled ${job.neo.from_template}).`);
       if(job.ink?.name) parts.push(`Ink: ${job.ink.name.replace("PANTONE ", "")}, from the art's color.`);
       else if(!job.ns) parts.push("Pick the ink — the art came in black, as the template asks.");
-      if(missing.length) parts.push(`⚠ ${missing.join(", ")} couldn't be loaded.`);
+      if(missing.length) parts.push(`⚠ ${missing.map(names).join(", ")} couldn't be loaded. ${RESTORE.refused || ""}`.trim());
+      RESTORE.refused = "";
       fb.textContent = RESTORE.tifMsg = parts.join(" ");
       return;
     }
@@ -11456,8 +11575,11 @@ function _ocImg(b64){
     im.onload = () => res(im); im.onerror = rej; im.src = "data:image/png;base64," + b64; });
 }
 
-// "Make it one color": the automatic one-color edit (parts inside other
-// colors knocked out), then the art editor's Lasso to change any part.
+// Multi-color art on a one-color item, made one color automatically on
+// upload (parts inside other colors knocked out). Nothing is thrown away: the
+// art editor's Edit tab shows every part, and any the automatic pass got
+// wrong can be picked and printed again. If it can't be done, the dialog
+// offers to try again or upload different art.
 async function startOneColorFromDialog(){
   if(!OC_PENDING) return;
   closeReductionDialog();
@@ -11475,13 +11597,17 @@ async function startOneColorFromDialog(){
     OC_PENDING = null;
     renderArtworkPanel(); renderSeparationsPanel?.(); R();
     const ko = d.shapes.filter(x => x.area > 0 && (d.decisions || {})[x.i] === "knockout").length;
-    if(fb) fb.textContent = "✓ Artwork made one color. Check it in the art editor.";
+    const cust = typeof CUSTOMER !== "undefined" && CUSTOMER;
+    if(fb) fb.textContent = cust
+      ? "✓ Your art had several colors, so we made it one color. Check the preview carefully "
+        + "before you order - for the best result, upload art that is already one color."
+      : "✓ Made one color automatically. Check it in the art editor - any part can be printed again.";
     openArtEditor([...slots], "cut");
     CUT.note = `Made one color.` + (ko ? ` ${ko} part${ko > 1 ? "s" : ""} inside other colors ${ko > 1 ? "were" : "was"} knocked out (striped).` : "")
-      + " Pick any part to change it.";
+      + " Nothing was thrown away: pick any part and press Print to put it back.";
   }catch(e){
-    // The old editor still does the job if this didn't.
-    openOneColor(slots, src, {});
+    if(fb) fb.textContent = `⚠ Couldn't make it one color: ${e.message}`;
+    openReductionDialog(MC.detected || MC.inks?.length || "several", e.message);
   }
 }
 
@@ -11762,6 +11888,7 @@ function openArtEditor(slots, tab, lyOpts){
   document.getElementById("ae-scrim").classList.add("vis");
   renderSeparationsPanel?.(); R();
   aeTab(tab || "colors");
+  if(!layout && AE.tab !== "cut") setTimeout(aeCutWarm, 0);
   clearInterval(AE.timer); AE.timer = setInterval(aeMirror, 300); aeMirror();
 }
 
@@ -11896,9 +12023,23 @@ async function aeCutLoad(force){
   }
   const key = src.mode + "|" + src.src + "|" + JSON.stringify(src.overrides);
   if(!force && key === CUT.key && CUT.data){ aeCutDraw(); return; }
+  // Already being read (the editor starts reading an image in the background
+  // when it opens): wait for that rather than ask the server a second time.
+  if(!force && CUT.pending && CUT.pending.key === key){
+    document.getElementById("ae-cut-busy").classList.add("on");
+    msg.textContent = "Reading the art…";
+    await CUT.pending.p;
+    if(CUT.key === key && CUT.data){ if(AE.tab === "cut"){ aeCutDraw(); aeCutStatus(); } return; }
+    // That read was overtaken (the editor was opened again meanwhile): read
+    // again - the server has the parts by now, so this is quick.
+    if(CUT.pending && CUT.pending.key === key) return aeCutLoad(false);
+    return aeCutLoad(true);
+  }
   Object.assign(CUT, {key, mode: src.mode, src: src.src, overrides: {...src.overrides}, slots: src.slots, pick: new Set(), hover: -1});
   document.getElementById("ae-cut-busy").classList.add("on");
   msg.textContent = "Reading the art…";
+  let done; const pending = {key, p: new Promise(r => done = r)};
+  CUT.pending = pending;
   try{
     const r = await fetch("/api/one-color", {method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({art_path: src.src, decisions: src.mode === "cut" ? {} : src.overrides})});
@@ -11924,7 +12065,19 @@ async function aeCutLoad(force){
     msg.textContent = "⚠ " + e.message;
   }finally{
     document.getElementById("ae-cut-busy").classList.remove("on");
+    if(CUT.pending === pending) CUT.pending = null;
+    done();
   }
+}
+
+// An image's parts take a few seconds to trace on the server. The editor
+// starts on that as soon as it opens (artists only: the Edit tab is theirs),
+// so by the time the Edit tab is clicked its parts are usually ready.
+function aeCutWarm(){
+  if(typeof CUSTOMER !== "undefined" && CUSTOMER) return;
+  const src = _cutSource();
+  if(!src || !/\.(jpe?g|png|gif|bmp|tiff?|webp)$/i.test(src.src || "")) return;
+  aeCutLoad().catch(() => {});
 }
 
 // Shapes this tool can still pick: painted, and not already removed.

@@ -571,6 +571,48 @@ def assess(mask, printed_w_in, printed_h_in=None, n_colors=1):
 # Tracing
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _fast_bm_to_pathlist(bm, turdsize=2, turnpolicy=None):
+    """potracer's bm_to_pathlist, with the same result, found faster.
+
+    The library finds each next outline by searching the WHOLE bitmap
+    (np.nonzero) for its last row that still has a pixel: once per outline,
+    so a traced JPG with hundreds of outlines read millions of pixels hundreds
+    of times - most of a ten-second trace. That row only ever moves down the
+    bitmap (each outline found is cleared from it, and an outline never
+    reaches above the row it was found in), so the search here carries on
+    from where the last one stopped. Same row, same pixel, same order, so
+    the same outlines.
+    """
+    import sys
+    P = sys.modules["potrace.potrace"]
+    if turnpolicy is None:
+        turnpolicy = P.POTRACE_TURNPOLICY_MINORITY
+    plist = []
+    original = bm.copy()
+    y = bm.shape[0] - 1
+    while True:
+        while y >= 0 and not bm[y].any():
+            y -= 1
+        if y < 0:
+            break
+        x = int(np.argmax(bm[y]))           # first set pixel in the row
+        sign = original[y][x]
+        path = P.findpath(bm, x, y + 1, sign, turnpolicy)
+        if path is None:
+            raise ValueError
+        P.xor_path(bm, path)
+        if path.area > turdsize:
+            plist.append(path)
+    return plist
+
+
+def _speed_up_potrace():
+    import sys
+    P = sys.modules.get("potrace.potrace")
+    if P is not None and getattr(P, "bm_to_pathlist", None) is not _fast_bm_to_pathlist:
+        P.bm_to_pathlist = _fast_bm_to_pathlist
+
+
 def _trace_curves(mask, turdsize=2, alphamax=1.0, opttolerance=0.2):
     """
     Outlines for one mask.
@@ -589,6 +631,7 @@ def _trace_curves(mask, turdsize=2, alphamax=1.0, opttolerance=0.2):
         swapped.
     """
     import potrace
+    _speed_up_potrace()
     bmp = potrace.Bitmap(~mask.astype(bool))
     return bmp.trace(turdsize=turdsize, alphamax=alphamax,
                      opticurve=True, opttolerance=opttolerance).curves
