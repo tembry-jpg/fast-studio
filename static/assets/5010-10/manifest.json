@@ -1,0 +1,26 @@
+{
+ "product": "5010-10",
+ "width": 2400,
+ "height": 2400,
+ "_about": "Numo's 5010 Daily Grind photo layers (2026-10-09): right bag = Side 1 (Front), left bag = Side 2 (Back). Built by tools/make_5010_assets.py.",
+ "default_art": [],
+ "exports": {
+  "background": {
+   "file": "background.png",
+   "blend": "normal"
+  },
+  "canvas_mask": {
+   "file": "canvas_mask.png",
+   "role": "color_mask"
+  },
+  "texture_overlay": {
+   "file": "texture_overlay.png",
+   "blend": "overlay"
+  },
+  "texture_screen": {
+   "file": "texture_screen.png",
+   "blend": "hard-light",
+   "opacity": 0.6
+  }
+ }
+}
