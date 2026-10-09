@@ -639,14 +639,41 @@ def _suggest_flats(pieces, panels, lines, slot_ids):
 
 # ── public ─────────────────────────────────────────────────────────────────
 
+def _whole_dies(panels, objs, slot_ids):
+    """The panels that are each a whole die: tall (twice as high as wide or
+    more), with art in the top third and in the bottom third. Only for items
+    printed on two sides of a die (side1 + side2 or bottom)."""
+    if "side1" not in slot_ids or not ({"side2", "bottom"} & set(slot_ids)):
+        return []
+    out = []
+    for pb in panels:
+        w, h = pb[2] - pb[0], pb[3] - pb[1]
+        if w <= 0 or h < 1.8 * w:
+            continue
+        top = bot = False
+        for o in objs:
+            if o["role"] not in ("art", "text") or o["area"] >= 0.5 * w * h:
+                continue
+            c = ((o["bbox"][0] + o["bbox"][2]) / 2, (o["bbox"][1] + o["bbox"][3]) / 2)
+            if not _inside(c, pb):
+                continue
+            top = top or c[1] >= pb[3] - h / 3
+            bot = bot or c[1] <= pb[1] + h / 3
+        if top and bot:
+            out.append(pb)
+    return out
+
+
 def pick_dir(root):
     d = Path(root) / "_pick"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
-def analyze(pdf_path, root, slot_ids, page_index=None):
+def analyze(pdf_path, root, slot_ids, page_index=None, aspect=None):
     """
+    aspect: the item's die, height / width (a koozie's template page), to
+    pick the right one when a proof shows several (Standard and Slim).
     Read a page and return what the editor needs:
       {token, page, pages, png (bytes), scale, size [w, h] (pt),
        pieces [{id, box [x, y, w, h] in image px, role, suggest, kinds}],
@@ -690,7 +717,7 @@ def analyze(pdf_path, root, slot_ids, page_index=None):
         b = max(photos, key=lambda r: r["area"])
         layout, product_box = "photo", b["bbox"]
     panels = []
-    if not bodies and not photos:
+    if not bodies:
         # The product drawn flat as separate shapes (a proof's Side 1, Side 2
         # and Bottom): solid fills of one colour, each big enough to carry art.
         cands = [r for r in objs if r["role"] == "art" and r["kind"] == "path"
@@ -717,7 +744,33 @@ def analyze(pdf_path, root, slot_ids, page_index=None):
                 panels += [u["bbox"] for u in uniq]
                 for r in grp:
                     r["role"] = "body"
-    if panels:
+    if panels and photos:
+        # A picture on the page (a printer's logo, a form saved as an image)
+        # usually is the product, but coloured shapes holding art beat it when
+        # one is a whole die: tall, art at both ends (a koozie proof).
+        dies = _whole_dies(panels, objs, slot_ids)
+        if dies:
+            panels = dies
+        else:
+            for r in objs:
+                if r["role"] == "body":
+                    r["role"] = "art"
+            panels = []
+    dies = _whole_dies(panels, objs, slot_ids) if panels else []
+    if dies:
+        # Each shape is a whole die (Side 1 on top, the bottom, Side 2 turned
+        # under it) - a template, laid out once or several times (Standard
+        # and Slim side by side). The one shaped most like this item's die.
+        def off(b):
+            a = (b[3] - b[1]) / max(1e-6, b[2] - b[0])
+            return abs(a - aspect) if aspect else 0.0
+        b = min(dies, key=lambda b: (round(off(b), 1), -b[3], b[0]))
+        for r in objs:
+            if r["role"] in ("art", "guide") and any(all(abs(x - y) < 4 for x, y in zip(r["bbox"], pb))
+                                                     for pb in dies):
+                r["role"] = "body"
+        layout, product_box, panels = "template", b, []
+    elif panels:
         # The shapes' own outlines and shadows are the product too.
         for r in objs:
             if r["role"] in ("art", "guide") and any(all(abs(a - b) < 4 for a, b in zip(r["bbox"], pb))

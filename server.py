@@ -5533,7 +5533,9 @@ def art_pick_analyze():
             if fh.read(5) != b"%PDF-":
                 return jsonify({"error": "That AI file was saved without PDF content — "
                                          "save it with \"Create PDF Compatible File\" on."}), 400
-        a = art_pick.analyze(src, HERE / "uploads", slot_ids, page_index)
+        pw_, ph_ = prod.get("page_w"), prod.get("page_h")
+        aspect = (float(ph_) / float(pw_)) if pw_ and ph_ else None
+        a = art_pick.analyze(src, HERE / "uploads", slot_ids, page_index, aspect=aspect)
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({"error": f"Couldn't read that file: {e}"}), 400
