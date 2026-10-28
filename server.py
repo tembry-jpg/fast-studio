@@ -7,7 +7,7 @@ Open: http://localhost:8080
 import base64
 import os, sys, json, time, shutil, threading, tempfile, math, re
 from pathlib import Path
-from flask import Flask, request, jsonify, send_file, send_from_directory, make_response
+from flask import Flask, request, jsonify, send_file, send_from_directory, make_response, Response
 
 HERE = Path(__file__).parent.resolve()
 sys.path.insert(0, str(HERE))
@@ -42,20 +42,22 @@ from products import (
 
 app = Flask(__name__, static_folder=str(HERE / "static"), static_url_path="/static")
 
-# Sign-in for the whole app (internal tool). Off until TTOOL_PASSWORD is set.
 # Client sign-in: one shared password (CLIENT_PASSWORD), client_login.py.
 import client_login
 client_login.init_app(app)
 
 # ── CLIENT SANDBOX ──────────────────────────────────────────────────────────
 # Numo's client ordering site: the configurator, mockups and proofs for the
-# screen-print 24 HR (This Is Fast) items, behind one shared client password.
-#   * the catalog lists the screen-print TIF items only (the rest are still
-#     here, just not listed)
+# This Is Fast items, behind one shared client password.
+#   * the catalog lists the This Is Fast items only (the rest are still here,
+#     just not listed)
 #   * clients get the client view only
 #   * no pricing (the price sheet is not fetched)
 #   * an export ships the digital proof and the virtual only: no press files,
 #     2X2, print PDF, artwork originals or ink coverage
+#   * every export, job and restored proof belongs to the browser session that
+#     made it (client_login.owner_tag): another client can't open it, even
+#     with its link
 SANDBOX = True
 SANDBOX_KINDS = ("digitalproof", "virtualproof")
 
@@ -70,7 +72,8 @@ def _sandbox_trim(listing, serve_dir, keep_hidden=("variant-proof", "variant-2x2
             or (e.get("hidden") and e.get("kind") in keep_hidden)]
     keep_paths = {str(e.get("path")) for e in keep}
     root = Path(serve_dir).resolve()
-    # Delete what was listed and is not kept (press files, 2X2, artwork). Files never listed are the build's own working notes
+    # Delete what was listed and is not kept (press files, 2X2, artwork, the
+    # order details). Files never listed are the build's own working notes
     # (the proof's sidecars), which combining the variants reads.
     for e in listing:
         rel = str(e.get("path") or "")
@@ -79,10 +82,29 @@ def _sandbox_trim(listing, serve_dir, keep_hidden=("variant-proof", "variant-2x2
         f = (root / rel).resolve()
         if root in f.parents and f.is_file():
             f.unlink()
-    art = root / "art"
-    if art.is_dir():
-        shutil.rmtree(art, ignore_errors=True)
+    for junk in ("art",):
+        d = root / junk
+        if d.is_dir():
+            shutil.rmtree(d, ignore_errors=True)
+    for f in root.glob("*-order.json"):
+        f.unlink(missing_ok=True)
     return keep
+
+
+def _claim(folder):
+    """Mark an export / restore folder as this browser session's."""
+    try:
+        (Path(folder) / "_owner").write_text(client_login.owner_tag())
+    except Exception as e:
+        print(f"owner not written: {e}")
+
+
+def _mine(folder):
+    """True when the folder was made by this browser session."""
+    try:
+        return client_login.owns((Path(folder) / "_owner").read_text().strip())
+    except Exception:
+        return False
 
 
 # Every /api/ error comes back as JSON the page can show. Without this a crash
@@ -277,8 +299,12 @@ def _job_save(job_id, data):
 
 
 def new_job(job_id, initial):
+    try:
+        owner = client_login.owner_tag()
+    except RuntimeError:                      # outside a request
+        owner = None
     with JOBS_LOCK:
-        JOBS[job_id] = {"status": "pending", **initial}
+        JOBS[job_id] = {"status": "pending", **initial, "_owner": owner}
         _job_save(job_id, JOBS[job_id])
 
 def update_job(job_id, patch):
@@ -373,7 +399,12 @@ def _cache_static_assets(resp):
         return resp
     if resp.headers.get("Cache-Control") == "no-store":
         return resp
-    if path.endswith(_CACHEABLE_SUFFIXES):
+    if path.startswith("/static/assets/"):
+        # Mockup layers: kept, but checked with the server on every load (a
+        # 304 when unchanged), so a replaced mockup - the pens' Side 2 turned
+        # over, 2026-10-15 - shows at once instead of after the hour's cache.
+        resp.headers["Cache-Control"] = "public, no-cache"
+    elif path.endswith(_CACHEABLE_SUFFIXES):
         resp.headers["Cache-Control"] = f"public, max-age={_ASSET_MAX_AGE}"
     return resp
 
@@ -464,7 +495,6 @@ def _compress(resp):
 @app.route("/api/pricing")
 def get_pricing():
     """Sandbox: no pricing. An empty price sheet, so the page shows none."""
-    from flask import Response
     return Response("", mimetype="text/csv")
 
 
@@ -482,12 +512,15 @@ _CAT_MATERIAL = [
     (r"^neoprene", "Neoprene"),
     (r"^scuba", "Scuba Foam"), (r"^cotton_canvas", "Canvas"), (r"^(jotter|three_way_pen)", "Plastic"),
     (r"^expanded_vinyl", "Expanded Vinyl"), (r"^laminated_nylon", "Laminated Nylon"),
+    (r"^glass", "Glass"),
+    (r"^ceramic", "Ceramic"),
 ]
 _CAT_KEYWORDS = {
     "Beverage Insulators": "koozie coozie can cooler insulator huggie hugger kaddy coolie drink sleeve",
     "Totes and Bags": "tote bag canvas cotton shopper",
     "Pens": "pen pens writing jotter retractable 3-way",
     "Key Chains": "key fob keychain key chain key ring lanyard wristlet",
+    "Drinkware": "glass pint pub beer mixing glassware drinkware cup mug coffee ceramic challenger",
 }
 
 
@@ -501,6 +534,8 @@ def _catalog_meta(pid, p, slot_labels):
         shape = "Totes and Bags"
     elif _re.search(r"key fob|keychain|key chain", name, _re.I):
         shape = "Key Chains"
+    elif mat in ("glass", "ceramic"):
+        shape = "Drinkware"
     else:
         shape = "Beverage Insulators"
     fits = None
@@ -559,62 +594,6 @@ def _catalog_meta(pid, p, slot_labels):
     }
 
 
-# ── The client catalog ─────────────────────────────────────────────────────
-# Exactly the This Is Fast items on numomfg.com, by their site names. The ones
-# set up here open in the configurator (the 4CP items too, since 2026-10-09);
-# the rest show as "Coming soon" with the site's photo and can't be opened. Every other product
-# is still in the app, just not listed. To open one up: give it its product
-# id here instead of None.
-CLIENT_CATALOG = [
-    # (product id or None, name on the site, photo: static/sandbox/...)
-    ("0070-3m-24HR-1c", "This Is Fast Kolder Kaddy", "items/0070-3m-24HR-1c.jpg"),
-    ("1080-3m-24HR-1c", "This Is Fast Kolder Kaddy Neoprene for Slim Cans", "items/1080-3m-24HR-1c.jpg"),
-    ("9100-24HR-1c", "This Is Fast Pocket Coolie", None),
-    ("0472-24HR-1c", "This Is Fast Pocket Coolie for Slim Cans", "items/0472-24HR-1c.jpg"),
-    ("5001-TIF-7-1C", "This Is Fast Main Squeeze - Natural Canvas", "items/5001-TIF-7-1C.jpg"),
-    ("5001-TIF-CC-1C", "This Is Fast Main Squeeze - Colored Canvas", "items/5001-TIF-CC-1C.jpg"),
-    ("0837-24HR-IMP", "This Is Fast Jotter Pen", "items/jotter-pen.jpg"),   # the 24 HR Jotter (Mimaki guides)
-    ("0070-3w", "This Is Fast 4CP Kolder Kaddy", "items/kolder-kaddy-4cp.jpg"),
-    ("1080-3w", "This Is Fast Kolder Kaddy Neoprene for Slim Cans - 4CP", "items/kolder-kaddy-slim-4cp.jpg"),
-    ("9100-4CP", "This Is Fast 4CP Pocket Coolie", "items/pocket-coolie-4cp.jpg"),
-    ("0472-4CP", "This Is Fast Pocket Coolie for Slim Cans - 4CP", "items/pocket-coolie-slim-4cp.jpg"),
-    (None, "This Is Fast Duplex Kolder Kaddy", "soon/duplex-kolder-kaddy.jpg"),
-    ("5020-TIF-10-1C", "This Is Fast Shamwow - Natural Canvas", "items/5020-TIF-10-1C.jpg"),
-    ("5020-TIF-CC-1C", "This Is Fast Shamwow - Colored Canvas", "items/5020-TIF-CC-1C.jpg"),
-    ("5010-TIF-10-1C", "This Is Fast Daily Grind - Natural Canvas", "items/5010-TIF-10-1C.jpg"),
-    ("5010-TIF-CC-1C", "This Is Fast Daily Grind - Colored Canvas", "items/5010-TIF-CC-1C.jpg"),
-]
-
-
-_CLIENT_NAMES = {pid: name for pid, name, _ in CLIENT_CATALOG if pid}
-
-
-def _client_catalog(out):
-    by_id = {p["id"]: p for p in out}
-    cat = []
-    for n, (pid, name, photo) in enumerate(CLIENT_CATALOG):
-        if pid and pid in by_id:
-            p = dict(by_id[pid], name=name, label=name, display_label=name, coming_soon=False, catalog_order=n)
-            if photo:
-                p["thumb_url"] = f"/static/sandbox/{photo}"
-            cat.append(p)
-            continue
-        low = name.lower()
-        is4 = "4cp" in low
-        shape = "Pens" if "pen" in low else ("Totes and Bags" if "canvas" in low else "Beverage Insulators")
-        slug = re.sub(r"[^a-z0-9]+", "-", low).strip("-")
-        cat.append({"id": "soon-" + slug, "name": name, "label": name, "display_label": name,
-                    "coming_soon": True, "item": "Coming soon", "sku": "",
-                    "thumb_url": f"/static/sandbox/{photo}" if photo else "",
-                    "keywords": low + " this is fast", "slots": [], "bodies": [],
-                    "shape": shape, "fits": "Slim can" if "slim" in low else ("Standard can" if shape == "Beverage Insulators" else ""),
-                    "material_label": "Canvas" if "canvas" in low else ("Plastic" if "pen" in low else "Neoprene"),
-                    "printing": "Full color (4CP)" if is4 else "",
-                    "program": "This Is Fast", "is_screenprint": False, "max_inks": 0,
-                    "family": "", "base_name": name, "catalog_order": n})
-    return cat
-
-
 @app.route("/api/products-lite")
 def get_products_lite():
     """Minimal product data for home page — no zones, slots, bleed data."""
@@ -643,6 +622,92 @@ def get_products_lite():
     resp = make_response(jsonify(out))
     resp.headers["Cache-Control"] = "public, max-age=300"  # cache 5 min
     return resp
+
+
+# ── The client catalog ──────────────────────────────────────────────────────
+# Exactly the This Is Fast items on numomfg.com, by their site names. The ones
+# set up here open in the configurator (the 4CP items too); the rest show as
+# "Coming soon" with the site's photo and can't be opened. Every other product
+# is still in the app, just not listed. To open one up: give it its product
+# id here instead of None.
+CLIENT_CATALOG = [
+    # (product id or None, name on the site, photo: static/sandbox/...)
+    ("0070-3m-24HR-1c", "This Is Fast Kolder Kaddy", "items/0070-3m-24HR-1c.jpg"),
+    ("1080-3m-24HR-1c", "This Is Fast Kolder Kaddy Neoprene for Slim Cans", "items/1080-3m-24HR-1c.jpg"),
+    ("9100-24HR-1c", "This Is Fast Pocket Coolie", None),
+    ("0472-24HR-1c", "This Is Fast Pocket Coolie for Slim Cans", "items/0472-24HR-1c.jpg"),
+    ("5001-TIF-7-1C", "This Is Fast Main Squeeze - Natural Canvas", "items/5001-TIF-7-1C.jpg"),
+    ("5001-TIF-CC-1C", "This Is Fast Main Squeeze - Colored Canvas", "items/5001-TIF-CC-1C.jpg"),
+    ("0837-24HR-IMP", "This Is Fast Jotter Pen", "items/jotter-pen.jpg"),   # the 24 HR Jotter
+    ("0070-3w", "This Is Fast 4CP Kolder Kaddy", "items/kolder-kaddy-4cp.jpg"),
+    ("1080-3w", "This Is Fast Kolder Kaddy Neoprene for Slim Cans - 4CP", "items/kolder-kaddy-slim-4cp.jpg"),
+    ("9100-4CP", "This Is Fast 4CP Pocket Coolie", "items/pocket-coolie-4cp.jpg"),
+    ("0472-4CP", "This Is Fast Pocket Coolie for Slim Cans - 4CP", "items/pocket-coolie-slim-4cp.jpg"),
+    (None, "This Is Fast Duplex Kolder Kaddy", "soon/duplex-kolder-kaddy.jpg"),
+    ("5020-TIF-10-1C", "This Is Fast Shamwow - Natural Canvas", "items/5020-TIF-10-1C.jpg"),
+    ("5020-TIF-CC-1C", "This Is Fast Shamwow - Colored Canvas", "items/5020-TIF-CC-1C.jpg"),
+    ("5010-TIF-10-1C", "This Is Fast Daily Grind - Natural Canvas", "items/5010-TIF-10-1C.jpg"),
+    ("5010-TIF-CC-1C", "This Is Fast Daily Grind - Colored Canvas", "items/5010-TIF-CC-1C.jpg"),
+]
+
+
+_CLIENT_NAMES = {pid: name for pid, name, _ in CLIENT_CATALOG if pid}
+
+
+def _prune_products():
+    """Only the catalog's items (and the products they borrow from: twins,
+    shared assets, base items) stay in the app. The rest aren't offered here,
+    and aren't sent to the browser either."""
+    keep, todo = set(), [pid for pid, _, _ in CLIENT_CATALOG if pid in PRODUCTS]
+
+    def refs(v):
+        if isinstance(v, str):
+            if v in PRODUCTS:
+                yield v
+        elif isinstance(v, dict):
+            for x in v.values():
+                yield from refs(x)
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                yield from refs(x)
+    while todo:
+        pid = todo.pop()
+        if pid in keep:
+            continue
+        keep.add(pid)
+        todo.extend(r for r in refs(PRODUCTS[pid]) if r not in keep)
+    for pid in [p for p in PRODUCTS if p not in keep]:
+        del PRODUCTS[pid]
+
+
+if SANDBOX:
+    _prune_products()
+
+
+def _client_catalog(out):
+    by_id = {p["id"]: p for p in out}
+    cat = []
+    for n, (pid, name, photo) in enumerate(CLIENT_CATALOG):
+        if pid and pid in by_id:
+            p = dict(by_id[pid], name=name, label=name, display_label=name, coming_soon=False, catalog_order=n)
+            if photo:
+                p["thumb_url"] = f"/static/sandbox/{photo}"
+            cat.append(p)
+            continue
+        low = name.lower()
+        is4 = "4cp" in low
+        shape = "Pens" if "pen" in low else ("Totes and Bags" if "canvas" in low else "Beverage Insulators")
+        slug = re.sub(r"[^a-z0-9]+", "-", low).strip("-")
+        cat.append({"id": "soon-" + slug, "name": name, "label": name, "display_label": name,
+                    "coming_soon": True, "item": "Coming soon", "sku": "",
+                    "thumb_url": f"/static/sandbox/{photo}" if photo else "",
+                    "keywords": low + " this is fast", "slots": [], "bodies": [],
+                    "shape": shape, "fits": "Slim can" if "slim" in low else ("Standard can" if shape == "Beverage Insulators" else ""),
+                    "material_label": "Canvas" if "canvas" in low else ("Plastic" if "pen" in low else "Neoprene"),
+                    "printing": "Full color (4CP)" if is4 else "",
+                    "program": "This Is Fast", "is_screenprint": False, "max_inks": 0,
+                    "family": "", "base_name": name, "catalog_order": n})
+    return cat
 
 # ---------------------------------------------------------------------------
 # Route – product list
@@ -724,6 +789,13 @@ def get_products():
             "color_components": p.get("color_components", []),
             "shows_inside": bool(p.get("shows_inside")),
             "mockup_bands": p.get("mockup_bands"),
+            "glass_mockup": p.get("glass_mockup"),
+            "glass_widen": p.get("glass_widen", 0),
+            "glass_taper_fix": bool(p.get("glass_taper_fix")),
+            "print_method": p.get("print_method") or "",
+            "glass_decal_id": p.get("glass_decal_id"),
+            "glass_direct_id": p.get("glass_direct_id"),
+            "exclusive_slots": p.get("exclusive_slots"),
             "inside_colors": p.get("inside_colors"),
             "stitch_fixed": p.get("stitch_fixed"),
             "pen_colors": p.get("pen_colors"),
@@ -775,6 +847,9 @@ def get_colors():
         "bias": [{"name": n, "hex": h} for n, h in BIAS.items()],
         "fabric_4cp":    [{"name": n, "hex": h} for n, h in FABRIC_4CP.items()],
         # Metallic neoprene (0070-3l / 1080-3l): its bodies are images (body_patterns).
+        # 9729 Challenger Mug: the colours it's photographed in (one photo each).
+        "ceramic":       [{"name": "White", "hex": "#F4F4F2"}, {"name": "Black", "hex": "#1A1A1A"},
+                          {"name": "Cobalt", "hex": "#1F2A8A"}],
         "neoprene_metallic": [],
         "neoprene_heathered": [],
         "neoprene_denim": [],
@@ -836,6 +911,9 @@ find_closest_pantone = _find_closest_pantone_printable
 # customer simply cannot specify it.
 NON_PMS_INKS = [
     {"name": "White", "short": "White", "hex": "#FFFFFF"},
+    # Plain Black: the shop's standard black, not a Pantone chip - Black C is
+    # Pantone's warm brown-black (#2D2926).
+    {"name": "Black", "short": "Black", "hex": "#111111"},
 ]
 
 NON_PMS_HEX = {i["name"]: i["hex"] for i in NON_PMS_INKS}
@@ -947,9 +1025,9 @@ def pantone_library():
         if is_printable_pms(name)
     ]
     colors = NON_PMS_INKS + colors
-    # The special inks go out on their own ("special"), not in "colors" (the
-    # main app keeps them apart for its own reasons). The page adds them to
-    # its list itself, so they show under Special inks and in search.
+    # The special inks go out on their own ("special"), not in "colors". The
+    # page adds them to its list itself, so they show under Special inks and
+    # in search.
 
     # White leads the quick picks: it has no PMS chip, and on dark neoprene it
     # is the ink customers reach for first.
@@ -962,7 +1040,10 @@ def pantone_library():
     from flask import make_response, request as _rq
     import hashlib
 
-    resp = make_response(jsonify({"colors": colors, "quick": quick, "special": SPECIAL_INKS}))
+    import numo_swatches
+    # numo4cp: Numo's own 4CP swatches; the page lists them on 4CP items only.
+    resp = make_response(jsonify({"colors": colors, "quick": quick, "special": SPECIAL_INKS,
+                                  "numo4cp": numo_swatches.offered()}))
 
     # This list changes whenever the ink rules change — a family is filtered
     # out, White is added, the quick picks are reordered. It used to be served
@@ -1202,6 +1283,14 @@ def rasterize():
         # preview, the press files and Illustrator never depend on the font;
         # flagged by name when it doesn't (text_outline.py).
         if ext in {".pdf", ".ai"}:
+            # One upright page at 0,0 (press_layout._own_page_boxes): the
+            # preview below, the print file and the press sheets then all read
+            # the same page the same way, however the PDF was saved.
+            try:
+                import press_layout
+                orig_path = Path(press_layout._own_page_boxes(orig_path, orig_path.parent))
+            except Exception as e:
+                print(f"⚠️ art page not normalised: {e}")
             try:
                 import text_outline
                 use, font_note = text_outline.prepare(orig_path)
@@ -1533,11 +1622,25 @@ def rasterize():
         with open(tight_path, "rb") as fp:
             b64 = _b64.b64encode(fp.read()).decode()
 
+        # Vector art: its ink box in points. The configurator takes the art's
+        # proportions from this (not from the preview's pixels), so the H it
+        # shows is the H that prints.
+        ink_pt = None
+        if Path(orig_path).suffix.lower() in {".pdf", ".ai", ".eps", ".svg"}:
+            try:
+                import press_layout as _plk
+                _a = _plk.Artwork(_plk.art_as_pdf(str(orig_path), work_dir=str(Path(orig_path).parent)))
+                _a._fine_w()                 # measured as finely as the print file measures it
+                if _a.w > 0 and _a.h > 0:
+                    ink_pt = [round(_a.w, 3), round(_a.h, 3)]
+            except Exception as _e:
+                print(f"ink box not measured: {_e}")
         return jsonify({
             "preview_b64": b64,
             "preview_mime": "image/png",
             "width": tw,
             "height": th,
+            "ink_pt": ink_pt,
             "saved_path": str(orig_path),
             "slot_id": slot_id,
             "validation": validation,
@@ -1556,6 +1659,43 @@ def rasterize():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/art-hires", methods=["POST"])
+def art_hires():
+    """
+    Vector art drawn again, sharper, for a mockup that shows it big (the pint
+    glass). The same art as /api/rasterize's preview, cropped to its ink the
+    same way, at `scale` times the preview's 150 dpi - so it lines up with the
+    preview exactly, just with more pixels.
+    """
+    import subprocess as _sp, tempfile as _tf
+    body = request.get_json(force=True, silent=True) or {}
+    src = _in_uploads(body.get("saved_path"))
+    if not src or src.suffix.lower() not in (".pdf", ".ai"):
+        return jsonify({"error": "Not a vector file on the server"}), 400
+    try:
+        scale = max(1.0, min(8.0, float(body.get("scale") or 2)))
+    except (TypeError, ValueError):
+        scale = 2.0
+    with _tf.TemporaryDirectory() as td:
+        out = Path(td) / "hi"
+        r = _sp.run(["pdftocairo", "-png", "-singlefile", "-transp", "-f", "1", "-l", "1",
+                     "-r", f"{150 * scale:.2f}", str(src), str(out)], capture_output=True, timeout=120)
+        png = Path(f"{out}.png")
+        if r.returncode or not png.exists():
+            return jsonify({"error": "Could not render the art"}), 500
+        with Image.open(png) as im:
+            im = im.convert("RGBA")
+            bb = im.getchannel("A").getbbox() or (0, 0, im.width, im.height)
+            im = im.crop(bb)
+            # Keep it to a sensible size for the browser.
+            if max(im.size) > 7000:
+                k = 7000 / max(im.size)
+                im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+            buf = io.BytesIO()
+            im.save(buf, "PNG")
+    return Response(buf.getvalue(), mimetype="image/png", headers={"Cache-Control": "no-store"})
 
 
 @app.route("/api/art-check", methods=["POST"])
@@ -1716,6 +1856,8 @@ def render_pdf():
     # on every export).
     if not body["bleed_path"] and body.get("bleed_stock"):
         body["bleed_path"] = _stock_bg_path(body.get("product_id"), body.get("bleed_stock"))
+        if body["bleed_path"]:
+            body["_bleed_stock_name"] = str(body.get("bleed_stock"))
 
     job_id = _unique_id("job")
     new_job(job_id, {})
@@ -1764,9 +1906,13 @@ def _spot_color(body):
         # NON_PMS_HEX first: inks like White have no Pantone chip, so a lookup
         # against the Pantone table alone misses and falls through to the
         # #000000 default — a white job would come off the press black.
+        # "Match Bias" and the like (the ink is a part's color): no Pantone
+        # to look up, so the color the configurator sent.
+        sent = str(body.get("screen_print_ink_hex") or "")
         hexv = (NON_PMS_HEX.get(name)
                 or PANTONE_RGB.get(name)
                 or PANTONE_RGB.get(f"PANTONE {name}")
+                or (sent if re.fullmatch(r"#[0-9A-Fa-f]{6}", sent) else None)
                 or "#000000")
         cy, ma, ye, k = hex_to_cmyk(hexv)
         return CMYKColorSep(cy, ma, ye, k, spotName=name, density=1)
@@ -1855,6 +2001,7 @@ def _pdf_worker(job_id, product, order_id, saved_paths, body):
                     if not spot_nm:
                         c.setFillColor(Color(r_val, g_val, b_val))
                         c.rect(bz_x, bz_y_bottom, bz_w, bz_h, fill=1, stroke=0)
+                        print_notes.append(f"Background: RGB #{hex_color.upper()} (exact colour, no Pantone)")
 
                 elif fill_mode == "gradient":
                     stops = body.get("fill_gradient_stops", ["#ffffff", "#000000"])
@@ -1909,8 +2056,29 @@ def _pdf_worker(job_id, product, order_id, saved_paths, body):
                     p_clip = c.beginPath()
                     p_clip.rect(0, 0, page_w, page_h)
                     c.clipPath(p_clip, stroke=0, fill=0)
-                    c.drawImage(tight_path, draw_x, draw_y, draw_w, draw_h,
-                                preserveAspectRatio=False, mask="auto")
+                    vec = False
+                    if body.get("_bleed_stock_name") in VECTOR_STOCK_BG:
+                        try:
+                            vec = _draw_vector_stock_bg(c, body["_bleed_stock_name"], bleed_path,
+                                                        draw_x, draw_y, draw_w, draw_h)
+                            if vec:
+                                print_notes.append(f"Background: {Path(body['_bleed_stock_name']).stem} (vector, its spot colours kept)")
+                        except Exception as e:
+                            print(f"⚠️ Vector stock background failed, placed the picture: {e}")
+                            vec = False
+                    if not vec and not body.get("_bleed_stock_name"):
+                        try:
+                            vec = _draw_vector_bleed(c, bleed_path, page_w, page_h, bleed_sc,
+                                                     draw_x, draw_y, draw_w, draw_h)
+                            if vec:
+                                print_notes.append(f"Background: {vec}")
+                        except Exception as e:
+                            import traceback; traceback.print_exc()
+                            print(f"⚠️ Vector background failed, placed the picture: {e}")
+                            vec = False
+                    if not vec:
+                        c.drawImage(tight_path, draw_x, draw_y, draw_w, draw_h,
+                                    preserveAspectRatio=False, mask="auto")
                     c.restoreState()
                 except Exception as e:
                     print(f"⚠️ Error placing bleed image: {e}")
@@ -2022,9 +2190,11 @@ def _pdf_worker(job_id, product, order_id, saved_paths, body):
                 try:
                     art_path, ext = _recolor_art(art_path, slot_inks,
                                                  (body.get("bg_by_slot") or {}).get(slot["id"]),
-                                                 full_color=bool(is_4cp)), ".pdf"
-                    names = [str(i.get("pms") or "").replace("PANTONE ", "")
-                             for i in slot_inks if not i.get("hidden") and i.get("pms")]
+                                                 full_color=bool(is_4cp),
+                                                 white_mode=(body.get("white_by_slot") or {}).get(slot["id"])), ".pdf"
+                    names = [str(i.get("pms") or "").replace("PANTONE ", "") if i.get("pms")
+                             else f'RGB {str(i.get("pms_hex") or "").upper()}'
+                             for i in slot_inks if not i.get("hidden") and (i.get("pms") or i.get("rgb"))]
                     print_notes.append(f"{slot['label']}: recolored — " + ", ".join(dict.fromkeys(names)))
                 except Exception as e:
                     import traceback; traceback.print_exc()
@@ -2048,7 +2218,7 @@ def _pdf_worker(job_id, product, order_id, saved_paths, body):
                 try:
                     tight_path, iw, ih = crop_raster_to_visible(art_path)
 
-                    scale = _cap_fit(min(slot_w / iw, slot_h / ih) * p_sc, iw, ih, slot_w, slot_h, p.get("rot"), slot.get("shape") == "circle")
+                    scale = _exact_scale(p, iw) or _cap_fit(min(slot_w / iw, slot_h / ih) * p_sc, iw, ih, slot_w, slot_h, p.get("rot"), slot.get("shape") == "circle")
                     draw_w = iw * scale
                     draw_h = ih * scale
                     if is_4cp and draw_w > 0:
@@ -2087,7 +2257,7 @@ def _pdf_worker(job_id, product, order_id, saved_paths, body):
                         content_w = max(1, x2 - x1)
                         content_h = max(1, y2 - y1)
 
-                        scale = _cap_fit(min(slot_w / content_w, slot_h / content_h) * p_sc, content_w, content_h, slot_w, slot_h, p.get("rot"), slot.get("shape") == "circle")
+                        scale = _exact_scale(p, content_w) or _cap_fit(min(slot_w / content_w, slot_h / content_h) * p_sc, content_w, content_h, slot_w, slot_h, p.get("rot"), slot.get("shape") == "circle")
                         draw_w = content_w * scale
                         draw_h = content_h * scale
 
@@ -2128,14 +2298,15 @@ def _pdf_worker(job_id, product, order_id, saved_paths, body):
                     # than the customer positioned it.
                     if is_screenprint(body.get("product_id") or "") or INK_FIT_ALL_PRODUCTS:
                         from screenprint import ink_bbox_points
-                        ink = ink_bbox_points(art_path, (x1, y1, x2, y2))
+                        # Measured finer when the art is to print at an exact width.
+                        ink = ink_bbox_points(art_path, (x1, y1, x2, y2), dpi=600 if p.get("w_pt") else 150)
                         if ink:
                             x1, y1, x2, y2 = ink
 
                     content_w = max(1, x2 - x1)
                     content_h = max(1, y2 - y1)
 
-                    scale = _cap_fit(min(slot_w / content_w, slot_h / content_h) * p_sc, content_w, content_h, slot_w, slot_h, p.get("rot"), slot.get("shape") == "circle")
+                    scale = _exact_scale(p, content_w) or _cap_fit(min(slot_w / content_w, slot_h / content_h) * p_sc, content_w, content_h, slot_w, slot_h, p.get("rot"), slot.get("shape") == "circle")
                     draw_w = content_w * scale
                     draw_h = content_h * scale
 
@@ -2281,6 +2452,86 @@ def _upload_path(slot_id, filename):
 
 
 UPLOADS_DIR = (HERE / "uploads").resolve()
+
+
+# Stock 4CP backgrounds drawn as vector in the print file: the picker shows
+# (and the preview uses) the JPG, the print takes the same page of the vector
+# original, in the same place and crop - so it stays sharp and keeps its spot
+# colours (the camo's Brown Dirt and Red Dirt). The JPGs were made from these
+# pages by tools/make_camo_backgrounds.py (cover-crop from the middle, turned
+# on its side for a landscape item).
+VECTOR_STOCK_BG = {
+    "Spring Camo.jpg": ("press/tif/fall_and_spring_camo.pdf", 1),
+    "Fall Camo.jpg": ("press/tif/fall_and_spring_camo.pdf", 3),
+}
+
+
+def _draw_vector_stock_bg(c, name, jpg_path, draw_x, draw_y, draw_w, draw_h):
+    """Draw stock background `name` as vector where its JPG would be drawn
+    (draw_x/y/w/h, the JPG's rectangle on the page). True when drawn."""
+    src = VECTOR_STOCK_BG.get(str(name or ""))
+    if not src or not (HERE / src[0]).exists():
+        return False
+    from pdfrw import PdfReader
+    from pdfrw.buildxobj import pagexobj
+    from pdfrw.toreportlab import makerl
+    xo = pagexobj(PdfReader(str(HERE / src[0])).pages[src[1] - 1])
+    bb = [float(v) for v in xo.BBox]
+    pw, ph = bb[2] - bb[0], bb[3] - bb[1]
+    with Image.open(jpg_path) as im:
+        w, h = im.size
+    turned = w > h                                   # made on its side for a landscape item
+    sw, sh = (ph, pw) if turned else (pw, ph)
+    px_per_pt = max(w / sw, h / sh)                  # the JPG covers the page from its middle
+    k = draw_w / (w / px_per_pt)                     # source points -> page points
+    c.saveState()
+    c.translate(draw_x + draw_w / 2, draw_y + draw_h / 2)
+    c.scale(k, k)
+    if turned:
+        c.rotate(90)
+    c.translate(-(bb[0] + pw / 2), -(bb[1] + ph / 2))
+    c.doForm(makerl(c, xo))
+    c.restoreState()
+    return True
+
+
+def _draw_vector_bleed(c, bleed_path, page_w, page_h, bleed_sc, draw_x, draw_y, draw_w, draw_h):
+    """Draw an artist's own 4CP background as vector, exactly where its picture
+    would be drawn (draw_x/y/w/h: the picture cropped to its visible part).
+
+    Vector uploads (PDF, AI, EPS, SVG) go in as they are, spot colours kept.
+    A PNG/JPG of flat colour is traced, like flat-colour art; a photo or soft
+    gradient returns False and is placed as the picture. Returns a note for the
+    proof, or False."""
+    import vectorize
+    raster = _bleed_raster(bleed_path, page_w, page_h, bleed_sc)
+    if vectorize.is_raster(str(bleed_path)):
+        src = _vectorize_4cp(bleed_path)
+        note = "traced to vector"
+        if not src:
+            return False
+    else:
+        import press_layout
+        src = press_layout.art_as_pdf(str(bleed_path))
+        note = "vector, as uploaded"
+    from pdfrw import PdfReader
+    from pdfrw.buildxobj import pagexobj
+    from pdfrw.toreportlab import makerl
+    xo = pagexobj(PdfReader(str(src)).pages[0])
+    bb = [float(v) for v in xo.BBox]
+    pw, ph = bb[2] - bb[0], bb[3] - bb[1]
+    (x0, y0, x1, y1), (W, H) = get_raster_visible_bbox(raster)
+    if pw <= 0 or ph <= 0 or x1 <= x0 or y1 <= y0:
+        return False
+    sx, sy = W / pw, H / ph                         # picture pixels per source point
+    c.saveState()
+    c.translate(draw_x, draw_y)                     # bottom-left of the visible part
+    c.scale(draw_w / ((x1 - x0) / sx),              # source points -> page points
+            draw_h / ((y1 - y0) / sy))
+    c.translate(-(bb[0] + x0 / sx), -(bb[3] - y1 / sy))
+    c.doForm(makerl(c, xo))
+    c.restoreState()
+    return note
 
 
 def _stock_bg_path(product_id, name):
@@ -2491,7 +2742,8 @@ def _read_old_proof(pdf_path):
             "nso": nso, "revision": rev,
             "artist": fields.get("Artist") if fields.get("Artist") not in (None, "—") else None,
             "components": components,          # e.g. {"Neoprene": "Red", "Stitching": "White"}
-            "ink_name": ("PANTONE " + ink) if ink and not ink.upper().startswith("PANTONE") else ink,
+            "ink_name": ("PANTONE " + ink) if ink and not ink.upper().startswith("PANTONE")
+                        and not ink.lower().startswith("match ") else ink,
             "sizes": sizes, "slots": {}, "art": []}
 
 
@@ -2614,7 +2866,8 @@ def _order_problems(order):
 
     The browser checks the same things at the point of entry, where they can
     be fixed; this exists because the browser is not the only thing that can
-    post to this route, and an order should not be able to arrive half-filled without anyone saying so.
+    post to this route, and an order should not be able to arrive half-filled
+    without anyone saying so.
 
     The minimum is only enforced when the order carries one. It comes from the
     pricing sheet, which is shared with other tools and does not list every
@@ -2736,9 +2989,42 @@ def _press_export_files(press_pdf, out_dir, prefix, product_id, info):
     # over at a couple of megabytes a copy, and the reason it used to be one
     # document — so the artist could write the sales order number onto each
     # sheet as they checked it — is gone now that the number is printed on.
+    if info.get("decal"):
+        # A decal (9613-DECAL): the decal plates and their colour proof are
+        # the print files; the template's press sheet is not shipped.
+        files = []
+        for pl in (info["decal"].get("plates") or []) + [{"file": info["decal"].get("proof")}]:
+            src = Path(pl.get("file") or "")
+            if not src.exists():
+                continue
+            tail = src.name.split("-Decal-", 1)[1] if "-Decal-" in src.name else src.name
+            dest = Path(out_dir) / f"{prefix}-Decal-{tail}"
+            if src.resolve() != dest.resolve():
+                shutil.move(str(src), str(dest))
+            files.append(dest)
+        Path(press_pdf).unlink(missing_ok=True)
+        proof = info.get("proof")
+        if proof and Path(proof).exists():
+            files.append(Path(proof))
+        flat = info.get("flat_proof")
+        if flat and Path(flat).exists():
+            dest = Path(out_dir) / f"{prefix}-2X2.png"
+            if Path(flat) != dest:
+                shutil.copy2(str(flat), str(dest))
+            files.append(dest)
+        return files
     sheets = press_layout.split_sheets(press_pdf, out_dir, prefix,
                                        info.get("page_names") or [])
     files = list(sheets) if sheets else [Path(press_pdf)]
+    # A glass (the 9613): one print file for each way the screen is made -
+    # "-Film" for the film printer (screens made by hand) and "-Xitron" for
+    # direct to screen (the same, with the Xitron's marks).
+    if info.get("xitron") and Path(info["xitron"]).exists() and len(files) == 1:
+        film = Path(out_dir) / f"{prefix}-Film.pdf"
+        shutil.move(str(files[0]), str(film))
+        xit = Path(out_dir) / f"{prefix}-Xitron.pdf"
+        shutil.move(str(info["xitron"]), str(xit))
+        files = [film, xit]
 
     # The customer proof, as its own document. The press files are nothing but
     # screens now — one per sheet, ready to go straight to the floor.
@@ -2757,10 +3043,6 @@ def _press_export_files(press_pdf, out_dir, prefix, product_id, info):
         files.append(dest)
 
     return files
-
-
-class _SandboxSkip(Exception):
-    """A step the sandbox leaves out."""
 
 
 class PressBuildError(Exception):
@@ -2952,6 +3234,11 @@ def _build_press_files(body, prefix, out_dir, mockup_img=None, order=None,
             include_press_sheets=not body.get("sheets_shared"),
             caption_names=body.get("caption_names") or None)
     except Exception as e:
+        # The whole traceback in the server log: the export only shows the
+        # message ("'NoneType' object is not iterable"), which names no line.
+        import traceback
+        print(f"⚠️ press build failed for {pid} ({prefix}):", flush=True)
+        traceback.print_exc()
         raise PressBuildError(str(e), "build_failed", 500)
     if info and info.get("sheet_note"):
         body["_sheet_note"] = info["sheet_note"]
@@ -2996,7 +3283,7 @@ def press_file():
     """The press files on their own, as a zip. Kept for direct/diagnostic use;
     the configurator's Export goes through /api/export-bundle."""
     if SANDBOX:
-        return jsonify({"error": "Press files are not available in the sandbox."}), 404
+        return jsonify({"error": "Press files are not available here."}), 404
     body = request.get_json(force=True) or {}
 
     prefix = _safe_prefix(body.get("prefix") or body.get("export_prefix") or "")
@@ -3307,7 +3594,8 @@ def _pen_variants_flat(product, entries, variants, hand, out_png):
         outline = json.loads((HERE / product["mimaki_jig"]).read_text()).get("pen_outline")
         by_id = {e.get("id"): e for e in entries if e.get("id")}
         slots = [sl for sl in (product.get("art_slots") or []) if by_id.get(sl["id"], {}).get("file")]
-        if not outline or not slots:
+        pv = None if outline else _pen_view(product)
+        if (not outline and not pv) or not slots:
             return None
         span = sum(sl["w_pt"] * 1.12 for sl in slots) or 500.0
         k = max(1.0, min(4.0, 1600.0 / span))
@@ -3315,11 +3603,17 @@ def _pen_variants_flat(product, entries, variants, hand, out_png):
         for v in variants:
             ink = v.get("ink") if isinstance(v.get("ink"), dict) and v["ink"].get("hex") else None
             cells = []
-            for sl in slots:
+            if pv:
+                wr_ = v.get("writing") if isinstance(v.get("writing"), dict) else {}
+                cells = _pen_view_panels(product, pv, by_id, v.get("hex"), k, work, hand=hand,
+                                         writing_hex=wr_.get("hex"), ink_hex=ink.get("hex") if ink else None,
+                                         cmap=v.get("map"))
+            for sl in ([] if pv else slots):
                 e = dict(by_id[sl["id"]])
                 im = _pen_panel(e, sl, outline, v.get("hex"), k, work, hand=hand,
                                 ink_hex=ink.get("hex") if ink else None, cmap=v.get("map"),
-                                writing_hex=(v.get("writing") or {}).get("hex") if isinstance(v.get("writing"), dict) else None)
+                                writing_hex=(v.get("writing") or {}).get("hex") if isinstance(v.get("writing"), dict) else None,
+                                rolled=sl["id"] == "side2" and _side2_rolled(product))
                 cells.append((sl.get("label") or sl["id"], im))
             cm = [m for m in (v.get("map") or []) if isinstance(m, dict)]
             label = f"{v.get('name') or ''} · " + (
@@ -3384,21 +3678,36 @@ def _pen_art_mapped(art, cmap):
     return Image.fromarray(a, "RGBA")
 
 
-def _pen_panel(e, sl, outline, body_hex, k, work, hand="RH", ink_hex=None, cmap=None, writing_hex=None):
-    """One side of a pen for the proof: the jig's pen silhouette in the body
-    color, the art where it sits in the imprint box, clipped to the box.
+def _side2_rolled(product):
+    """The pen's Side 2 is drawn rolled over (tip left, clip underneath),
+    reading toward the clip like Side 1 (its jig spec says side2_rolled)."""
+    try:
+        return bool(json.loads((HERE / product["mimaki_jig"]).read_text()).get("side2_rolled"))
+    except Exception:
+        return False
 
-    The jig file carries the pen twice, clip down and clip up; one pen is
-    drawn, clip up, as the virtual shows it. Side 2 is the jig's own way
-    round (tip right), Side 1 is the pen turned end for end (tip left), the
-    art reading the same way on both. An LH imprint is the same pen turned
-    180 deg with the art kept upright: the motif reads the other way from the
-    clip."""
+
+def _pen_panel(e, sl, outline, body_hex, k, work, hand="RH", ink_hex=None, cmap=None, writing_hex=None,
+               rolled=False):
+    """One side of a pen for the proof and the 2X2: the jig's pen silhouette
+    in the body color, the art where it sits in the imprint box, clipped to
+    the box, always upright.
+
+    How the pen lies (production, 2026-10-15):
+      RH  Side 1  tip left, clip on top        - the art reads toward the clip
+          Side 2  tip left, clip underneath    - the pen rolled over (rolled)
+      LH  the RH pen flipped left to right (tip right), the art not flipped:
+          it reads away from the clip, toward the tip.
+    A pen whose jig spec has no side2_rolled keeps its Side 2 the jig's own
+    way round (tip right, clip on top).
+
+    The jig file carries the pen twice, clip down and clip up; the clip-up
+    one is drawn (tip right, as the jig holds it) and then laid as above."""
     from PIL import ImageDraw
     if outline and len(outline) > 1:
         outline = [max(outline, key=lambda sub: max(p[1] for p in sub))]     # clip up
-    flip = sl.get("id") == "side1"
     lh = str(hand or "").upper() == "LH"
+    side1 = sl.get("id") == "side1"
     pts = [p for sub in outline for p in sub]
     x0 = min(p[0] for p in pts); x1 = max(p[0] for p in pts)
     y0 = min(p[1] for p in pts); y1 = max(p[1] for p in pts)
@@ -3407,32 +3716,159 @@ def _pen_panel(e, sl, outline, body_hex, k, work, hand="RH", ink_hex=None, cmap=
     im = Image.new("RGBA", (W, H), (255, 255, 255, 0))
     d = ImageDraw.Draw(im)
     body = body_hex if re.fullmatch(r"#[0-9A-Fa-f]{6}", str(body_hex or "")) else "#FFFFFF"
-    def P(x, y):   # outline coords are points from the box's bottom-left, y up
-        if flip:
-            x = x0 + x1 - x
+
+    def P(x, y):   # outline coords are points from the box's bottom-left, y up; the jig's way round
         return ((x - x0 + m) * k, (y1 - y + m) * k)
     for sub in outline:
         d.polygon([P(*p) for p in sub], fill=body, outline=(150, 150, 150))
+    # The imprint box on the jig-way pen, in pixels.
+    bx0, by0 = P(0, sl["h_pt"])
+    bw, bh = sl["w_pt"] * k, sl["h_pt"] * k
+    if writing_hex and re.fullmatch(r"#[0-9A-Fa-f]{6}", str(writing_hex)):
+        im = _pen_squiggle(im, outline, P, k, writing_hex, False)       # off the tip, to the right
+    # Lay the pen: RH Side 1 tip left (mirrored); a rolled Side 2 turned
+    # 180 deg (tip left, clip under); LH all of it mirrored again.
+    ops = []
+    if side1:
+        ops.append("mirror")
+    elif rolled:
+        ops.append("turn")
+    if lh:
+        ops.append("mirror")
+    bx = [bx0, by0, bx0 + bw, by0 + bh]
+    for op in ops:
+        Wi, Hi = im.size
+        if op == "mirror":
+            im = im.transpose(Image.FLIP_LEFT_RIGHT)
+            bx = [Wi - bx[2], bx[1], Wi - bx[0], bx[3]]
+        else:
+            im = im.rotate(180)
+            bx = [Wi - bx[2], Hi - bx[3], Wi - bx[0], Hi - bx[1]]
     art = _render_art_piece(e, k, work) if (e or {}).get("file") else None
     if art is not None:
         if cmap:
             art = _pen_art_mapped(art, cmap)
         elif ink_hex and re.fullmatch(r"#[0-9A-Fa-f]{6}", str(ink_hex)):
             art = _pen_art_one_ink(art, ink_hex)
-        box = Image.new("RGBA", (int(sl["w_pt"] * k), int(sl["h_pt"] * k)), (0, 0, 0, 0))
+        box = Image.new("RGBA", (int(bw), int(bh)), (0, 0, 0, 0))
         cx = int((e["x"] + e["w"] / 2) * k - art.width / 2)
         cy = int((e["y"] + e["h"] / 2) * k - art.height / 2)
-        if lh:
-            art = art.rotate(180)
         box.paste(art, (cx, cy), art)
-        # The imprint box's top-left corner on the drawn pen (turned with it).
-        bx, by = P(sl["w_pt"] if flip else 0, sl["h_pt"])
-        im.alpha_composite(box, (int(bx), int(by)))
-    if writing_hex and re.fullmatch(r"#[0-9A-Fa-f]{6}", str(writing_hex)):
-        im = _pen_squiggle(im, outline, P, k, writing_hex, flip)
-    if lh:
-        im = im.rotate(180)
+        im.alpha_composite(box, (int(round(bx[0])), int(round(bx[1]))))
     return im
+
+
+def _pen_view(product):
+    """The jig spec's "pen_view": how the proof and the 2X2 draw this pen."""
+    try:
+        return json.loads((HERE / product["mimaki_jig"]).read_text()).get("pen_view") if product.get("mimaki_jig") else None
+    except Exception:
+        return None
+
+
+def _pen_view_panels(product, pv, by_id, body_hex, k, work, hand="RH", writing_hex=None, part_hex=None,
+                     ink_hex=None, cmap=None, show_all=False):
+    """The proof / 2X2 panels of a pen drawn from its pen_view, the way
+    production reads them (2026-10-19), the same as the jotter:
+
+      RH  writing tip on the left, the other end on the right; the art,
+          upright, reads from the tip toward the other end.
+      LH  the pen flipped left to right (tip on the right); the art, still
+          upright, reads from the other end toward the tip.
+      Side 1 has the clip on top, Side 2 (the pen rolled over) the clip
+      underneath; they stack Side 1 over Side 2.
+
+    pen_view (points, y down, drawn as RH Side 1): outline, optional parts
+    (x ranges coloured from part_hex), details (lines), tip, and slots
+    {slot id: {side, x, y}} - the imprint box's top-left. Returns
+    [(label, RGBA image)], one per side that has art (every side with
+    show_all)."""
+    from PIL import ImageDraw
+    import math
+    lh = str(hand or "").upper() == "LH"
+    slots = {sl["id"]: sl for sl in (product.get("art_slots") or [])}
+    pts = pv["outline"]
+    x0 = min(p[0] for p in pts); x1 = max(p[0] for p in pts)
+    y0 = min(p[1] for p in pts); y1 = max(p[1] for p in pts)
+    m = 4.0
+    sq = 62.0 if writing_hex and re.fullmatch(r"#[0-9A-Fa-f]{6}", str(writing_hex)) else 0.0
+    ok_hex = lambda h: h if re.fullmatch(r"#[0-9A-Fa-f]{6}", str(h or "")) else None
+    body = ok_hex(body_hex) or "#FFFFFF"
+    sides = {}
+    for sid, v in (pv.get("slots") or {}).items():
+        if sid in slots:
+            sides.setdefault(int(v.get("side") or 1), []).append(sid)
+    out = []
+    for side in sorted(sides):
+        ids = sides[side]
+        if not show_all and not any((by_id.get(i) or {}).get("file") for i in ids):
+            continue
+        ox = sq + m - x0                                    # room on the left for the writing line
+        W = int((x1 - x0 + 2 * m + sq) * k)
+        H = int((y1 - y0 + 2 * m + (8 if sq else 0)) * k)
+        P = lambda x, y: ((x + ox) * k, (y - y0 + m) * k)
+        im = Image.new("RGBA", (W, H), (255, 255, 255, 0))
+        d = ImageDraw.Draw(im)
+        poly = [P(*p) for p in pts]
+        d.polygon(poly, fill=body)
+        for part in pv.get("parts") or []:
+            col = ok_hex((part_hex or {}).get(part["name"]))
+            if not col:
+                continue
+            lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            ImageDraw.Draw(lay).polygon(poly, fill=col)
+            a0, a1 = P(max(part["x0"], x0), 0)[0], P(min(part["x1"], x1), 0)[0]
+            cut = Image.new("L", (W, H), 0)
+            ImageDraw.Draw(cut).rectangle([a0, 0, a1, H], fill=255)
+            lay.putalpha(Image.composite(lay.getchannel("A"), Image.new("L", (W, H), 0), cut))
+            im.alpha_composite(lay)
+        for ln in pv.get("details") or []:
+            d.line([P(*q) for q in ln], fill=(150, 150, 150, 255), width=max(1, int(0.6 * k)))
+        d.polygon(poly, outline=(150, 150, 150, 255))
+        if sq:                                                  # both sides, as the jotter
+            tx, ty = P(*pv["tip"])
+            hx = writing_hex.lstrip("#")
+            line = []
+            for n in range(121):
+                t = n / 120.0
+                amp = 6.5 * k * min(1.0, t * 3.0)
+                line.append((tx - (t * sq + 1.5) * k, ty + amp * math.sin(t * math.pi * 5.0)))
+            d.line(line, fill=tuple(int(hx[i:i + 2], 16) for i in (0, 2, 4)) + (255,),
+                   width=max(2, int(1.3 * k)), joint="curve")
+        boxes = {}
+        for sid in ids:
+            v, sl = pv["slots"][sid], slots[sid]
+            # The jig's box is the stated height; the art is print_trim_pt
+            # shorter (products._trim_pen_heights), centred in it.
+            bx0, by0 = P(v["x"], v["y"] + float(sl.get("print_trim_pt") or 0) / 2.0)
+            boxes[sid] = [bx0, by0, bx0 + sl["w_pt"] * k, by0 + sl["h_pt"] * k]
+        if side == 2:                                           # rolled over: clip underneath
+            im = im.transpose(Image.FLIP_TOP_BOTTOM)
+            boxes = {i: [b[0], H - b[3], b[2], H - b[1]] for i, b in boxes.items()}
+        if lh:                                                  # tip on the right
+            im = im.transpose(Image.FLIP_LEFT_RIGHT)
+            boxes = {i: [W - b[2], b[1], W - b[0], b[3]] for i, b in boxes.items()}
+        for sid in ids:
+            e = by_id.get(sid) or {}
+            art = _render_art_piece(e, k, work) if e.get("file") else None
+            if art is None:
+                continue
+            if cmap:
+                art = _pen_art_mapped(art, cmap)
+            elif ok_hex(ink_hex):
+                art = _pen_art_one_ink(art, ink_hex)
+            b = boxes[sid]
+            bw, bh = int(round(b[2] - b[0])), int(round(b[3] - b[1]))
+            box = Image.new("RGBA", (max(1, bw), max(1, bh)), (0, 0, 0, 0))
+            cx = int((e["x"] + e["w"] / 2) * k - art.width / 2)
+            cy = int((e["y"] + e["h"] / 2) * k - art.height / 2)
+            box.paste(art, (cx, cy), art)
+            im.alpha_composite(box, (int(round(b[0])), int(round(b[1]))))
+        label = "Side 1" if side == 1 else "Side 2"
+        if len(sides) == 1 and len(ids) == 1:
+            label = slots[ids[0]].get("label") or label
+        out.append((label, im))
+    return out
 
 
 def _pen_squiggle(im, outline, P, k, hex_, flip):
@@ -3537,7 +3973,7 @@ def _flat_2x2(panels, out_png, size=1600, print_pdf=None):
 
 
 def _flat_from_print(print_pdf, product, entries, body_hex, out_png, dpi=110, two_by_two=False, hand="RH",
-                     writing_hex=None, show_all=False):
+                     writing_hex=None, show_all=False, part_hex=None):
     """
     The proof's flat lay: each imprint location that carries art, upright,
     side by side and at true relative size, labelled underneath.
@@ -3571,7 +4007,22 @@ def _flat_from_print(print_pdf, product, entries, body_hex, out_png, dpi=110, tw
         page = None
         panels = []
         sewn = {o.get("slot") for o in (product.get("sewn_on") or [])}
+        # A pen with a pen_view (0844, 0845, 0846): drawn as the jotter is, the
+        # pen in RH / LH lay with its art upright, a panel per side.
+        pv_done = set()
+        pv = None if pen_outline else _pen_view(product)
+        if pv:
+            try:
+                for lab_, im_ in _pen_view_panels(product, pv, by_id, body_hex, k, work, hand=hand,
+                                                  writing_hex=writing_hex, part_hex=part_hex, show_all=show_all):
+                    panels.append((lab_, im_, "pen"))
+                pv_done = set(pv.get("slots") or {})
+            except Exception as ex:
+                import traceback; traceback.print_exc()
+                print(f"⚠️ pen view failed: {ex}")
         for sl in product.get("art_slots") or []:
+            if sl["id"] in pv_done:
+                continue
             if used and sl.get("label") not in used:
                 continue
             vec_meta = None
@@ -3580,7 +4031,8 @@ def _flat_from_print(print_pdf, product, entries, body_hex, out_png, dpi=110, tw
             im = None
             if pen_outline and ((e and e.get("file")) or show_all):
                 try:
-                    im = _pen_panel(e or {}, sl, pen_outline, body_hex, k, work, hand=hand, writing_hex=writing_hex)
+                    im = _pen_panel(e or {}, sl, pen_outline, body_hex, k, work, hand=hand, writing_hex=writing_hex,
+                                    rolled=sl["id"] == "side2" and _side2_rolled(product))
                     if im is not None:
                         panels.append((sl.get("label") or sl["id"], im, "pen"))
                         continue
@@ -3653,7 +4105,10 @@ def _flat_from_print(print_pdf, product, entries, body_hex, out_png, dpi=110, tw
             return None
         if two_by_two:
             return _flat_2x2(panels, out_png, print_pdf=print_pdf)
-        if show_all and len(panels) > 1 and all(p[1].width > 2.5 * p[1].height for p in panels):
+        # Pens always (production lays Side 1 over Side 2, 2026-10-15); other
+        # long, thin locations on the 2X2.
+        pens = all(p[2] == "pen" for p in panels)
+        if (show_all or pens) and len(panels) > 1 and all(p[1].width > 2.5 * p[1].height for p in panels):
             # Long, thin locations (a pen barrel): one above the other, so the
             # 2X2's square isn't mostly empty.
             Wv = max(p[1].width for p in panels)
@@ -3724,6 +4179,8 @@ def _generic_proof(print_pdf, prefix, serve_dir, pmeta, job, order, artist, mock
     two = is4 and any(sl.get("shape") == "circle" for sl in (product.get("art_slots") or []))
     hand = pmeta.get("pen_hand") or (job or {}).get("pen_hand") or "RH"
     variants = [v for v in (pmeta.get("pen_variants") or []) if isinstance(v, dict)]
+    # Each part's colour (the 3-way pen: Barrel, Clip, Button), for the pen drawing.
+    part_hex = {str(c.get("label") or "").lower(): c.get("hex") for c in comps if c.get("hex")}
     flat = None
     if product.get("mimaki_jig") and (len(variants) > 1 or any(v.get("ink") or v.get("map") for v in variants)):
         try:
@@ -3735,7 +4192,7 @@ def _generic_proof(print_pdf, prefix, serve_dir, pmeta, job, order, artist, mock
         flat = _flat_from_print(print_pdf, product, sizes, (comps[0].get("hex") if comps else None),
                                 Path(serve_dir) / (f"{prefix}-2X2.png" if two else f"{prefix}-flat.png"),
                                 two_by_two=two, hand=hand,
-                                writing_hex=(pmeta.get("pen_writing") or {}).get("hex"))
+                                writing_hex=(pmeta.get("pen_writing") or {}).get("hex"), part_hex=part_hex)
     extra = dict(_proof_extra(pid), **_proof_order_fields(order), **_artist_fields(artist))
     inks = press_layout._imprint_inks(pmeta.get("inks") or [])
     imprint = pmeta.get("imprint") or {}
@@ -3752,7 +4209,7 @@ def _generic_proof(print_pdf, prefix, serve_dir, pmeta, job, order, artist, mock
         "customer": extra.get("customer"),
         "artist": extra.get("artist"),
         "artist_note": extra.get("artist_note"),
-        "info": {"1side": "1 Side", "2same": "2 Sides Same", "2diff": "2 Sides Different"}.get(pmeta.get("sides")),
+        "info": press_layout.info_label(pmeta.get("sides"), {x.get("id") for x in sizes if x.get("id")}),
         "revision": extra.get("revision"),
         "quantity": extra.get("quantity"),
         "item_color": comps[0] if comps else {},
@@ -3792,7 +4249,7 @@ def _generic_proof(print_pdf, prefix, serve_dir, pmeta, job, order, artist, mock
                                        any(sl.get("shape") == "circle" for sl in (product.get("art_slots") or []))),
                                    hand=hand, writing_hex=((first.get("writing") or {}).get("hex") if first
                                                           else (pmeta.get("pen_writing") or {}).get("hex")),
-                                   show_all=True)
+                                   show_all=True, part_hex=None if first else part_hex)
     except Exception as e:
         import traceback; traceback.print_exc()
         two_png = None
@@ -3806,7 +4263,6 @@ def _generic_proof(print_pdf, prefix, serve_dir, pmeta, job, order, artist, mock
             shutil.move(str(flat), str(dest))
         return out, dest
     return out, None
-
 
 
 def _hdr(text):
@@ -3830,6 +4286,8 @@ def _hdr(text):
 # print PDF are not shipped.
 
 _REV_SUFFIX = re.compile(r"-R(\d{1,2})$", re.I)
+
+TOOL_2X2_PREFIX = ""
 
 
 def _export_nso_rev(meta, prefix):
@@ -3875,11 +4333,19 @@ def _pen_side_modes(job):
             h = str(f)
         return (h, round(float(e.get("x") or 0), 1), round(float(e.get("y") or 0), 1),
                 round(float(e.get("w") or 0), 1), round(float(e.get("h") or 0), 1))
-    ids = [i for i in ("side1", "side2") if i in ent]
+    # A side is every imprint whose id ends in side1 / side2: the jotter's
+    # "side1", the 3-way pen's "barrel_side1" + "clip_side1".
+    by_side = {}
+    for i, e in ent.items():
+        m = re.search(r"(side[12])$", str(i))
+        if m and e.get("file"):
+            part = str(i)[:m.start()]
+            by_side.setdefault(m.group(1), []).append((part, sig(e) + (str(e.get("clip")), round(float(e.get("rot") or 0), 3))))
+    ids = sorted(by_side)
     if len(ids) == 1:
         return {ids[0]: "ONLY"}
     if len(ids) == 2:
-        m = "SAME" if sig(ent["side1"]) == sig(ent["side2"]) else "DIFFERENT"
+        m = "SAME" if sorted(by_side["side1"]) == sorted(by_side["side2"]) else "DIFFERENT"
         return {"side1": m, "side2": m}
     return {}
 
@@ -3958,7 +4424,7 @@ def _deliverables(files, meta, prefix, serve_dir, press_ok):
                 _fit_2x2(f)          # always the gold-standard size, even without the header
             except Exception as e:
                 print(f"⚠️ 2X2 not resized: {e}")
-            new = serve_dir / f"{stem}-2X2{rev}.png"
+            new = serve_dir / f"{TOOL_2X2_PREFIX}{stem}-2X2{rev}.png"
             shutil.copy2(str(f), str(new))
             out.append({"name": new.name, "folder": None, "path": new.name,
                         "bytes": new.stat().st_size, "kind": "2x2"})
@@ -3979,6 +4445,13 @@ def _deliverables(files, meta, prefix, serve_dir, press_ok):
             what = re.sub(r"[^A-Za-z0-9 ]+", " ", what).strip().upper()
             what = re.sub(r"\s+", " ", what)
             add(f, f"{stem}-{_safe_prefix(machine.upper()) or 'PRESS'}" + (f"-{what}" if what else "") + f"{pvt}.pdf", "press")
+        elif n.startswith(f"{prefix}-Decal-") and n.endswith(".pdf"):
+            # Decal plates and their proof: NSO CB-9613-Decal-1-White.pdf ...
+            add(f, f"{stem}-{n[len(prefix) + 1:-4]}{pvt}.pdf", "press")
+        elif n in (f"{prefix}-Film.pdf", f"{prefix}-Xitron.pdf"):
+            # A glass's two print files (film printer / Xitron direct to
+            # screen): NSO CB-9613-Film.pdf, NSO CB-9613-Xitron.pdf.
+            add(f, f"{stem}-{n[len(prefix) + 1:-4]}{pvt}.pdf", "press")
         elif n == f"{prefix}-print.pdf":
             if press_ok:                  # the press sheets are the production files
                 continue
@@ -3991,10 +4464,13 @@ def _deliverables(files, meta, prefix, serve_dir, press_ok):
             side, _, ink = n[len(prefix) + 1:-4].partition("--")     # SIDE1 / SIDE2 [, INK]
             hand = "LH" if str(meta.get("pen_hand") or "").upper() == "LH" else "RH"
             mode = (meta.get("_pen_sides") or {}).get(side.lower(), "")
-            parts = [stem, "MIMAKI"] + ([] if hand == "LH" else [hand]) + \
-                    [f"SIDE {side[-1]}" if side[-1:].isdigit() else side]
-            if mode:
-                parts.append(mode)
+            parts = [stem, "MIMAKI"] + ([] if hand == "LH" else [hand])
+            if mode == "SAME":
+                parts.append("2 SIDES SAME")      # one file for both sides
+            else:
+                parts.append(f"SIDE {side[-1]}" if side[-1:].isdigit() else side)
+                if mode:
+                    parts.append(mode)
             if ink:
                 parts.append(ink)
             add(f, "-".join(parts) + ext, "press")
@@ -4081,6 +4557,21 @@ def proof_inks_named(proof):
 TWO_BY_TWO_PX = 800
 TWO_BY_TWO_IN = 2.0
 TWO_BY_TWO_DPI = TWO_BY_TWO_PX / TWO_BY_TWO_IN
+# Thomas, 2026-10-20: the 2X2 is now 700 x 700 px at 100 ppi (7 in when opened), saved as a
+# 256-colour PNG - about half the bytes of the full-colour file, and the same to the eye on
+# a flat drawing.
+TWO_BY_TWO_PX = 700
+TWO_BY_TWO_DPI = 100
+TWO_BY_TWO_IN = TWO_BY_TWO_PX / TWO_BY_TWO_DPI
+TWO_BY_TWO_COLORS = 256
+
+
+def _save_2x2(im, png):
+    """Every 2X2 is written here: 256 colours (no dithering, so flat fills stay
+    flat and edges stay clean), optimised, at TWO_BY_TWO_DPI."""
+    im = im.convert("RGB").quantize(colors=TWO_BY_TWO_COLORS, method=Image.Quantize.MEDIANCUT,
+                                    dither=Image.Dither.NONE)
+    im.save(png, "PNG", optimize=True, dpi=(TWO_BY_TWO_DPI, TWO_BY_TWO_DPI))
 
 
 def _fit_2x2(png):
@@ -4093,7 +4584,7 @@ def _fit_2x2(png):
         lay = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
         im = Image.new("RGB", (N, N), (255, 255, 255))
         im.paste(lay, ((N - lay.width) // 2, (N - lay.height) // 2))
-    im.save(png, dpi=(TWO_BY_TWO_DPI, TWO_BY_TWO_DPI))
+    _save_2x2(im, png)
 
 
 def _plain_2x2(lay, png):
@@ -4112,7 +4603,7 @@ def _plain_2x2(lay, png):
     lay = lay.resize((max(1, round(lay.width * k)), max(1, round(lay.height * k))), Image.LANCZOS)
     out = Image.new("RGB", (N, N), (255, 255, 255))
     out.paste(lay, ((N - lay.width) // 2, (N - lay.height) // 2))
-    out.save(png, dpi=(TWO_BY_TWO_DPI, TWO_BY_TWO_DPI))
+    _save_2x2(out, png)
 
 
 def _annotate_2x2(png, meta):
@@ -4168,10 +4659,13 @@ def export_combine():
     srcs = []
     for i in ids:
         d = (root / i).resolve()
-        if d.parent != root or not (d / "_files.json").is_file() or not (d / "_variant.json").is_file():
+        if d.parent != root or not (d / "_files.json").is_file() or not (d / "_variant.json").is_file() \
+                or not _mine(d):
             return jsonify({"error": "A variant's export has expired: export again."}), 404
         srcs.append(d)
     serve_dir = HERE / "_serve" / _unique_id("export")
+    serve_dir.mkdir(parents=True, exist_ok=True)
+    _claim(serve_dir)
     serve_dir.mkdir(parents=True, exist_ok=True)
     try:
         stem, rev = _export_stem(meta, prefix)
@@ -4266,16 +4760,15 @@ def export_combine():
             except (TypeError, ValueError):
                 return 10 ** 6
         shown = min(variants, key=_ln) if variants else {}
-        new = serve_dir / f"{shown.get('stem') or stem}-2X2{shown.get('rev', rev)}.png"
+        new = serve_dir / f"{TOOL_2X2_PREFIX}{shown.get('stem') or stem}-2X2{shown.get('rev', rev)}.png"
         shutil.copy2(str(two), str(new))
         out.append({"name": new.name, "folder": None, "path": new.name, "bytes": new.stat().st_size, "kind": "2x2"})
         hidden.append({"name": two.name, "folder": None, "path": two.name,
                        "bytes": two.stat().st_size, "kind": "2x2", "hidden": True})
-        ink_field = None
-        order = {"2x2": 0, "digitalproof": 1, "virtualproof": 2, "press": 3}
-        out.sort(key=lambda e: (order.get(e["kind"], 9), e["name"]))
         if SANDBOX:
             out, hidden = _sandbox_trim(out + hidden, serve_dir, keep_hidden=()), []
+        order = {"2x2": 0, "digitalproof": 1, "virtualproof": 2, "press": 3}
+        out.sort(key=lambda e: (order.get(e["kind"], 9), e["name"]))
         (serve_dir / "_files.json").write_text(json.dumps(out + hidden))
         for d in srcs:
             shutil.rmtree(d, ignore_errors=True)
@@ -4323,6 +4816,8 @@ def export_bundle():
     _sweep_uploads()
     serve_dir = HERE / "_serve" / _unique_id("export")
     serve_dir.mkdir(parents=True, exist_ok=True)
+    _claim(serve_dir)
+    serve_dir.mkdir(parents=True, exist_ok=True)
     files = []
     notes = []
     info_notes = []      # worth saying, but nothing is missing
@@ -4359,7 +4854,7 @@ def export_bundle():
             files.append(path)
 
         # ── The order ───────────────────────────────────────────────────────
-        # Written beside the artwork as its own file.
+        # Written beside the artwork as its own file (the sandbox trims it).
         order = meta.get("order")
         if isinstance(order, dict) and order:
             order_path = serve_dir / f"{prefix}-order.json"
@@ -4485,6 +4980,10 @@ def export_bundle():
                     try:
                         sides = {e.get("id") for e in ((job or {}).get("art_sizes") or []) if e.get("id")}
                         meta["_pen_sides"] = _pen_side_modes(job)
+                        # Both sides the same art: one file, "2 SIDES SAME", printed on
+                        # each side in turn (every side takes the same turn in the jig).
+                        if meta["_pen_sides"].get("side1") == "SAME":
+                            sides = {i for i in sides if not str(i).endswith("side2")}
                         jig_files, jig_notes = _mimaki_jig_files(dest, _prod, sides, prefix, serve_dir,
                                                                  hand=meta.get("pen_hand") or "RH",
                                                                  variants=meta.get("pen_variants"))
@@ -4879,6 +5378,17 @@ def _compose_board(body):
                 c.restoreState(); drawn += 1
             for it in items:
                 kind = it.get("type")
+                if kind == "text" and not str(it.get("text") or "").strip():
+                    continue
+                # Turned pieces: about their own centre (x, y), clockwise as
+                # the board shows them (y runs down there, up here).
+                try:
+                    rot = float(it.get("rot") or 0) % 360.0
+                except (TypeError, ValueError):
+                    rot = 0.0
+                if rot:
+                    ax, ay = float(it.get("x") or 0), H - float(it.get("y") or 0)
+                    c.saveState(); c.translate(ax, ay); c.rotate(-rot); c.translate(-ax, -ay)
                 if kind == "text":
                     if not str(it.get("text") or "").strip():
                         continue
@@ -4913,6 +5423,8 @@ def _compose_board(body):
                     c.scale(s_, s_); c.translate(-art.x0, -art.y0)
                     c.doForm(makerl(c, pagexobj(PdfReader(str(pdf)).pages[0])))
                     c.restoreState(); drawn += 1
+                if rot:
+                    c.restoreState()
             if not drawn:
                 return jsonify({"error": "The design is empty."}), 400
             c.showPage(); c.save()
@@ -4961,6 +5473,18 @@ def _pdf_has_images(path):
         return False
 
 
+def _exact_scale(p, content_w):
+    """The scale that prints the art exactly as wide as the configurator says
+    (placement "w_pt": the W in its size box, in points), measured on the
+    art's own ink - or None, to fit as before. Fitting from the preview's
+    pixels drifted 1-2% on thin type (1.91" typed, 1.93" printed)."""
+    try:
+        w = float((p or {}).get("w_pt") or 0)
+    except (TypeError, ValueError):
+        return None
+    return w / content_w if w > 0 and content_w and content_w > 0 else None
+
+
 def _fill_spot_name(body):
     """The Pantone a 4CP solid background is: the PMS picked or matched for
     it, else the one a stock colour names ("Red PMS 200" -> PANTONE 200 C)."""
@@ -4974,6 +5498,9 @@ def _fill_spot_name(body):
                 nm += " C"
     if not nm:
         return None
+    import numo_swatches
+    if numo_swatches.is_numo(nm):
+        return numo_swatches.name_of(nm)          # Numo's own swatch, as the Fiery names it
     return nm if nm.upper().startswith("PANTONE") else "PANTONE " + nm
 
 
@@ -4989,7 +5516,8 @@ def _spot_rect(c, x, y, w, h, name, rgb, work_dir):
     if not path.exists():
         pdf = pikepdf.new()
         pg = pdf.add_blank_page(page_size=(w, h))
-        sep = pdf.make_indirect(pikepdf.Array([
+        import numo_swatches
+        sep = numo_swatches.separation(pdf, name) or pdf.make_indirect(pikepdf.Array([
             pikepdf.Name.Separation, pikepdf.Name("/" + name), pikepdf.Name.DeviceRGB,
             pikepdf.Dictionary(FunctionType=2, Domain=[0, 1], C0=[1, 1, 1],
                                C1=[round(v, 4) for v in rgb], N=1)]))
@@ -5003,15 +5531,23 @@ def _spot_rect(c, x, y, w, h, name, rgb, work_dir):
     c.restoreState()
 
 
-def _recolor_art(art_path, inks, bg_hex=None, full_color=False):
+def _recolor_art(art_path, inks, bg_hex=None, full_color=False, white_mode=None):
     """
     The art with each color replaced by its assigned Pantone, as a PDF of named
     spots. `inks` is the configurator's list for the location:
     [{hex, sources, pms, pms_hex, hidden}].
+
+    white_mode: what the art's own white does where it sits in or on coloured
+    art (white letters in a black diamond), as the artist chose when the art
+    came in: "cut" (the default, as the proof shows it) leaves the item - or
+    on 4CP the background - showing through (knockmask); "ink" prints it
+    white (White ink on pens and totes).
     """
     import hashlib, onecolor, press_layout, vectorize
     src = Path(art_path)
-    key = hashlib.sha1(json.dumps([str(src), inks, bg_hex, full_color], sort_keys=True).encode()).hexdigest()[:10]
+    white_mode = "ink" if white_mode == "ink" else "cut"
+    key = hashlib.sha1(json.dumps([str(src), inks, bg_hex, full_color, white_mode, "ko2"],
+                                  sort_keys=True).encode()).hexdigest()[:10]
     out = src.with_name(f"{src.stem}.pms-{key}.pdf")
     if out.exists():
         return str(out)
@@ -5023,8 +5559,15 @@ def _recolor_art(art_path, inks, bg_hex=None, full_color=False):
         h = str(h or "").lstrip("#")
         return len(h) == 6 and min(int(h[k:k + 2], 16) for k in (0, 2, 4)) > 235
     trace_inks = inks
+    # Numo's own swatches (Numo Spot White RGB, Marshmallow...) stay named
+    # spots: the Fiery prints them as tuned.
+    import numo_swatches
+    inks = [dict(i, pms=numo_swatches.name_of(i.get("pms"))) if numo_swatches.is_numo(i.get("pms")) else i
+            for i in inks]
     inks = [dict(i, paint_white=True) if not i.get("hidden") and _white(i.get("pms_hex") or i.get("hex"))
-            else i for i in inks]
+            and not numo_swatches.is_numo(i.get("pms")) else i for i in inks]
+    # A color picked as an exact hex (4CP): painted in that RGB, no Pantone spot.
+    inks = [dict(i, paint_rgb=True) if i.get("rgb") and not i.get("paint_white") else i for i in inks]
     overprint = False
     if vectorize.is_raster(str(src)):
         # Transparent images: white that is still opaque is design, not
@@ -5043,9 +5586,16 @@ def _recolor_art(art_path, inks, bg_hex=None, full_color=False):
     # alternate is the Pantone's screen colour in RGB — what the colour picker
     # shows — so the proof and any viewer show exactly that, and the Fiery
     # matches the Pantone by name. Pens and totes keep CMYK alternates.
+    import whitespot
     onecolor.separate(vec, inks, str(out), mode="press",
                       overprint=overprint, knockout_white=False,
-                      alternate="rgb" if full_color else "cmyk")
+                      alternate="rgb" if full_color else "cmyk",
+                      unclaimed_white=None if white_mode == "ink" else whitespot.KO_MARK)
+    # 4CP: the knockouts show the background under the art, as on the proof
+    # (pens and totes: the Mimaki step leaves them unprinted, whitespot).
+    if full_color and white_mode != "ink":
+        import knockmask
+        knockmask.apply(out, whitespot.KO_MARK)
     return str(out)
 
 
@@ -5099,19 +5649,12 @@ def _vectorize_4cp(art_path):
 # ---------------------------------------------------------------------------
 # Fiery notches for 4CP print files
 # ---------------------------------------------------------------------------
-# The Fiery templates carry the cut notches in a spot named "Notches". The
-# notches have to stand out against whatever is printed under them: black on a
-# light design, white on a dark one, and a vivid colour on mid tones or busy
-# textures. The design is rendered, the pixels under every notch are measured,
-# and the candidate with the best worst-case contrast wins. The spot keeps its
+# The Fiery templates carry the cut notches in a spot named "Notches". They
+# and a 2 pt border round the whole artboard go on in that spot, coloured a
+# tone of the art under them (_notch_tone): darker on a light design, lighter
+# on a dark one. The operator sees them; one that bleeds into the art reads
+# as part of the design, not as a black or neon line. The spot keeps its
 # name; only its colour changes.
-_NOTCH_CANDIDATES = [            # name, sRGB, CMYK
-    ("black",   (0, 0, 0),       [0, 0, 0, 1]),
-    ("white",   (255, 255, 255), [0, 0, 0, 0]),
-    ("yellow",  (255, 237, 0),   [0, 0, 1, 0]),
-    ("magenta", (236, 0, 140),   [0, 1, 0, 0]),
-    ("cyan",    (0, 174, 239),   [1, 0, 0, 0]),
-]
 
 
 def _rel_lum(rgb):
@@ -5121,7 +5664,27 @@ def _rel_lum(rgb):
     return 0.2126 * c[..., 0] + 0.7152 * c[..., 1] + 0.0722 * c[..., 2]
 
 
-def _apply_fiery_notches(pdf_path, template_path, dpi=36):
+def _notch_tone(px):
+    """A tone of the art under the marks: the same colour, darker on a light
+    design and lighter on a dark one - visible to the operator, but if a mark
+    bleeds into the art it reads as part of it, not as a black or neon line."""
+    import numpy as np
+    px = np.asarray(px, dtype=float).reshape(-1, 3)
+    if not len(px):
+        px = np.array([[255.0, 255.0, 255.0]])
+    base = np.median(px, axis=0)
+    L = float(_rel_lum(base))
+    if L > 0.18:
+        t = base * (0.68 if L > 0.5 else 0.6)              # darker shade of it
+    else:
+        t = base + (255 - base) * 0.38                      # lighter tint of it
+    return tuple(int(round(max(0, min(255, v)))) for v in t), L
+
+
+def _apply_fiery_notches(pdf_path, template_path, dpi=36, border_pt=2.0):
+    """The template's notches, plus a border round the whole artboard
+    (border_pt wide, inside the edge), both in the "Notches" spot coloured a
+    tone of the art under them (_notch_tone)."""
     import numpy as np, pikepdf, subprocess, tempfile
     from PIL import Image
     from pdfrw import PdfReader, PdfWriter, PageMerge
@@ -5134,19 +5697,30 @@ def _apply_fiery_notches(pdf_path, template_path, dpi=36):
         for _, x in (page.Resources.get("/XObject") or {}).items():
             if x.get("/Subtype") == "/Form":
                 x.write(b"")
-        cs = next((v for v in (page.Resources.get("/ColorSpace") or {}).values()
-                   if isinstance(v, pikepdf.Array) and str(v[0]) == "/Separation"
-                   and str(v[1]) == "/Notches"), None)
+        key, cs = next(((k, v) for k, v in (page.Resources.get("/ColorSpace") or {}).items()
+                        if isinstance(v, pikepdf.Array) and str(v[0]) == "/Separation"
+                        and str(v[1]) == "/Notches"), (None, None))
         if cs is None:
             return "template has no Notches spot"
 
-        def set_cmyk(cmyk):
-            cs[2] = pikepdf.Name.DeviceCMYK
-            cs[3] = pikepdf.Dictionary(FunctionType=2, Domain=[0, 1], N=1,
-                                       C0=[0, 0, 0, 0], C1=cmyk)
+        # The border: a stroke round the artboard, in the same spot.
+        if border_pt:
+            mb = [float(v) for v in page.MediaBox]
+            h = border_pt / 2.0
+            ring = (f"\nq {key} CS 1 SCN {border_pt:.3f} w 0 J 0 j "
+                    f"{mb[0] + h:.3f} {mb[1] + h:.3f} {mb[2] - mb[0] - border_pt:.3f} "
+                    f"{mb[3] - mb[1] - border_pt:.3f} re S Q\n").encode()
+            old = page.obj.Contents
+            parts = list(old) if isinstance(old, pikepdf.Array) else [old]
+            page.obj.Contents = pikepdf.Array(parts + [tpl.make_stream(ring)])
 
-        # Where the notches are: render them black on white.
-        set_cmyk([0, 0, 0, 1])
+        def set_rgb(rgb):
+            cs[2] = pikepdf.Name.DeviceRGB
+            cs[3] = pikepdf.Dictionary(FunctionType=2, Domain=[0, 1], N=1,
+                                       C0=[1, 1, 1], C1=[round(v / 255.0, 4) for v in rgb])
+
+        # Where the marks are: render them black on white.
+        set_rgb((0, 0, 0))
         mask_pdf = work / "mask.pdf"; tpl.save(str(mask_pdf))
         subprocess.run(["pdftoppm", "-png", "-r", str(dpi), "-singlefile", str(mask_pdf),
                         str(work / "mask")], check=True)
@@ -5157,32 +5731,22 @@ def _apply_fiery_notches(pdf_path, template_path, dpi=36):
         if art.size != (m.shape[1], m.shape[0]):
             art = art.resize((m.shape[1], m.shape[0]))
         a = np.asarray(art)
-        # Under and just around each notch.
+        # Under and just around each mark.
         grow = m.copy()
         for _ in range(3):
             g = grow.copy()
             g[1:, :] |= grow[:-1, :]; g[:-1, :] |= grow[1:, :]
             g[:, 1:] |= grow[:, :-1]; g[:, :-1] |= grow[:, 1:]
             grow = g
-        px = a[grow]
-        if not len(px):
-            px = np.array([[255, 255, 255]])
-        L = _rel_lum(px)
-        best, best_score = None, -1
-        for name, rgb, cmyk in _NOTCH_CANDIDATES:
-            lc = float(_rel_lum(np.array(rgb)))
-            ratio = (np.maximum(L, lc) + 0.05) / (np.minimum(L, lc) + 0.05)
-            score = float(np.percentile(ratio, 10))      # worst-case, not average
-            if score > best_score + 0.25:                 # prefer earlier (black/white) on near-ties
-                best, best_score = (name, cmyk), score
-        set_cmyk(best[1])
+        tone, L = _notch_tone(a[grow])
+        set_rgb(tone)
         notch_pdf = work / "notches.pdf"; tpl.save(str(notch_pdf))
 
         base = PdfReader(str(pdf_path))
         over = PdfReader(str(notch_pdf)).pages[0]
         PageMerge(base.pages[0]).add(over).render()
         PdfWriter(str(pdf_path), trailer=base).write()
-        return f"{best[0]} (contrast {best_score:.1f}:1)"
+        return "tone #%02X%02X%02X of the art under them" % tone + (f", {border_pt:g} pt border" if border_pt else "")
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
@@ -5428,6 +5992,7 @@ def restore_from_proof():
     token = uuid.uuid4().hex[:16]
     rdir = HERE / "uploads" / "_restore" / token
     rdir.mkdir(parents=True, exist_ok=True)
+    _claim(rdir)
     src = rdir / "proof.pdf"
     up.save(str(src))
     try:
@@ -5568,12 +6133,13 @@ def art_pick_place():
     return jsonify({"files": out})
 
 
+# ---------------------------------------------------------------------------
 @app.route("/api/restore/<token>")
 def restore_bundle(token):
     if not re.match(r"^[0-9a-f]{16}$", token):
         return jsonify({"error": "Unknown."}), 404
     f = HERE / "uploads" / "_restore" / token / "bundle.json"
-    if not f.exists():
+    if not f.exists() or not _mine(f.parent):
         return jsonify({"error": "That revision link has expired — drop the proof in again."}), 404
     return jsonify(json.loads(f.read_text()))
 
@@ -5583,7 +6149,7 @@ def restore_file(token, key, kind):
     if not re.match(r"^[0-9a-f]{16}$", token) or kind not in ("orig", "one_color"):
         return jsonify({"error": "Unknown."}), 404
     f = HERE / "uploads" / "_restore" / token / "bundle.json"
-    if not f.exists():
+    if not f.exists() or not _mine(f.parent):
         return jsonify({"error": "Expired."}), 404
     job = json.loads(f.read_text())["job"]
     rec = next((r for r in job.get("art") or [] if isinstance(r, dict) and r.get("key") == key), None)
@@ -5626,7 +6192,7 @@ def export_files(export_id):
     if not _EXPORT_ID.match(export_id):
         return jsonify({"error": "Unknown export."}), 404
     manifest = HERE / "_serve" / export_id / "_files.json"
-    if not manifest.exists():
+    if not manifest.exists() or not _mine(manifest.parent):
         return jsonify({"error": "These files have expired. Export again."}), 404
     return jsonify({"files": json.loads(manifest.read_text())})
 
@@ -5637,7 +6203,7 @@ def export_file(export_id, rel):
         return jsonify({"error": "Unknown export."}), 404
     root = (HERE / "_serve" / export_id).resolve()
     manifest = root / "_files.json"
-    if not manifest.exists():
+    if not manifest.exists() or not _mine(root):
         return jsonify({"error": "These files have expired. Export again."}), 404
     allowed = {e["path"] for e in json.loads(manifest.read_text())
                if not (SANDBOX and (e.get("hidden") or e.get("kind") not in SANDBOX_KINDS))}
@@ -5647,38 +6213,6 @@ def export_file(export_id, rel):
     if root not in f.parents or not f.exists():
         return jsonify({"error": "Unknown file."}), 404
     return send_file(str(f), as_attachment=True, download_name=f.name)
-
-
-def _ink_coverage(slots):
-    """ink_coverage.job() for {slot: {path, w_in, inks}} from the browser,
-    reading only files in uploads/."""
-    import ink_coverage
-    clean = {}
-    for sid, v in (slots or {}).items():
-        if not isinstance(v, dict):
-            continue
-        p = _in_uploads(v.get("path"))
-        try:
-            w = float(v.get("w_in")) if v.get("w_in") else None
-        except (TypeError, ValueError):
-            w = None
-        inks = [i for i in (v.get("inks") or []) if isinstance(i, dict)] or None
-        one = str(v.get("one_ink"))[:60] if v.get("one_ink") else None
-        clean[_safe_prefix(str(sid))[:24]] = {"path": str(p) if p else None, "w_in": w, "inks": inks, "one_ink": one}
-    return ink_coverage.job(clean)
-
-
-@app.route("/api/ink-coverage", methods=["POST"])
-def ink_coverage_route():
-    """Square inches and grams of ink per imprint and for the item, as the
-    art department's InkCoverage.jsx works them out (ink_coverage.py)."""
-    if SANDBOX:
-        return jsonify({"error": "Not available in the sandbox."}), 404
-    body = request.get_json(silent=True) or {}
-    try:
-        return jsonify(_ink_coverage(body.get("slots")))
-    except Exception as e:
-        return jsonify({"error": str(e)[:200]}), 500
 
 
 _FAVICON_PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFiklEQVR42r1XXWwcVxX+zrkz47XHsV1D3CRIKBQVRQ4IFSGVB/oEFVJBqC3sSjxVKlIsNf7ZZIkqHmB2xENonbF3dwhqLEEq4IUZHhDwhCBSJaBF6SNeKTxWaQxu3eZnnWxm7r2Hh91tF2OT3ThwpJVWc6/u/e53vu/cc4EhIggC7v0XEapUKn7/t2KxqDBk0JBzpVwuPwF2nrPGfp4gEwK6SUyXtdU/PV+vvx4EAYdhaPcLgIIg6J3GNptNSpLElsunGsr15pkYWuew1oKZ4boujDG4m2U/OB/Xv18sFlWapuaBMjC/uNQY98cXWq2WASCe5znMDK01tNYZEamxsTG1fWd76Uf1emNQELQbzZVKZcYYeR6gDSL7B63xKW/EvZRlWU5EDjOTMfoSMb8lVh5zXfezeZ4bZoaIbLsOPxpF0aaIEBHJfwPg7BAZhWEoWZZ9rDDqnwWAdrt9HZA7WmsBwMws1thvx436xZ4Yl05VXnQc52ye53mhUJhoZ+2nALxarVYVAD0wgF4opSjPNYzRORFNEfOUMcZ4nqfyXL8ZN1YvBkHAGxsbiohyAD9cWCjPMfNRAMKiHgPw6iCp5V0/Mres2CtKKZeIYLS2RAQiggAbQRBws9mktbU13RUsg3CLiCEiJGJnAKDZbMpQAHr2WVlZ+ftDkwc+bbT5OoB/OK7LACwAKBK1w2ZSrVYFIP5AUYTCoOLmvQbCsGriuPZba/JnALT3nCtCfcUJIoIe2NnZWbpvAAChWCyqOI7fMMZcUUqp7uLoq3wMIknTlEWERzwvLxQKOQQmSRIVhqGWPoBDAoCkaWo6VsIHlNs+FGmamiiKRkulkhHIrY8enKGHDx3hkZGRrVKpZKIomr6XDfmehWKPBdI0tedqtS+6I37z5eWV5MjhI4/4/rjjOErNPHzoq8srtVe80fH15Wh1scNWoga24SBRLBYZoqYBOToxOXX09nbrd+3b2z+xLLdZqWdHCoU513HQBk8lSaLW19fpwQDoMpKmqUnT9DfLUa2VZVn6ndNLz/fN+n1Ua/yJgJ+LkV+XSiXTf2vuA8CHhzi3Gn/FdVXFaMNisu+JCK2trTnXrl0TAKiUF3/xcrT64qg/9quVWnzeH/V+LB1ByVAa+M+boqNqEnP24MGZJ7U2m9PT01sAMDc3p8Mw1MePHxcRIWb1t8nJiUdFpOZ5nk9EstMVwwGQD1NgGXPv/HPzonKcw1tbWx8nIkmSxL1w4YK7vr7eOanYx9+/fv2SEH/Z9/1bHU3/OwPOsAyIEQMAZ8rlywAuL5+rPUPKWz1x4sTTpVIp602NVuvfLRRGP3G7deNrZ86caXY1IPsWYe8EQRDw+NRHnh4rFKYcx33q2OxnLp9brf+MQNsQ+caYP/6koxTuKG8xSZKTXRfYoevA3qU6FCV8RWv91xs33lu9efPmtD/mRwcOTLyS5/rwdqu12L7b/guIXiuVSma3zfddB06fnl8H8AUAOHly4Uue686M+T5vbm7+eSV6KQYQ77zo7pMBkm7+ZLcu+VQUjbJSB9599x2+9vZVyrO7U0EQON0fD92Q7CI+pk6AhKg/DQCAq1cBgLU2bscsImEY6m5faPcPQCQTkVyshYXNdw5rrS1IWSKg27jQoA3vQClQTM9CzDFr8mPMMt8rxb3xRqORAWgRUacnAA4BkNnZWRm8tt5n9B4iC4vl11zXfSLLclGK74h1ZxuNl96610OFB8uAUBAEHAQB79JgcLdA/NFxHIJIzsw+Uf7Lcrl8uLsC/c8YAEAignK5PCngN5VSnzTGGiJ5zxr9uTiO3xaRPfsKfgAApFqtUr1ev06w37TW3igURpRY8604jq8Wi0W+V1f0QKLn9xdeWHp8fnGxsvM1/X+J/g0H3fxf/ODBZsLLDqgAAAAASUVORK5CYII=")    # the gear n, 32 px, if favicon.ico is missing
@@ -5752,25 +6286,31 @@ def file_preview():
 def export_zip(export_id):
     """
     Everything an export made, as one zip: the 2X2 at the top, then PROOFS/,
-    VIRTUALS/. Hidden entries stay out. ?name= names the zip.
+    VIRTUALS/ and PRESS FILES/. Hidden entries stay out. ?name= names the zip.
     """
     import zipfile
     if not _EXPORT_ID.match(export_id):
         return jsonify({"error": "Unknown export."}), 404
     root = (HERE / "_serve" / export_id).resolve()
     manifest = root / "_files.json"
-    if not manifest.exists():
+    if not manifest.exists() or not _mine(root):
         return jsonify({"error": "These files have expired. Export again."}), 404
     name = re.sub(r"[^A-Za-z0-9 _+.-]+", "_", request.args.get("name") or "").strip(" ._")[:120] or export_id
     # ?customer=1: the customer's copy — the proof and the virtual only, no
     # press files or 2X2 (customer mode in the configurator).
     customer = SANDBOX or request.args.get("customer") == "1"
+    # ?kinds=press,digitalproof,virtualproof,2x2: the files the artist asked for in the
+    # export dialog. Anything else the export made (labels, the art) always comes along.
+    picked = {k for k in (request.args.get("kinds") or "").split(",") if k} if "kinds" in request.args else None
     zp = root / ("_bundle_customer.zip" if customer else "_bundle.zip")
     with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
         for e in json.loads(manifest.read_text()):
             if e.get("hidden"):
                 continue
             if customer and e.get("kind") not in ("digitalproof", "virtualproof"):
+                continue
+            if picked is not None and e.get("kind") in ("press", "digitalproof", "virtualproof", "2x2") \
+                    and e.get("kind") not in picked:
                 continue
             f = (root / str(e.get("path") or "")).resolve()
             if root not in f.parents or not f.is_file():
@@ -5886,14 +6426,14 @@ def match_pantone():
 @app.route("/api/job/<job_id>")
 def job_status(job_id):
     job = get_job(job_id)
-    if not job:
+    if not job or not client_login.owns(job.get("_owner")):
         return jsonify({"error": "Unknown job"}), 404
-    return jsonify(job)
+    return jsonify({k: v for k, v in job.items() if k not in ("_owner", "serve_dir")})
 
 @app.route("/api/production/<job_id>")
 def get_production(job_id):
     job = get_job(job_id)
-    if not job or "serve_dir" not in job:
+    if not job or "serve_dir" not in job or not client_login.owns(job.get("_owner")):
         return jsonify({"error": "Not found"}), 404
     p = Path(job["serve_dir"]) / job["production_filename"]
     if not p.exists():
@@ -5904,7 +6444,7 @@ def get_production(job_id):
 @app.route("/api/cleanup/<job_id>", methods=["POST"])
 def cleanup_job(job_id):
     job = get_job(job_id)
-    if job and "serve_dir" in job:
+    if job and "serve_dir" in job and client_login.owns(job.get("_owner")):
         try: shutil.rmtree(job["serve_dir"], ignore_errors=True)
         except: pass
     return jsonify({"status": "ok"})
@@ -6021,6 +6561,8 @@ def _warn_missing_press_files():
         print(f"⚠️  press_layout did not load: {e}")
         return
     for pid, why in missing.items():
+        if pid not in PRODUCTS:            # not offered on this site
+            continue
         print(f"⚠️  press template for {pid} is registered but {why} — "
               f"exports for it will fall back to a print PDF with no 2X2")
 

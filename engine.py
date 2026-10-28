@@ -11,7 +11,7 @@ import importlib.util as _ilu
 
 THREADS = {
     "Red": "#D50032", "Burgundy": "#7A263A", "Orange": "#FF6A13", "Neon Orange": "#FF4F00",
-    "Yellow": "#FEDD00", "Neon Yellow": "#E1F400", "Neon Green": "#3BD23B", "Class Green": "#006341",
+    "Yellow": "#FDDA25", "Neon Yellow": "#E1F400", "Neon Green": "#3BD23B", "Class Green": "#006341",
     "Black": "#1C1C1C", "Gray": "#A7A8AA", "Neon Pink": "#FF6EC7", "Cerise": "#E10098",
     "Purple": "#6F2C91", "Navy": "#1D252D", "Royal Blue": "#0033A0", "Teal": "#0097C8",
     "Brown": "#5B3A29", "Khaki": "#C3B091", "White": "#F2F2F2"
@@ -23,7 +23,7 @@ THREADS = {
 
 NEOPRENE = {
     "Red": "#AE0D2E", "Garnet": "#8A2432", "Maroon": "#6D1A36", "Texas Orange": "#A6541B", "Brown": "#674230", "Orange": "#FF8200",
-    "Blaze Orange": "#FF5715",
+    "Blaze Orange": "#FF5715",   # 151 C; its own swatch (was Orange's #FF8200)
     "Mustard": "#D4AE40", "Goldenrod": "#F3BF08", "Bright Yellow": "#F2DE2A",
     "Citron": "#D5DD43", "Fluor Green": "#93DC4A", "Lime": "#70BB78", "Emerald Green": "#007549",
     "Deep Green": "#005749", "Evergreen": "#006745", "Jungle Green": "#2D5A27", "Dark Spruce": "#3B5C2A",
@@ -34,7 +34,7 @@ NEOPRENE = {
     "Indigo": "#266B91", "Something Blue": "#8FADBD", "Periwinkle": "#7C83BC", "Lilac Breeze": "#B1A0CB",
     "Dark Purple": "#4A1A6B", "Fuchsia": "#CC0066", "Violet": "#5A1F52", "Orchid": "#CE69B1",
     "Magenta": "#A72067", "Rose": "#C62A9D", "Hot Pink": "#D951A4", "Bubblegum": "#ED7A9E",
-    "Perfect Pink": "#E35B8F", "Neon Coral": "#EF4755", "Coral": "#FF6B6B", "Peach": "#E8BFB8",
+    "Perfect Pink": "#E35B8F", "Pastel Pink": "#F2ACB9", "Neon Coral": "#EF4755", "Coral": "#FF6B6B", "Light Coral": "#FF808B", "Peach": "#E8BFB8",
     "Light Peach": "#ECC3B2",
     "Beige": "#B0AA7E", "Gray": "#9E9E9E", "Ash": "#42464E", "Slate": "#555759", "Black": "#1C1C1C", "White": "#E6E6E6"   # was "Off White"
 }
@@ -222,8 +222,9 @@ THREE_WAY_PEN = {
 # LE PEN (0844) COLOR LIBRARY
 # ---------------------------------------------------------------------------
 # Screen colours from Numo's Le Pen swatches (2026-10-07); the PMS each colour
-# is sold as comes from the Le Pen proof template. The writing ink matches the
-# barrel colour.
+# is sold as comes from the Le Pen proof template, and every one of those is
+# in the colour master. The writing ink
+# matches the barrel colour.
 LE_PEN = {
     "Pink":          "#DB5D9A",
     "Coral Pink":    "#C6929A",
@@ -259,7 +260,7 @@ LE_PEN_PMS = {
 # STICK PEN (0846) COLOR LIBRARY
 # ---------------------------------------------------------------------------
 # The 7 stock colours. Names are working names until Numo confirms them (and
-# their PMS). Hex = the cap as photographed.
+# their PMS, for the colour master). Hex = the cap as photographed.
 # The ink comes with the pen (each colour has its own; it can't be changed).
 STICK_PEN = {
     "Orange": "#F49935",
@@ -277,7 +278,8 @@ STICK_PEN_PMS = {}
 # ---------------------------------------------------------------------------
 # Horizontal Bank Bag 10.5" x 5.5": expanded vinyl (9210-02-EV-1C) and
 # laminated nylon (9210-02-LN-1C). Names from numo's product pages; hex
-# sampled from their swatches (2026-10-07). PMS to come from Numo.
+# sampled from their swatches (2026-10-07). PMS to come from Numo - none of
+# these is tagged for vinyl or nylon in the colour master.
 BANK_BAG_EV = {
     "Lipstick Red": "#BF3438", "Kelly Green": "#347350", "Forest Green": "#1E443A",
     "Marine Blue":  "#3C81A6", "Royal Blue":  "#223D6D", "Navy Blue":    "#0C263E",
@@ -304,16 +306,15 @@ BIAS = {
 }
 
 # ---------------------------------------------------------------------------
-# PRODUCT COLOR LISTS (sandbox)
+# PRODUCT COLOR LISTS (client site)
 # ---------------------------------------------------------------------------
 #
-# The main app shapes these lists from its company colour master. The
-# sandbox has no company data, so it reads the finished lists — colour names
-# and the app's mockup hex, in order, nothing else — from data/colors_app.json.
-# They are the same colours, names and order the main app offers.
+# The colour lists come ready-made from data/colors_app.json - colour names
+# and the mockup hex, in order, nothing else. They are the same colours, names
+# and order the main app offers.
 import json as _json
 COLORS_APP_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "colors_app.json")
-APP_RENAMED = {}        # material key -> {old app name: current name} (older saved proofs)
+APP_RENAMED = {}        # material key -> {old name: current name} (older saved proofs)
 if os.path.exists(COLORS_APP_JSON):
     with open(COLORS_APP_JSON, encoding="utf-8") as _f:
         _lists = _json.load(_f)

@@ -66,32 +66,93 @@ def _painted(x, memo, depth=0):
     return out
 
 
-def _rename(ops, mapping):
-    """Resource names in a form's ops -> the names they get in the parent."""
-    out = []
-    for operands, op in ops:
-        o = str(op)
-        ops2 = list(operands)
+class _Ops(list):
+    """Content ops plus the resource names they use, as (category, name)."""
+    def __init__(self, items=(), refs=None):
+        super().__init__(items)
+        self.refs = set(refs or ())
 
-        def ren(i, cat):
-            n = ops2[i]
-            if isinstance(n, pikepdf.Name) and (cat, str(n)) in mapping:
-                ops2[i] = pikepdf.Name(mapping[(cat, str(n))])
-        if o in ("cs", "CS") and ops2:
-            ren(0, "/ColorSpace")
-        elif o in ("scn", "SCN") and ops2 and isinstance(ops2[-1], pikepdf.Name):
-            ren(len(ops2) - 1, "/Pattern")
-        elif o == "gs" and ops2:
-            ren(0, "/ExtGState")
-        elif o == "Tf" and ops2:
-            ren(0, "/Font")
-        elif o == "Do" and ops2:
-            ren(0, "/XObject")
-        elif o == "sh" and ops2:
-            ren(0, "/Shading")
-        elif o in ("BDC", "DP") and len(ops2) > 1 and isinstance(ops2[1], pikepdf.Name):
-            ren(1, "/Properties")
-        out.append((ops2, op))
+
+class _SegOp:
+    """An inlined form already written out as content bytes. It reads as "Do"
+    (so an enclosing q ... Q counts as painting); it keeps its ops so a parent
+    that has to rename one of its resources can still do so."""
+    def __init__(self, ops):
+        self.ops = ops
+        self.refs = set(ops.refs)
+        self._data = None
+
+    @property
+    def data(self):
+        if self._data is None:
+            self._data = _serialize(self.ops)
+        return self._data
+
+    def __str__(self):
+        return "Do"
+
+
+# operator -> (where its resource name sits, the resource category)
+_REF_OPS = {"cs": (0, "/ColorSpace"), "CS": (0, "/ColorSpace"), "gs": (0, "/ExtGState"),
+            "Tf": (0, "/Font"), "Do": (0, "/XObject"), "sh": (0, "/Shading"),
+            "BDC": (1, "/Properties"), "DP": (1, "/Properties")}
+
+
+def _ref_of(o, operands):
+    """The resource (category, name) an op uses, or None."""
+    if o in ("scn", "SCN"):
+        if operands and isinstance(operands[-1], pikepdf.Name):
+            return ("/Pattern", str(operands[-1]))
+        return None
+    r = _REF_OPS.get(o)
+    if r and len(operands) > r[0] and isinstance(operands[r[0]], pikepdf.Name):
+        return (r[1], str(operands[r[0]]))
+    return None
+
+
+def _serialize(ops):
+    """Content bytes for ops that may hold written-out segments."""
+    parts, run = [], []
+    for operands, op in ops:
+        if isinstance(op, _SegOp):
+            if run:
+                parts.append(pikepdf.unparse_content_stream(run)); run = []
+            parts.append(op.data)
+        else:
+            run.append((operands, op))
+    if run:
+        parts.append(pikepdf.unparse_content_stream(run))
+    return b"\n".join(parts)
+
+
+def _rename(ops, mapping):
+    """Resource names in a form's ops -> the names they get in the parent.
+    Only names the ops actually use are looked for (ops.refs), so a form whose
+    clashing resource is no longer drawn (it was inlined) isn't walked at all."""
+    refs = getattr(ops, "refs", None)
+    if refs is not None:
+        mapping = {k: v for k, v in mapping.items() if k in refs}
+    if not mapping:
+        return ops if isinstance(ops, _Ops) else _Ops(ops, refs)
+    out = _Ops()
+    for operands, op in ops:
+        if isinstance(op, _SegOp):
+            if op.refs & mapping.keys():
+                op = _SegOp(_rename(op.ops, mapping))
+            out.append((operands, op))
+            continue
+        o = str(op)
+        r = _ref_of(o, operands)
+        if r in mapping:
+            ops2 = list(operands)
+            i = (len(ops2) - 1) if o in ("scn", "SCN") else _REF_OPS[o][0]
+            ops2[i] = pikepdf.Name(mapping[r])
+            out.append((ops2, op))
+        else:
+            out.append((operands, op))
+    out.refs = {(c, mapping.get((c, n), n)) for c, n in (refs if refs is not None else set())}
+    if refs is None:
+        out.refs = {x for x in (_ref_of(str(op), opd) for opd, op in out if not isinstance(op, _SegOp)) if x}
     return out
 
 
@@ -125,7 +186,20 @@ def _drop_empty_blocks(ops):
         elif o in PAINT_OPS or o in ("Do", "BI", "ID", "EI"):
             if stack:
                 stack[-1][1] = True
-    return [x for x, k in zip(ops, keep) if k]
+    # The names what's left actually uses (a dropped block's /GS1 must not
+    # keep its 50 % graphics state on the page).
+    out = _Ops()
+    for (operands, op), k in zip(ops, keep):
+        if not k:
+            continue
+        out.append((operands, op))
+        if isinstance(op, _SegOp):
+            out.refs |= op.refs
+        else:
+            r = _ref_of(str(op), operands)
+            if r:
+                out.refs.add(r)
+    return out
 
 
 def transparency_left(pdf):
@@ -142,9 +216,13 @@ def transparency_left(pdf):
 
 
 class _Tidier:
+    # A form this big is written out to bytes once and the bytes reused.
+    SEG_MIN_OPS = 20000
+
     def __init__(self, pdf):
         self.pdf = pdf
         self.memo = {}
+        self.forms = {}          # a form's tidied ops, worked out once: key -> (ops, placeholders)
         self.n = 0
         self.stats = {"placeholders": 0, "covers": 0, "empty_forms": 0, "inlined": 0}
 
@@ -152,7 +230,8 @@ class _Tidier:
     def ops_of(self, owner, res, overlay=False, page_ph=None, depth=0):
         res = res if res is not None else pikepdf.Dictionary()
         xo = res.get("/XObject") or {}
-        out, tint, pending_re = [], None, None
+        out, tint, pending_re = _Ops(), None, None
+        refs = out.refs
         for operands, op in pikepdf.parse_content_stream(owner):
             o = str(op)
             if o in ("Tj", "TJ", "'", '"') and _text_of(operands).strip().upper() in PLACEHOLDERS:
@@ -180,20 +259,61 @@ class _Tidier:
                         self.stats["empty_forms"] += 1
                         continue
                     if depth < 12 and "/Group" not in x and "/SMask" not in x:
-                        out += self.inline(x, res, page_ph, depth + 1, str(operands[0]))
+                        sub = self.inline(x, res, page_ph, depth + 1, str(operands[0]))
+                        out.extend(sub)
+                        refs |= sub.refs
                         self.stats["inlined"] += 1
                         continue
+            r = _ref_of(o, operands)
+            if r:
+                refs.add(r)
             out.append((operands, op))
         if pending_re is not None:
             out.append(pending_re)
         return out
+
+    def _form_key(self, x, overlay):
+        """Forms are reused by object; a form with no forms inside it (the art)
+        also by its content, so each sheet's copy of the same art is done once."""
+        if overlay:
+            return None
+        xres = x.get("/Resources") or {}
+        if not (xres.get("/XObject") or {}):
+            import hashlib
+            try:
+                return ("content", hashlib.sha1(x.read_raw_bytes()).hexdigest(),
+                        tuple(sorted(str(k) for c in CATS for k in (xres.get(c) or {}).keys())))
+            except Exception:
+                pass
+        return ("obj", x.objgen) if x.objgen != (0, 0) else None
 
     def inline(self, x, parent_res, page_ph, depth, name=""):
         """The form's own content, ready to sit in its parent's stream."""
         xres = x.get("/Resources") or pikepdf.Dictionary()
         # reportlab's page merged over the template (pdfrw's "FullPage"): only
         # our captions sit directly in it, so a 0 % box there is a caption cover.
-        inner = self.ops_of(x, xres, overlay=(name == "/FullPage"), page_ph=page_ph, depth=depth)
+        overlay = (name == "/FullPage")
+        # The same art sits on every sheet, and a form can be placed many
+        # times: each is tidied once and reused. Parsing, walking, renaming
+        # and writing out each copy took over a minute on detailed art. Its
+        # empty q ... Q blocks go before it is copied, not after.
+        key = self._form_key(x, overlay)
+        if key is not None and key in self.forms:
+            inner, ph_n = self.forms[key]
+            self.stats["placeholders"] += ph_n
+            if page_ph is not None:
+                page_ph[0] += ph_n
+        else:
+            before = self.stats["placeholders"]
+            inner = self.ops_of(x, xres, overlay=overlay, page_ph=page_ph, depth=depth)
+            if not overlay:
+                n0 = len(inner)
+                inner = _drop_empty_blocks(inner)
+                self.stats["empty_ops"] = self.stats.get("empty_ops", 0) + n0 - len(inner)
+                if len(inner) >= self.SEG_MIN_OPS:
+                    inner = _Ops([([pikepdf.Name("/__seg__")], _SegOp(inner))], inner.refs)
+                if key is not None:
+                    self.forms[key] = (inner, self.stats["placeholders"] - before)
         self.n += 1
         mapping = {}
         for cat in CATS:
@@ -218,7 +338,7 @@ class _Tidier:
         pre = [([], pikepdf.Operator("q"))]
         if m is not None:
             pre.append(([float(v) for v in m], pikepdf.Operator("cm")))
-        return pre + inner + [([], pikepdf.Operator("Q"))]
+        return _Ops(pre + list(inner) + [([], pikepdf.Operator("Q"))], inner.refs)
 
     def page(self, page):
         res = page.obj.get("/Resources") or pikepdf.Dictionary()
@@ -230,25 +350,33 @@ class _Tidier:
         n0 = len(ops)
         ops = _drop_empty_blocks(ops)
         self.stats["empty_ops"] = self.stats.get("empty_ops", 0) + n0 - len(ops)
-        page.obj.Contents = self.pdf.make_stream(pikepdf.unparse_content_stream(ops))
+        page.obj.Contents = self.pdf.make_stream(_serialize(ops))
+        used_gs = {n for c, n in ops.refs if c == "/ExtGState"}
+        used_xo = {n for c, n in ops.refs if c == "/XObject"}
         # graphics states no page content uses any more (an unused 50 % one
         # still counts as transparency to a RIP)
         if "/ExtGState" in res:
-            used_gs = {str(o[0][0]) for o in ops if str(o[1]) == "gs" and o[0]}
             for k in list(res.ExtGState.keys()):
                 if k not in used_gs:
                     del res.ExtGState[k]
         # forms no page content uses any more
         if "/XObject" in res:
-            used = {str(o[0][0]) for o in ops if str(o[1]) == "Do" and o[0]}
             for k in list(res.XObject.keys()):
-                if k not in used and _is_form(res.XObject[k]):
+                if k not in used_xo and _is_form(res.XObject[k]):
                     del res.XObject[k]
 
     def _count_placeholders(self, owner, res, ph, seen):
-        for operands, op in pikepdf.parse_content_stream(owner):
-            if str(op) in ("Tj", "TJ", "'", '"') and _text_of(operands).strip().upper() in PLACEHOLDERS:
-                ph[0] += 1
+        # Only streams that draw text can hold a placeholder (outlined art has none).
+        try:
+            raw = owner.read_bytes() if hasattr(owner, "read_bytes") else b"".join(
+                c.read_bytes() for c in ([owner.Contents] if isinstance(owner.get("/Contents"), pikepdf.Stream)
+                                         else list(owner.get("/Contents") or [])))
+        except Exception:
+            raw = b"Tj"
+        if b"Tj" in raw or b"TJ" in raw or b"'" in raw or b'"' in raw:
+            for operands, op in pikepdf.parse_content_stream(owner):
+                if str(op) in ("Tj", "TJ", "'", '"') and _text_of(operands).strip().upper() in PLACEHOLDERS:
+                    ph[0] += 1
         for _, x in ((res or {}).get("/XObject") or {}).items():
             if _is_form(x) and x.objgen not in seen:
                 seen.add(x.objgen)

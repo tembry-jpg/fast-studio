@@ -433,7 +433,9 @@ PRODUCTS = {
         # w=749px=4.25", h=44px=0.25" (measured from imprint_areas_for_proof.png)
         "proof_bounds": {
             "side1": {"x": 350, "y": 592, "w": 749, "h": 44},
-            "side2": {"x": 282, "y": 716, "w": 749, "h": 44},
+            # Side 2 is the pen rolled over (tip left, clip underneath; 2026-10-15),
+            # the mockup's pen turned 180 deg about its centre (tools/rotate_pen_side2.py).
+            "side2": {"x": 349, "y": 691, "w": 749, "h": 44},
         },
         "bleed_zones": {},
         "art_slots": [
@@ -472,28 +474,29 @@ PRODUCTS = {
         "page_w":          852.58,
         "page_h":          333.08,
         "template_zones": {
-            "barrel_side1": {"x": 0.2826, "y": 0.3897, "w": 0.2745, "h": 0.0624, "l": "Barrel (RH)"},
-            "clip_side1":   {"x": 0.5740, "y": 0.3897, "w": 0.1314, "h": 0.0624, "l": "Clip (RH)"},
-            "clip_side2":   {"x": 0.2607, "y": 0.5769, "w": 0.1212, "h": 0.0624, "l": "Clip (LH)"},
-            "barrel_side2": {"x": 0.4094, "y": 0.5769, "w": 0.2741, "h": 0.0624, "l": "Barrel (LH)"},
+            # 2.875" barrel, 1.375" clip (0845 Mix & Match template, 2025-02-11)
+            "barrel_side1": {"x": 0.2874, "y": 0.3897, "w": 0.2712, "h": 0.0624, "l": "Barrel - Side 1"},
+            "clip_side1":   {"x": 0.5781, "y": 0.3897, "w": 0.1297, "h": 0.0624, "l": "Clip - Side 1"},
+            "clip_side2":   {"x": 0.2587, "y": 0.5769, "w": 0.1297, "h": 0.0624, "l": "Clip - Side 2"},
+            "barrel_side2": {"x": 0.4079, "y": 0.5769, "w": 0.2712, "h": 0.0624, "l": "Barrel - Side 2"},
         },
         "proof_bounds": {
-            "barrel_side1": {"x": 345, "y": 576, "w": 449, "h": 39},
-            "clip_side1":   {"x": 822, "y": 576, "w": 215, "h": 39},
-            "clip_side2":   {"x": 318, "y": 737, "w": 215, "h": 42},
-            "barrel_side2": {"x": 691, "y": 737, "w": 448, "h": 42},
+            "barrel_side1": {"x": 358, "y": 576, "w": 438, "h": 39},
+            "clip_side1":   {"x": 829, "y": 576, "w": 212, "h": 39},
+            "clip_side2":   {"x": 853, "y": 720, "w": 212, "h": 42},
+            "barrel_side2": {"x": 250, "y": 724, "w": 440, "h": 42},
         },
         "color_components": ["barrel", "clip", "button"],
         "ink_black_only":   ["white", "mint", "soft lime", "peach fuzz", "bubblegum"],
         "art_slots": [
-            {"id":"barrel_side1","label":"Barrel (RH)","size":"3.25\" W × 0.25\" H",
-             "left_pt":240.93,"top_pt":-131.19,"w_pt":234.0,"h_pt":18.0,"rotation":0,"shape":"rect"},
-            {"id":"clip_side1","label":"Clip (RH)","size":"1.57\" W × 0.25\" H",
-             "left_pt":489.38,"top_pt":-131.19,"w_pt":112.0,"h_pt":18.0,"rotation":0,"shape":"rect"},
-            {"id":"barrel_side2","label":"Barrel (LH)","size":"3.25\" W × 0.25\" H",
-             "left_pt":222.25,"top_pt":-193.53,"w_pt":234.0,"h_pt":18.0,"rotation":180,"shape":"rect"},
-            {"id":"clip_side2","label":"Clip (LH)","size":"1.57\" W × 0.25\" H",
-             "left_pt":471.01,"top_pt":-193.53,"w_pt":112.0,"h_pt":18.0,"rotation":180,"shape":"rect"},
+            {"id":"barrel_side1","label":"Barrel - Side 1","size":"2.875\" W × 0.25\" H",
+             "left_pt":257.1,"top_pt":-131.19,"w_pt":207.0,"h_pt":18.0,"rotation":0,"shape":"rect"},
+            {"id":"clip_side1","label":"Clip - Side 1","size":"1.375\" W × 0.25\" H",
+             "left_pt":498.66,"top_pt":-131.19,"w_pt":99.0,"h_pt":18.0,"rotation":0,"shape":"rect"},
+            {"id":"barrel_side2","label":"Barrel - Side 2","size":"2.875\" W × 0.25\" H",
+             "left_pt":359.87,"top_pt":-193.53,"w_pt":207.0,"h_pt":18.0,"rotation":180,"shape":"rect"},
+            {"id":"clip_side2","label":"Clip - Side 2","size":"1.375\" W × 0.25\" H",
+             "left_pt":226.31,"top_pt":-193.53,"w_pt":99.0,"h_pt":18.0,"rotation":180,"shape":"rect"},
         ],
     },
 
@@ -1097,7 +1100,7 @@ PRODUCTS["5020-cc"].update({
 # the 3m rather than written out again, so a geometry correction can never
 # land on one and miss the other.
 #
-# NetSuite doesn't tell them apart by item: a 3l line comes in as the 3m
+# Orders don't tell them apart by item: a 3l line comes in as the 3m
 # item with a metallic body colour. Any neoprene line whose body is one of
 # METALLIC_BODY_COLORS is treated as the 3l (configurator side, on opening a
 # line or an order).
@@ -1112,7 +1115,7 @@ METALLIC_MAX_INKS = 3
 
 
 def metallic_body(name):
-    """The metallic body a NetSuite / configurator colour name means, or None:
+    """The metallic body a colour name means, or None:
     "GOLD", "Metallic Gold", "Rose Gold Metallic", "silver" ..."""
     import re as _re
     t = _re.sub(r"[^a-z ]+", " ", str(name or "").lower())
@@ -1147,13 +1150,13 @@ for _bid, _mid in METALLIC_TWINS.items():
 # neoprene (Athletic Gray, Charcoal), each its own item (0070-3H-1C ...).
 # Same die, templates and mockup layers as the 3m; the bodies are printed
 # images in static/assets/<3h id>/patterns/. Ink limit: the 3m's (5).
-# A NetSuite 3m line with a heathered body colour opens as the 3h.
+# A 3m order line with a heathered body colour opens as the 3h.
 HEATHERED_TWINS = {"0070-3m": "0070-3h", "1080-3m": "1080-3h"}
 HEATHERED_BODY_COLORS = ["Athletic Gray", "Charcoal"]
 
 
 def heathered_body(name):
-    """The heathered body a NetSuite / configurator colour name means, or None:
+    """The heathered body a colour name means, or None:
     "Heathered Charcoal (Dark)", "Athletic Gray", "Heather Grey" ... A plain
     "Gray" is the 3m's solid gray, not a heather."""
     import re as _re
@@ -1194,7 +1197,7 @@ for _bid, _mid in METALLIC_TWINS.items():
 # sees is the 3m's: same mockup, same maximum imprint (3" x 3" sides, 1.875"
 # bottom), same stitching. The body is a printed image (patterns/).
 #
-# NetSuite: the item is 0070-3U-#C. A line for it — or a 3m line with a denim
+# The item is 0070-3U-#C. A line for it — or a 3m line with a denim
 # body — opens here.
 OWN_CUT_ITEMS = {
     # id         base        kind      material             item prefix
@@ -1793,7 +1796,7 @@ if _pen:
 # the 100 pens of the jig (press/mimaki/0844-jig.json, from "0844 - LePen
 # Template Symbols"), one SIDE1 file, turned 180 deg in every box for RH (the
 # standard) and upright for LH. Colours: Le Pen's own 20 (engine.LE_PEN, each
-# with its PMS from the NetSuite colour master); the writing ink matches the
+# with its PMS from the colour master); the writing ink matches the
 # barrel. Mockup: static/assets/0844 (2400 px layers; the top pen shows the
 # imprint side, the bottom pen the logo side).
 # Template zone: fractions of the 1-up (530.967 x 220.626 pt); the CENTER OF
@@ -1834,7 +1837,7 @@ PRODUCTS["0844"] = {
 # panel, white pen), barrel / clip / plunger (pen part + its numbered badge
 # and heading, recoloured to the part's colour), title ("3-WAY PEN" and the
 # plunger tip), qty ("QTY:"). Variable: the three colour names and the
-# quantity (the NetSuite order line's, or the export's QTY field). "QTY: n" is
+# quantity (the order line's, or the export's QTY field). "QTY: n" is
 # centred as one line, so the QTY: layer slides left as the number grows.
 # Fonts: label/fonts/name.woff and qty.woff — stand-ins until Numo's own are
 # dropped in under the same names. Positions are canvas px, cap tops.
@@ -1845,6 +1848,12 @@ if PRODUCTS.get("0845"):
         "name_cap": 14, "name_max_w": 380, "name_color": "#000000",
         "qty": {"center_x": 369.5, "top": 656, "cap": 31, "gap": 21,
                 "layer_left": 314, "layer_right": 424, "color": "#316064"},
+        # The imprint on the label's pen, label px [x, y, w, h]: where the jig
+        # puts the 2.875" barrel and 1.375" clip imprints, measured from the
+        # writing tip (0.81"-3.68" and 3.89"-5.27"), on the drawn pen (tip at
+        # x 48, barrel/clip joint at 471, clip end at 646.5; barrel and clip
+        # sleeve both centred on y 483.5 - the clip's arm is on top).
+        "imprint": {"barrel": [139.0, 469.4, 323.1, 28.2], "clip": [485.1, 469.85, 151.7, 27.3]},
     }
 
 
@@ -1909,6 +1918,8 @@ def _bank_bag(pid, label, material):
         "has_neoprene":  False,
         "has_stitching": False,
         "stitch_fixed":  {"name": "Black", "hex": "#1C1C1C"},
+        # Parts an ink can match ("Match Zipper") that have no options.
+        "fixed_components": [{"label": "Zipper", "name": "Black", "hex": "#1C1C1C"}],
         "proof_shape":   "flat",
         "proof_warp":    0,
         "page_w":        _BB_W,
@@ -2012,7 +2023,7 @@ PRODUCTS["0070-3m"]["lifestyle_assets"] = "0070-3m-life"
 
 # ── Item numbers that name the same item ────────────────────────────────────
 #
-# The Main Squeeze tote's item number changed in NetSuite: 5001-7 and 5001-10
+# The Main Squeeze tote's item number changed: 5001-7 and 5001-10
 # are the same bag, and orders come in under either. The second number is the
 # same item - same mockup, imprint areas and press set-up - so an order line
 # for it opens, and its files carry the number on the order. Copied last, from
@@ -2031,3 +2042,257 @@ for _alias, _target in ITEM_NUMBER_ALIASES.items():
             "alias_of": _target,
         })
         PRODUCTS[_alias] = _a
+
+
+# ── 9613 Mixing Glass 16oz Clear (pint glass) ──────────────────────────────
+# Direct screen print, one colour: Side 1 and Side 2 (3" x 3", straight
+# opposite each other - interchangeable, the glass has no handle) or one wrap
+# (up to 8.5" x 3"). Press: press/9613-DIRECT-1C.pdf + press_spec_9613.json
+# (tools/make_9613_template.py); the export widens the art by "glass_widen"
+# (the press tilts the glass to follow the taper, so the art is otherwise
+# printed flat) and writes a -Film and a -Xitron file.
+# Template space = the print template's page (865 x 433 pt): the side boxes
+# centred 170 pt either side of the page centre, the band's top 108.4 pt down.
+# Mockup: Numo's photo of three clear glasses (tools/make_9613_photo_assets.py);
+# the builder wraps the art round each of them ("glass_mockup"), so a wrap
+# reads all the way round.
+_GL_W, _GL_H = 865.0, 433.0
+_GL_TOP = _GL_H - 324.6                 # band top, from the page top
+_GL_SLOTS = [
+    ("side1", "Side 1", '3" W × 3" H', 432.5 + 170 - 108, 216.0),
+    ("side2", "Side 2", '3" W × 3" H', 432.5 - 170 - 108, 216.0),
+    ("wrap", "Wrap", '8.5" W × 3" H', 432.5 - 306, 612.0),
+]
+PRODUCTS["9613"] = {
+    "label":         "Mixing Glass 16oz Clear - 9613",
+    "display_label": "Mixing Glass 16oz Clear - 9613",
+    "material":      "glass",
+    "asset_id":      "9613",
+    "base_id":       "9613",
+    "sku":           "9613",
+    "item_prefix":   "9613",
+    "is_screenprint": True,
+    "program":       "Standard",
+    "has_neoprene":  False,
+    "has_stitching": False,
+    "proof_shape":   "glass",
+    "proof_warp":    0,
+    # How much wider the print file makes the art (same height) so it reads
+    # true where the glass curves away: set per item by Numo (5 % on the
+    # 9613, as the setup guide always did).
+    "glass_widen":   0.05,
+    # No row-by-row taper fix in the print file (Numo, 2026-10-13): the art is
+    # only widened by glass_widen, every row the same. The press follows the
+    # taper, so flat art prints true to size; the mockup draws it that way.
+    # (Setting "glass_taper_fix": True would bend the print file per row.)
+    "page_w":        _GL_W,
+    "page_h":        _GL_H,
+    "template_zones": {sid: {"x": round(x / _GL_W, 4), "y": round(_GL_TOP / _GL_H, 4),
+                             "w": round(w / _GL_W, 4), "h": round(216.0 / _GL_H, 4), "l": lab}
+                       for sid, lab, size, x, w in _GL_SLOTS},
+    # Where each location sits on the drawn mockup (1350 px): the front glass
+    # for Side 1 and the wrap, the right-hand glass for Side 2.
+    # Where each location sits on the photo (1350 px): the middle glass for
+    # Side 1 and the wrap, the left-hand glass for Side 2.
+    "proof_bounds": {
+        "side1": {"x": 486, "y": 616, "w": 402, "h": 358},
+        "side2": {"x": 70, "y": 465, "w": 404, "h": 358},
+        "wrap":  {"x": 486, "y": 616, "w": 402, "h": 358},
+    },
+    # Numo's photo (tools/make_9613_photo_assets.py): three glasses, each
+    # with a mask the builder reads row by row. depth = inches below the
+    # rim (the Lip Line), 119.5 px to the inch; each view's angle is how far
+    # the glass is turned (0 = Side 1 / the wrap's centre facing you).
+    "glass_mockup": {
+        "ppi": 119.5, "band_top": 1.0, "band_h": 3.0,
+        # The camera looks slightly down: rings round the glass are ellipses,
+        # minor / major 0.09 at the rim and 0.24 at the base (off the masks).
+        "ellipse": [0.09, 0.24],
+        "rim_y": {"glass_mask_l": 345, "glass_mask_m": 496, "glass_mask_r": 345},
+        "sides": [{"mask": "glass_mask_l", "angle": 180, "label": "Side 2"},
+                  {"mask": "glass_mask_m", "angle": 0, "label": "Side 1"},
+                  {"mask": "glass_mask_r", "angle": 90, "label": "Side view"}],
+        "one_side": [{"mask": "glass_mask_l", "angle": 180, "label": "Back"},
+                     {"mask": "glass_mask_m", "angle": 0, "label": "Side 1"},
+                     {"mask": "glass_mask_r", "angle": 90, "label": "Side view"}],
+        "wrap": [{"mask": "glass_mask_l", "angle": 240, "label": "Turned left"},
+                 {"mask": "glass_mask_m", "angle": 0, "label": "Front"},
+                 {"mask": "glass_mask_r", "angle": 120, "label": "Turned right"}],
+    },
+    # Sides or a wrap, never both (the export refuses a job with both).
+    "exclusive_slots": [["side1", "side2"], ["wrap"]],
+    "bleed_zones": {},
+    "art_slots": [{"id": sid, "label": lab, "size": size, "left_pt": round(x, 3),
+                   "top_pt": -round(_GL_TOP, 3), "w_pt": w, "h_pt": 216.0,
+                   "rotation": 0, "shape": "rect"}
+                  for sid, lab, size, x, w in _GL_SLOTS],
+}
+SCREENPRINT_PRODUCT_IDS |= {"9613"}
+# Numo's rule (2026-10-13): one colour prints direct, 2+ colours (tight
+# registration) as a decal - the builder points each way.
+# ── 9729 Challenger Mug ─────────────────────────────────────────────────────
+# Ceramic mug, 4.5" tall, 3.25" across (4.25" with the handle), in White,
+# Black and Cobalt. Direct screen print, one colour, printed like the 9613: a
+# -Film and a -Xitron file (press/9729-DIRECT-1C.pdf + press_spec_9729.json,
+# tools/make_9729_template.py). Side 1 = Right Hand Drinker, Side 2 = Left
+# Hand Drinker (2.5" x 2" each, 90 deg either side of the handle), or one
+# wrap 7.75" x 2" centred opposite the handle - never both.
+# Mockup: Numo's photo of three mugs per colour (tools/make_9729_photo_assets.py),
+# the art wrapped round each body (opaque: no far side), shaded by the glaze.
+_MG_W, _MG_H = 865.0, 433.0
+_MG_CX, _MG_CY, _MG_D = 432.5, 216.5, 186.7
+_MG_TOP = _MG_H - (_MG_CY + 72.0)
+_MG_SLOTS = [
+    ("side1", "Right Hand Drinker", '2.5" W × 2" H', _MG_CX + _MG_D - 90.0, 180.0),
+    ("side2", "Left Hand Drinker", '2.5" W × 2" H', _MG_CX - _MG_D - 90.0, 180.0),
+    ("wrap", "Wrap", '7.75" W × 2" H', _MG_CX - 279.0, 558.0),
+]
+PRODUCTS["9729"] = {
+    "label":         "Challenger Mug - 9729",
+    "display_label": "Challenger Mug - 9729",
+    "material":      "ceramic",
+    "asset_id":      "9729",
+    "base_id":       "9729",
+    "sku":           "9729",
+    "item_prefix":   "9729",
+    "is_screenprint": True,
+    "program":       "Standard",
+    "has_neoprene":  False,
+    "has_stitching": False,
+    "proof_shape":   "glass",          # the round-body renderer (opaque below)
+    "proof_warp":    0,
+    "glass_widen":   0.0,              # per item (Numo); none set for the mug yet
+    "page_w":        _MG_W,
+    "page_h":        _MG_H,
+    "template_zones": {sid: {"x": round(x / _MG_W, 4), "y": round(_MG_TOP / _MG_H, 4),
+                             "w": round(w / _MG_W, 4), "h": round(144.0 / _MG_H, 4), "l": lab}
+                       for sid, lab, size, x, w in _MG_SLOTS},
+    # Where each location sits on the photo (1350 px): Side 1 on the
+    # handle-right mug, Side 2 on the handle-left one, the wrap on the front.
+    "proof_bounds": {
+        "side1": {"x": 819, "y": 470, "w": 315, "h": 222},
+        "side2": {"x": 214, "y": 466, "w": 315, "h": 222},
+        "wrap":  {"x": 516, "y": 796, "w": 315, "h": 222},
+    },
+    "glass_mockup": {
+        "ppi": 96.9, "band_top": 1.0, "band_h": 2.0, "height": 4.5,
+        "ellipse": [0.09, 0.14],
+        # each mug's rim, its ring's axis row (mask top + the ellipse)
+        "rim_y": {"mug_mask_l": 385, "mug_mask_c": 714, "mug_mask_r": 389},
+        # where each location is round the mug: 0 = facing away from the
+        # handle (the wrap's centre), Side 1 a quarter turn one way, Side 2
+        # the other (the template's boxes, 2.59" either side).
+        "slot_angle": {"side1": 90, "side2": -90, "wrap": 0},
+        "opaque": True,
+        "ink_shade": "mug_shade", "ink_gloss": "mug_gloss",
+        "sides": [{"mask": "mug_mask_l", "angle": -90, "label": "Left Hand Drinker"},
+                  {"mask": "mug_mask_c", "angle": 0, "label": "Front"},
+                  {"mask": "mug_mask_r", "angle": 90, "label": "Right Hand Drinker"}],
+        "one_side": [{"mask": "mug_mask_l", "angle": -90, "label": "Left Hand Drinker"},
+                     {"mask": "mug_mask_c", "angle": 0, "label": "Front"},
+                     {"mask": "mug_mask_r", "angle": 90, "label": "Right Hand Drinker"}],
+        "wrap": [{"mask": "mug_mask_l", "angle": -90, "label": "Handle left"},
+                 {"mask": "mug_mask_c", "angle": 0, "label": "Front"},
+                 {"mask": "mug_mask_r", "angle": 90, "label": "Handle right"}],
+    },
+    "exclusive_slots": [["side1", "side2"], ["wrap"]],
+    "bleed_zones": {},
+    "art_slots": [{"id": sid, "label": lab, "size": size, "left_pt": round(x, 3),
+                   "top_pt": -round(_MG_TOP, 3), "w_pt": w, "h_pt": 144.0,
+                   "rotation": 0, "shape": "rect"}
+                  for sid, lab, size, x, w in _MG_SLOTS],
+}
+SCREENPRINT_PRODUCT_IDS |= {"9729"}
+
+# Shelved 2026-10-13 (Numo): the decal item is built but off. Set
+# DECAL_9613 = True to bring back the 9613-DECAL item and the nudges.
+DECAL_9613 = False
+if DECAL_9613:
+    PRODUCTS["9613"]["glass_decal_id"] = "9613-DECAL"
+
+# ── 9613 as a waterslide decal (Numo, 2026-10-13) ──────────────────────────
+# The same glass, decorated with a screen-printed waterslide decal instead of
+# direct print: up to 4 PMS inks, a white back so the colours are opaque on
+# clear glass, a clear cover coat. The print files are decal plates
+# (decal.py: white, each ink, cover coat - film positives, 1:1). No widening
+# (the decal is laid on by hand at its true size). Mockup: the 9613's.
+if DECAL_9613:
+    PRODUCTS["9613-DECAL"] = copy.deepcopy(PRODUCTS["9613"])
+    PRODUCTS["9613-DECAL"].update({
+        "label":          "Mixing Glass 16oz Clear - 9613 Decal",
+        "display_label":  "Mixing Glass 16oz Clear - 9613 Decal",
+        "asset_id":       "9613",
+        "base_id":        "9613",
+        "twin_of":        "9613",
+        "twin_kind":      "decal",
+        "item_prefix":    "9613",
+        "is_screenprint": False,           # several PMS inks: the multi-colour panel
+        "supports_pms_assign": True,
+        "max_spot_inks":  4,
+        "print_method":   "decal",
+        "glass_widen":    0.0,
+        # decal.DEFAULTS overrides: white choke, cover-coat spread, dpi, mirror ...
+        "decal":          {},
+        "glass_decal_id": None,
+        "glass_direct_id": "9613",
+    })
+    PMS_ASSIGN_PRODUCT_IDS.append("9613-DECAL")
+
+
+# ── Pens print 0.02" short of the stated imprint height (Numo, 2026-10-19) ──
+# Every pen's imprint is quoted at its stated height (0.25", the 0844's
+# 0.18") and the size label still says so, but the art is made 0.02" shorter
+# (0.25" -> 0.23") so it never runs off the barrel. The width stays. The cut
+# comes off the top and bottom equally, so the art stays centred on the same
+# line in the print file, the Mimaki jig, the proof, the virtual and the box
+# label. "print_in" is the true printed size the configurator sizes art to;
+# "print_trim_pt" is how much came off (the pen drawing on the proof centres
+# on it).
+PEN_HEIGHT_TRIM_PT = 0.02 * 72.0
+
+
+def _trim_pen_heights():
+    t = PEN_HEIGHT_TRIM_PT
+    for pid, p in PRODUCTS.items():
+        if p.get("material") not in ("jotter", "three_way_pen") or p.get("_pen_trimmed"):
+            continue
+        p["_pen_trimmed"] = True
+        for sl in p.get("art_slots") or []:
+            w, h = float(sl["w_pt"]), float(sl["h_pt"])
+            if min(w, h) > 18.5 or min(w, h) <= t:
+                continue                                  # not a pen imprint (the 3pk's card)
+            across_w = w < h                              # the 3pk's pens: stated 0.25" W, turned
+            if across_w:
+                sl["w_pt"] = round(w - t, 4)
+                sl["left_pt"] = round(float(sl["left_pt"]) + t / 2, 4)
+            else:
+                sl["h_pt"] = round(h - t, 4)
+                sl["top_pt"] = round(float(sl["top_pt"]) - t / 2, 4)
+            sl["print_trim_pt"] = t
+            sl["print_in"] = [round(sl["w_pt"] / 72.0, 4), round(sl["h_pt"] / 72.0, 4)]
+            # The virtual's box (1350 px canvas): the short side cut by the same share.
+            pb = (p.get("proof_bounds") or {}).get(sl["id"])
+            if pb:
+                k = "w" if pb["w"] < pb["h"] else "h"
+                o = "x" if k == "w" else "y"
+                full = pb[k]
+                pb[k] = round(full * (min(w, h) - t) / min(w, h), 2)
+                pb[o] = round(pb[o] + (full - pb[k]) / 2, 2)
+        imp = (p.get("pen_label") or {}).get("imprint") or {}
+        for part, b in imp.items():                       # the box label's pen: [x, y, w, h]
+            nh = b[3] * (18.0 - t) / 18.0
+            imp[part] = [b[0], round(b[1] + (b[3] - nh) / 2, 2), b[2], round(nh, 2)]
+
+
+_trim_pen_heights()
+
+
+# ── 0472 is a Pocket Coolie (Numo, 2026-10-20) ─────────────────────────────
+# The 12 oz slim can scuba-foam coolie is the Pocket Coolie Slim Can, as the
+# website and the 9100 (Pocket Coolie) have it - not a Kolder Kaddy, which is
+# the neoprene 0070 / 1080 line. Every 0472 version's name follows.
+for _pid, _p in PRODUCTS.items():
+    if _pid.upper().startswith("0472"):
+        for _k in ("label", "display_label", "name"):
+            if isinstance(_p.get(_k), str):
+                _p[_k] = _p[_k].replace("Kolder Kaddy Slim Can", "Pocket Coolie Slim Can")

@@ -14,7 +14,14 @@ import numpy as np
 import pikepdf
 from pikepdf import Name, Operator
 
-KEEP_SPOTS = {"/Notches", "/All"}
+KEEP_SPOTS = {"/Notches", "/All",
+              # The stock camo backgrounds' own spots (vector, 2026-10-16).
+              "/Brown Dirt", "/Red Dirt"}
+try:                                  # Numo's 4CP swatches: the Fiery knows them by name
+    from numo_swatches import SWATCHES as _NUMO
+    KEEP_SPOTS |= {"/" + k for k in _NUMO}
+except Exception:
+    pass
 
 
 def cmyk_to_rgb(c, m, y, k):
@@ -68,6 +75,27 @@ def _cs_kind(cs):
     return None
 
 
+def _adobe_jpeg(img):
+    """A DCT (JPEG) image with Adobe's APP14 marker."""
+    filt = img.get("/Filter")
+    names = [str(f) for f in filt] if isinstance(filt, pikepdf.Array) else ([str(filt)] if filt else [])
+    if "/DCTDecode" not in names:
+        return False
+    try:
+        raw = img.read_raw_bytes()
+    except Exception:
+        return False
+    i = 2
+    while 0 <= i < min(len(raw), 65536) - 4 and raw[i] == 0xFF:
+        marker, size = raw[i + 1], int.from_bytes(raw[i + 2:i + 4], "big")
+        if marker == 0xEE and raw[i + 4:i + 9] == b"Adobe":
+            return True
+        if marker in (0xDA, 0xD9):          # image data starts: no more headers
+            return False
+        i += 2 + size
+    return False
+
+
 def _fix_image(img):
     cs = img.get("/ColorSpace")
     if cs is None:
@@ -90,7 +118,14 @@ def _fix_image(img):
             return
         a = np.asarray(pim).astype(np.float64) / 255.0
         dec = img.get("/Decode")
-        if dec is not None and [float(v) for v in dec][:2] == [1.0, 0.0]:
+        inverted = dec is not None and [float(v) for v in dec][:2] == [1.0, 0.0]
+        # A CMYK JPEG written by Adobe software (its APP14 "Adobe" marker) is
+        # stored inverted, and PDF readers turn it back; read through PIL it
+        # comes out inverted - a negative (4imprint's full-colour art, and
+        # any Photoshop / Illustrator CMYK JPEG in customer art).
+        if _adobe_jpeg(img):
+            inverted = not inverted
+        if inverted:
             a = 1 - a
         r, g, b = cmyk_to_rgb(a[..., 0], a[..., 1], a[..., 2], a[..., 3])
         rgb = (np.stack([r, g, b], -1) * 255 + .5).astype(np.uint8)

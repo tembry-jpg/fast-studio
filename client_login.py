@@ -15,11 +15,16 @@ Everything is behind it except the login page itself. Pages send a signed-out
 visitor to /login and back; /api/ calls answer 401. Every signed-in visitor is
 a client: /api/session says role "customer", which keeps the configurator in
 the client view.
+
+Every browser session also gets its own random id (owner_tag). The server
+marks each export, job and opened proof with it, so one client can't open
+another client's files even with the link (they all share the password).
 """
 import hashlib
 import hmac
 import html
 import os
+import secrets
 import threading
 import time
 from datetime import timedelta
@@ -48,6 +53,21 @@ def _tag():
 
 def signed_in():
     return not enabled() or session.get("client_ok") == _tag()
+
+
+def owner_tag():
+    """This browser session's own id (made on first use)."""
+    cid = session.get("cid")
+    if not cid:
+        cid = session["cid"] = secrets.token_hex(16)
+        session.permanent = True
+    return cid
+
+
+def owns(tag):
+    """True when `tag` (an owner_tag stored with a file) is this session's."""
+    cid = session.get("cid") or ""
+    return bool(tag) and bool(cid) and hmac.compare_digest(str(tag).encode(), cid.encode())
 
 
 def _hours():
@@ -145,6 +165,7 @@ def init_app(app):
             session.clear()
             session.permanent = True
             session["client_ok"] = _tag()
+            owner_tag()
             return redirect(nxt)
         _fail(ip, now)
         return _form(nxt, '<p class="err">That username or password isn\'t right.</p>' if _env("CLIENT_USER")

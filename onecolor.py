@@ -978,7 +978,8 @@ def _cmyk_of(rgb):
 
 
 def separate(pdf_path, inks, out_pdf, mode="press", knockout_rgb=(1, 1, 1),
-             overprint=False, knockout_white=True, alternate="cmyk", white_is_knockout=False):
+             overprint=False, knockout_white=True, alternate="cmyk", white_is_knockout=False,
+             unclaimed_white=None):
     """
     Write the art with every shape painted in its ink.
 
@@ -1000,13 +1001,20 @@ def separate(pdf_path, inks, out_pdf, mode="press", knockout_rgb=(1, 1, 1),
     knockout_white=False: full-colour print (4CP), where white paint is not a
     knockout but covers the background. White the art doesn't claim stays
     painted white, a white marked hidden is left out, and an ink with
-    "paint_white" is painted solid white.
+    "paint_white" is painted solid white, and one with "paint_rgb" (an exact
+    color picked as a hex) in its pms_hex as plain DeviceRGB - no spot.
 
     alternate "rgb": each named spot's alternate is the ink's screen colour in
     DeviceRGB rather than an approximate CMYK, so anything that renders the
     file (a viewer, the proof, a RIP without the spot in its library) shows
     exactly the colour the configurator's picker shows. 4CP items use it; the
     RIP still matches the Pantone by name.
+
+    unclaimed_white (with knockout_white=False): an rgb (0-1) to paint the
+    white that no ink claims in art that has colour, instead of leaving it
+    white. Pens and totes pass a near-white stand-in (KO_MARK): the item
+    shows through there, as on the proof, and the Mimaki step knows it from
+    a white that prints White ink.
 
     overprint: for traced images. Their inks are disjoint masks, each lower one
     spread a little under the next (the trap). With the usual knockout the
@@ -1029,7 +1037,7 @@ def separate(pdf_path, inks, out_pdf, mode="press", knockout_rgb=(1, 1, 1),
     # One Separation per PMS name, in ink order.
     sep_names, sep_of_ink = [], {}
     for i, ink in enumerate(inks):
-        if ink.get("hidden") or ink.get("paint_white"):
+        if ink.get("hidden") or ink.get("paint_white") or ink.get("paint_rgb"):
             continue
         nm = ink.get("pms") or ink.get("hex") or f"Ink {i + 1}"
         if nm not in sep_names:
@@ -1079,12 +1087,17 @@ def separate(pdf_path, inks, out_pdf, mode="press", knockout_rgb=(1, 1, 1),
             # white the customer switched off is left out.
             if i is not None and dist <= 0.16 and inks[i].get("hidden"):
                 return [], None, []
+            if unclaimed_white is not None:
+                return _col(tuple(unclaimed_white)), paint, []
             return _col((1.0, 1.0, 1.0)), paint, []
         if i is None:
             i = 0
         ink = inks[i]
         if ink.get("paint_white") and not ink.get("hidden"):
             return _col((1.0, 1.0, 1.0)), paint, []
+        # An exact color picked as a hex (4CP): plain RGB paint, no spot.
+        if ink.get("paint_rgb") and not ink.get("hidden"):
+            return _col(_hex_rgb01(ink.get("pms_hex") or ink.get("hex"))), paint, []
         if ink.get("hidden"):
             if _is_white(_hex_rgb01(ink.get("hex"))) and knockout_white:
                 return ko(), paint, []
@@ -1101,8 +1114,14 @@ def separate(pdf_path, inks, out_pdf, mode="press", knockout_rgb=(1, 1, 1),
 
     if mode == "press":
         spaces = {}
+        import numo_swatches
         for k, nm in enumerate(sep_names):
             ink = next(x for x in inks if (x.get("pms") or x.get("hex")) == nm)
+            # Numo's own 4CP swatches: exact name and alternate (the Fiery's).
+            numo = numo_swatches.separation(pdf, nm)
+            if numo is not None:
+                spaces[pikepdf.Name(f"/NumoSp{k}")] = numo
+                continue
             if alternate == "rgb":
                 c1 = [round(v, 4) for v in _hex_rgb01(ink.get("pms_hex") or ink.get("hex"))]
                 alt_cs, c0 = pikepdf.Name.DeviceRGB, [1, 1, 1]

@@ -537,31 +537,59 @@ def _plan(pdf_path, page_index, hint_pid=None):
             if tc and rc and sum((p - q) ** 2 for p, q in zip(tc, rc)) ** 0.5 > 0.3:
                 continue
             group.append((r, b))
-        if want - 1 <= len(group) <= want + 2:
+        # CorelDRAW may outline a word as ONE compound shape, not a shape per
+        # letter: then the one shape must fill most of the label's box.
+        if group and len(group) <= want + 2:
             x0 = min(b[0] for _, b in group); x1 = max(b[2] for _, b in group)
-            if (x1 - x0) >= 0.6 * (tb[2] - tb[0]):
+            y0 = min(b[1] for _, b in group); y1 = max(b[3] for _, b in group)
+            wide = (x1 - x0) >= 0.6 * (tb[2] - tb[0])
+            if wide and (len(group) >= want - 1 or (y1 - y0) >= 0.4 * (tb[3] - tb[1])):
                 label_parts.update((r["owner"], r["idx"]) for r, _ in group)
 
     def in_label(r):
         return (r["owner"], r["idx"]) in label_parts
 
-    # Art, by location.
-    placed = {}
+    # CorelDRAW flattens the template's see-through pieces (the orange ART
+    # arrows) and, with them, the labels over them into pictures. A picture
+    # lying on a template shape (its edges within 2 pt) or inside a label's
+    # box, covering most of it, is that piece - not the customer's art.
+    furn = [r["bbox"] for r in info["blank"] if r["kind"] in ("path", "text", "image")]
+
+    def furniture_image(r):
+        if r["kind"] != "image":
+            return False
+        b = tcoord(r["bbox"])
+        area = max(1e-6, (b[2] - b[0]) * (b[3] - b[1]))
+        for bb in furn:
+            if all(abs(b[i] - bb[i]) <= 2.0 for i in range(4)):
+                return True
+            if b[0] >= bb[0] - 6 and b[1] >= bb[1] - 6 and b[2] <= bb[2] + 6 and b[3] <= bb[3] + 6:
+                ba = (bb[2] - bb[0]) * (bb[3] - bb[1])
+                if ba > 0 and area >= 0.4 * ba and ba < 40000:     # a label or arrow, not the die
+                    return True
+        return False
+
+    # Art, by location. Everything of the template's is listed too (the art
+    # picker leaves it out the same way).
+    placed, furniture = {}, set()
     for r in info["objects"]:
         if _match_key(r, off) in blank_keys or (r["owner"], r["idx"]) == body_obj:
+            furniture.add((r["owner"], r["idx"]))
             continue
-        if near_blank(r) or in_label(r):
+        if near_blank(r) or in_label(r) or furniture_image(r):
+            furniture.add((r["owner"], r["idx"]))
             continue
         b = tcoord(r["bbox"])
         # Stroke-only straight lines and boxes the customer's app redrew are
         # guides too, even when they no longer match the blank exactly.
         if r["kind"] == "path" and r["op"] in ("S", "s") and r["n"] <= 5:
+            furniture.add((r["owner"], r["idx"]))
             continue
         sid = _region_of(((b[0] + b[2]) / 2, (b[1] + b[3]) / 2), regs)
         if sid and any(s["id"] == sid for s in prod["art_slots"]):
             placed.setdefault(sid, set()).add((r["owner"], r["idx"]))
     return {"pid": pid, "spec": spec, "pno": pno, "off": off, "info": info, "prod": prod,
-            "regs": regs, "die": die, "body_obj": body_obj, "placed": placed,
+            "regs": regs, "die": die, "body_obj": body_obj, "placed": placed, "furniture": furniture,
             "page_index": page_index}
 
 

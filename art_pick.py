@@ -25,6 +25,7 @@ import tempfile
 from pathlib import Path
 
 import pikepdf
+from PIL import Image
 
 import onecolor
 import tif_import
@@ -91,13 +92,24 @@ def _walk(owner, res, ctm, out, owner_key="page", seen_stack=(), gs0=None):
         except Exception:
             return None
 
+    def sep(state):
+        (fam, extra), vals = state
+        try:
+            if fam == "tint" and str(extra[0]) == "/Separation":
+                return str(extra[1]).lstrip("/")
+        except Exception:
+            pass
+        return None
+
     def rec(kind, idx, op, box, n, **kw):
         vis = _isect(box, gs["clip"])
         f = rgb(gs["fill"])
         if f is not None and gs["alpha"] < 1:
             f = tuple(1 - gs["alpha"] * (1 - c) for c in f)   # seen through: mostly paper
         r = {"kind": kind, "owner": owner_key, "idx": idx, "op": op, "bbox": vis, "raw": box, "n": n,
-             "fill": f, "stroke": rgb(gs["stroke"]), "hidden": (vis[2] - vis[0]) < 0.3 or (vis[3] - vis[1]) < 0.3}
+             "fill": f, "stroke": rgb(gs["stroke"]), "hidden": (vis[2] - vis[0]) < 0.3 or (vis[3] - vis[1]) < 0.3,
+             # The spot ink by name (a Separation colour space), else None.
+             "fill_sep": sep(gs["fill"]), "stroke_sep": sep(gs["stroke"])}
         r.update(kw)
         out.append(r)
 
@@ -435,12 +447,33 @@ def _same_art(pieces, a_ids, b_ids, tol=1.6):
     return hit >= 0.9 * max(len(a), len(b))
 
 
+def _template_order(pieces, sugg):
+    """Side 1's art above the bottom's, the bottom's above Side 2's (page
+    order, by the middle of each location's pieces)."""
+    mid = {}
+    for p in pieces:
+        sid = sugg.get(p["id"])
+        if sid in ("side1", "bottom", "side2"):
+            b = p["bbox"]
+            lo, hi = mid.get(sid, (b[1], b[3]))
+            mid[sid] = (min(lo, b[1]), max(hi, b[3]))
+    if not {"side1", "bottom", "side2"} <= set(mid):
+        return False
+    cy = {k: (v[0] + v[1]) / 2 for k, v in mid.items()}     # y runs up the page
+    return cy["side1"] > cy["bottom"] > cy["side2"]
+
+
 def _art_sheet(pieces, slot_ids, guides):
     """
     An art sheet: the imprints laid out apart on a blank page (Side 1 art at
     the left, Side 2 art at the right, a round bottom design below or in a
     circle guide). Pieces close together are one imprint; each imprint goes
     to a location. None when the page isn't laid out that way.
+
+    Returns (suggestions, stacked). stacked: the imprints sit one above the
+    other in one column, Side 1 / bottom / Side 2, the way the production
+    template lays them out - Side 2 is then printed turned half round on the
+    page, and is picked turned back.
     """
     cand = [p for p in pieces if p["role"] in ("art", "text")]
     if len(cand) < 2:
@@ -484,13 +517,31 @@ def _art_sheet(pieces, slot_ids, guides):
     # COMPANY" line, a TM) is part of that logo, not another location's art.
     big = max((r["b"][2] - r["b"][0]) * (r["b"][3] - r["b"][1]) for r in regs)
     thick = max(min(r["b"][2] - r["b"][0], r["b"][3] - r["b"][1]) for r in regs)
-    regs = [r for r in regs if in_circle(r) or (
+    def overlaps_x(a, c):
+        return min(a["b"][2], c["b"][2]) - max(a["b"][0], c["b"][0]) > 0
+    def between(r):
+        # In a column with an imprint above it and one below it: the middle of
+        # a template-style sheet, the bottom design, however small it is.
+        return (any(o is not r and overlaps_x(r, o) and o["b"][1] > r["b"][3] for o in regs)
+                and any(o is not r and overlaps_x(r, o) and o["b"][3] < r["b"][1] for o in regs)
+                and "bottom" in slot_ids)
+    regs = [r for r in regs if in_circle(r) or between(r) or (
         (r["b"][2] - r["b"][0]) * (r["b"][3] - r["b"][1]) >= 0.15 * big
         # A thin line of type (a tagline) belongs with the logo it sits by.
         and min(r["b"][2] - r["b"][0], r["b"][3] - r["b"][1]) >= 0.3 * thick)]
     if not (2 <= len(regs) <= len(slot_ids) + 1):
         return None
     sugg = {}
+    # Three imprints in one column (top, middle, lowest): the production
+    # template's order - Side 1, the bottom, Side 2 turned half round.
+    col = sorted(regs, key=lambda r: -(r["b"][1] + r["b"][3]))
+    if (len(col) == 3 and {"side1", "side2", "bottom"} <= set(slot_ids) and not circles
+            and overlaps_x(col[0], col[1]) and overlaps_x(col[1], col[2]) and overlaps_x(col[0], col[2])
+            and col[0]["b"][1] > col[1]["b"][3] and col[1]["b"][1] > col[2]["b"][3]):
+        for r, sid in zip(col, ("side1", "bottom", "side2")):
+            for p in r["ps"]:
+                sugg[p["id"]] = sid
+        return sugg, True
     rest = []
     for r in regs:
         cx, cy = (r["b"][0] + r["b"][2]) / 2, (r["b"][1] + r["b"][3]) / 2
@@ -512,7 +563,7 @@ def _art_sheet(pieces, slot_ids, guides):
     for r, sid in zip(rest, sides):
         for p in r["ps"]:
             sugg[p["id"]] = sid
-    return sugg
+    return sugg, False
 
 
 def _suggest(pieces, product_box, layout, slot_ids, guides=()):
@@ -521,9 +572,15 @@ def _suggest(pieces, product_box, layout, slot_ids, guides=()):
     sugg = {}
     rot = {}
     if product_box is None:
-        sheet = _art_sheet(pieces, slot_ids, list(guides))
+        sheet, stacked = _art_sheet(pieces, slot_ids, list(guides)) or (None, False)
         if sheet:
             same = not any(v == "side2" for v in sheet.values())
+            # Side 1 on top, the bottom below it, Side 2 below that: the
+            # template's order, where Side 2 is printed upside down - so it is
+            # picked turned upright, however the pieces were found (a circle
+            # guide, a column, or three imprints in any order down the page).
+            if stacked or _template_order(pieces, sheet):
+                rot["side2"] = 180
             return sheet, rot, same
         # Nothing to go by: the largest coloured pieces in the middle of the page.
         cand = [p for p in pieces if p["role"] == "art"]
@@ -595,7 +652,13 @@ def _suggest_flats(pieces, panels, lines, slot_ids):
             labels.append((sid, ((ln["bbox"][0] + ln["bbox"][2]) / 2, (ln["bbox"][1] + ln["bbox"][3]) / 2)))
     owner = {}
     used = set()
-    for k, pb in enumerate(panels):
+    # In reading order (top to bottom, left to right): a proof showing the art
+    # on several colours gets the first colourway, as the page lists them,
+    # not whichever shape the file happens to draw first (often a dark one
+    # with white art, which looks empty on a light item).
+    order = sorted(range(len(panels)), key=lambda k: (-round(panels[k][3] / 40.0), panels[k][0]))
+    for k in order:
+        pb = panels[k]
         best = None
         for sid, c in labels:
             # On the shape, or within a label's height or two below / above it.
@@ -631,6 +694,15 @@ def _suggest_flats(pieces, panels, lines, slot_ids):
             if ix * iy / a >= 0.8 and k in owner:
                 sugg[p["id"]] = owner[k]
                 break
+    # The Bottom's art often shows again, cropped, on a side's tab (the die's
+    # round end): the same drawing. It belongs to the Bottom, not the side.
+    by_id = {p["id"]: p for p in pieces}
+    bottom_objs = {tuple(o) for i, s in sugg.items() if s == "bottom" for o in by_id[i].get("objs") or []}
+    if bottom_objs:
+        for i in [i for i, s in sugg.items() if s != "bottom"]:
+            mine = {tuple(o) for o in by_id[i].get("objs") or []}
+            if mine and len(mine & bottom_objs) >= 0.8 * len(mine):
+                del sugg[i]
     s1 = {i for i, s in sugg.items() if s == "side1"}
     s2 = {i for i, s in sugg.items() if s == "side2"}
     same = _same_art(pieces, s1, s2) if s1 and s2 else not s2
@@ -744,6 +816,16 @@ def analyze(pdf_path, root, slot_ids, page_index=None, aspect=None):
                 panels += [u["bbox"] for u in uniq]
                 for r in grp:
                     r["role"] = "body"
+                # Smaller shapes in the same colour holding art are the product
+                # too (a proof's round Bottom under its logo), not part of the art.
+                key = tuple(round(c * 20) for c in grp[0]["fill"])
+                for r in objs:
+                    if (r["role"] == "art" and r["kind"] == "path" and r["op"] not in ("S", "s")
+                            and r["fill"] is not None and tuple(round(c * 20) for c in r["fill"]) == key
+                            and r["area"] >= 0.002 * page_area and holds(r)):
+                        r["role"] = "body"
+                        if not any(all(abs(a - b) < 3 for a, b in zip(r["bbox"], pb)) for pb in panels):
+                            panels.append(r["bbox"])
     if panels and photos:
         # A picture on the page (a printer's logo, a form saved as an image)
         # usually is the product, but coloured shapes holding art beat it when
@@ -798,6 +880,24 @@ def analyze(pdf_path, root, slot_ids, page_index=None, aspect=None):
         if r["role"] == "art" and r["kind"] == "path":
             c = r["stroke"] if r["op"] in ("S", "s") else r["fill"]
             if _guide_colour(c, guide_cols):
+                r["role"] = "guide"
+
+    # A filled-in This Is Fast template: everything the TIF import knows as
+    # the template's own (its arrows and labels, which CorelDRAW may have
+    # flattened into pictures; its die fill) is left out the same way, so a
+    # logo isn't offered with the ART arrow fused to it.
+    try:
+        plan = tif_import._plan(str(src), page_index)
+    except Exception as e:
+        plan = None
+        print(f"art pick: TIF template check skipped: {e}")
+    if plan:
+        furn = plan.get("furniture") or set()
+        for r in objs:
+            k = (r["owner"], r["idx"])
+            if k == plan.get("body_obj"):
+                r["role"] = "body"
+            elif k in furn and r["role"] != "body":
                 r["role"] = "guide"
 
     pieces = []
@@ -905,5 +1005,124 @@ def place(root, token, assign, rot=None):
         except Exception as e:
             print(f"art pick: tighten skipped: {e}")
         stripped.unlink(missing_ok=True)
-        out[sid] = {"path": str(dest), "w_in": round((x1 - x0) / 72, 2), "h_in": round((y1 - y0) / 72, 2)}
+        try:
+            pic = _picture_if_lost(work / "src.pdf", pi, (x0, y0, x1, y1), dest, sid)
+        except Exception as e:
+            pic = None
+            print(f"art pick: check against the page skipped: {e}")
+        out[sid] = {"path": str(pic or dest), "w_in": round((x1 - x0) / 72, 2), "h_in": round((y1 - y0) / 72, 2)}
     return out
+
+
+def _ink_share(png, bgs, tol=60):
+    import numpy as np
+    a = np.asarray(Image.open(png).convert("RGB")).astype(int)
+    m = np.ones(a.shape[:2], bool)
+    for b in bgs:
+        m &= np.abs(a - np.array(b)).sum(axis=2) > tol
+    return float(m.mean())
+
+
+def _border_colours(a, min_share=0.12):
+    """The colours making up the edge of a picture: the item (and the page)
+    the art sits on."""
+    import numpy as np
+    edge = np.concatenate([a[0], a[-1], a[:, 0], a[:, -1]])[:, :3]
+    q = (edge // 16).astype(int)
+    keys, counts = np.unique(q[:, 0] * 256 + q[:, 1] * 16 + q[:, 2], return_counts=True)
+    out = []
+    for k, c in sorted(zip(keys, counts), key=lambda t: -t[1]):
+        if c / len(edge) >= min_share:
+            sel = (q[:, 0] * 256 + q[:, 1] * 16 + q[:, 2]) == k
+            out.append(tuple(int(v) for v in edge[sel].mean(axis=0)))
+    return out
+
+
+def _picture_if_lost(src, pi, box, dest, sid):
+    """Some files build their art from shared, layered pieces (a form drawn
+    once per colourway, the colour coming from what sits under it) that can't
+    be cut out as vector: the cut paints next to nothing where the page shows
+    art. Then the art is taken from the page as it looks - a 600 dpi picture
+    of the area with the item's colour (and the page around it) taken out -
+    and traced like any picture art downstream. Returns its path, or None
+    when the vector cut is good."""
+    import subprocess
+    import numpy as np
+    x0, y0, x1, y1 = box
+    with pikepdf.open(str(src)) as pdf:
+        mb = [float(v) for v in pdf.pages[pi].mediabox]
+    work = Path(dest).parent
+
+    def render(dpi, out):
+        k = dpi / 72.0
+        subprocess.run(["pdftocairo", "-png", "-singlefile", "-r", str(dpi), "-f", str(pi + 1), "-l", str(pi + 1),
+                        "-x", str(int((x0 - mb[0]) * k)), "-y", str(int((mb[3] - y1) * k)),
+                        "-W", str(max(1, int((x1 - x0) * k))), "-H", str(max(1, int((y1 - y0) * k))),
+                        str(src), str(out)[:-4]], check=True, capture_output=True, timeout=180)
+        return out
+    orig = render(100, work / f"{sid}.page.png")
+    a = np.asarray(Image.open(orig).convert("RGB"))
+    bgs = _border_colours(a)
+    page_ink = _ink_share(orig, bgs)
+    cut = work / f"{sid}.cut.png"
+    subprocess.run(["pdftocairo", "-png", "-singlefile", "-r", "100", str(dest), str(cut)[:-4]],
+                   check=True, capture_output=True, timeout=180)
+    cut_ink = _ink_share(cut, [(255, 255, 255)] + bgs)
+    if page_ink < 0.01 or cut_ink >= 0.35 * page_ink:
+        return None
+    big = render(600, work / f"{sid}.page600.png")
+    im = np.asarray(Image.open(big).convert("RGBA")).copy()
+    rgb = im[..., :3].astype(int)
+    # The item's colour (the commonest edge colour) goes everywhere, counters
+    # of letters included; other edge colours (the page beyond the item) only
+    # where they reach the edge.
+    gone = np.abs(rgb - np.array(bgs[0])).sum(axis=2) <= 60
+    if len(bgs) > 1:
+        from scipy import ndimage as nd
+        for b in bgs[1:]:
+            near = np.abs(rgb - np.array(b)).sum(axis=2) <= 60
+            lab, n = nd.label(near)
+            edge = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
+            gone |= np.isin(lab, list(edge))
+    im[gone, 3] = 0
+    # Clean edges: the soft rim between the art and the item colour, and art
+    # laid see-through over it (a 33% shadow), would read as inks of their
+    # own. A colour that is an art colour mixed with the item colour is that
+    # art colour at part strength: kept as the art colour where it is half or
+    # more, taken out where less. Everything left is snapped to flat colour.
+    keep = im[..., 3] > 0
+    px = rgb[keep].astype(float)
+    bg = np.array(bgs[0], float)
+
+    def mix(p, c):
+        v = np.array(c, float) - bg
+        t = ((p - bg) @ v) / max(1e-6, v @ v)
+        resid = np.abs(p - (bg + np.clip(t, 0, 1)[..., None] * v)).sum(axis=-1)
+        return t, resid
+    if len(px):
+        q = (px // 32) * 32 + 16
+        keys, counts = np.unique(q, axis=0, return_counts=True)
+        cols = []
+        for k, c in sorted(zip(map(tuple, keys), counts), key=lambda t: -t[1]):
+            if c / len(px) < 0.03:
+                break
+            mean = px[(q == np.array(k)).all(axis=1)].mean(axis=0)
+            if any(np.abs(mean - np.array(o)).sum() <= 90 for o in cols) or \
+                    any(np.abs(mean - np.array(b_)).sum() <= 90 for b_ in bgs):
+                continue
+            # A mix of the item colour and an art colour already found: not an ink.
+            if any((lambda tr: 0.1 < tr[0] < 0.9 and tr[1] < 60)(mix(mean[None, :], o)) for o in cols):
+                continue
+            cols.append(tuple(mean))
+        if cols:
+            ts, rs = zip(*(mix(px, c) for c in cols))
+            ts, rs = np.stack(ts, axis=1), np.stack(rs, axis=1)
+            best = rs.argmin(axis=1)
+            t = ts[np.arange(len(px)), best]
+            C = np.array(cols)
+            im[..., :3][keep] = C[best].round().astype(np.uint8)
+            im[..., 3][keep] = np.where(t >= 0.5, 255, 0).astype(np.uint8)
+    pic = work / f"art-{sid}.png"
+    Image.fromarray(im, "RGBA").save(pic, dpi=(600, 600))
+    print(f"art pick: {sid} cut as a picture (vector cut painted {cut_ink:.3f} of the area, page {page_ink:.3f})")
+    return pic

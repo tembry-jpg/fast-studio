@@ -26,6 +26,9 @@ except Exception:
     PREVIEW_CMYK = [0.0, 0.25, 0.04, 0.0]
 _RES_KEY = "/NumoWHITE"
 _TOL = 0.02
+# White in pen/tote art that is a knockout (the item shows through), as the
+# recolor paints it: never WHITE ink. convert() turns it back to plain white.
+KO_MARK = (1.0, 0.9961, 0.9961)
 
 
 def _is_white_name(nm):
@@ -91,6 +94,12 @@ def _rewrite(owner, res, stats, marker=None):
         return [([Name(_RES_KEY)], Operator("CS" if stroking else "cs")),
                 ([1], Operator("SCN" if stroking else "scn"))]
 
+    def knockout(o, operands, kind):
+        """The knockout stand-in, painted plain white (unprinted) instead."""
+        if kind == "rgb" and _is_marker("rgb", operands, KO_MARK):
+            out.append(([1, 1, 1], op)); return True
+        return False
+
     for operands, op in ops:
         o = str(op)
         kind = {"g": "gray", "G": "gray", "rg": "rgb", "RG": "rgb", "k": "cmyk", "K": "cmyk"}.get(o)
@@ -98,6 +107,9 @@ def _rewrite(owner, res, stats, marker=None):
             stroking = o.isupper()
             if stroking: stroke = kind
             else: fill = kind
+            if knockout(o, operands, kind):
+                changed = True
+                continue
             if (_is_marker(kind, operands, marker) if marker else _white_values(kind, operands)):
                 out.extend(spot(stroking)); changed = True; stats["vector"] += 1
                 if stroking: stroke = "spot"
@@ -117,6 +129,9 @@ def _rewrite(owner, res, stats, marker=None):
             stroking = o in ("SC", "SCN")
             if k == "white" and not marker:
                 out.append((operands, op)); stats["vector"] += 1
+                continue
+            if k == "rgb" and knockout(o, operands, k):
+                changed = True
                 continue
             if k in ("gray", "rgb", "cmyk") and (_is_marker(k, operands, marker) if marker
                                                  else _white_values(k, operands)):

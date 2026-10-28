@@ -22,9 +22,14 @@ it has no NetSuite connection or data and none of IT's additions.
 - No pricing.
 
 ## What is not here
-- NetSuite: no bridge, order queue, order lookups, colour ids or NetSuite files.
+- NetSuite: no bridge, order queue, order lookups, colour ids or NetSuite files,
+  and no mention of it in the page clients download (the page is shipped
+  without code comments; see "Bringing the main app's changes over").
 - IT's files: access_gate.py, signout.js, netsuite_bridge.py, the NetSuite
-  pages and IT's tests.
+  pages and IT's tests. Also not here: the export log, ink coverage, What's
+  New, the 4imprint uploader, Raster to Vector, Get.Stitched.
+- Products that aren't in CLIENT_CATALOG (or borrowed by one) are dropped at
+  start-up, so /api/products only lists the client's items.
 - Press files, 2X2, print PDF, artwork originals and ink coverage: an export
   ships the proof and the virtual only (the server enforces it).
 - No past jobs from the main app.
@@ -46,22 +51,46 @@ only). A new colour added in the main app needs adding there too.
 ## Railway variables
 - CLIENT_USER       the username you give clients (optional, not case-sensitive)
 - CLIENT_PASSWORD   the password you give clients (not set = open to anyone)
-- SECRET_KEY        a long random value of its own
+- SECRET_KEY        a long random value of its own. Set it: without it the
+                    session key is made from CLIENT_PASSWORD, which every
+                    client knows.
 Nothing else is needed. Don't copy any variables from the main service.
 
-## Setting up the repo
-The product photos make the whole site too big to send in one file, so it
-comes as the files that differ from the main app.
+## Each client's files are their own
+Every client signs in with the same password, so the server tells them apart
+by browser session (client_login.owner_tag). Each export, render job and
+reopened proof is marked with the session that made it; another session gets
+"expired" / "unknown" for it, even with the exact link. Exports are deleted
+after an hour, uploads after a day.
 
-1. Make a NEW repo from a copy of the main app (as of 2026-10-08).
-2. Delete from the copy:
-   netsuite_bridge.py, access_gate.py, ink_coverage.py, static/ns-bridge.js,
-   static/ns-queue.html, static/signout.js, the whole tests/ folder,
-   data/netsuite_colors.csv, NOTES-for-IT-netsuite-colors.md,
-   CHANGES-2026-09-28.txt, configurator.html (the old copy at the top level),
-   numo-4cp-fiery (2).zip if it is there, and uploads/, _serve/, _ns_cache/ if
-   they are there.
-3. Add the files from the zip (they replace the copy's own).
+## Update 2026-10-28 (from the main app, as of 2026-10-28)
+Brought over from the main app (nothing NetSuite came across). What clients see:
+- Size: the W typed is the W on the proof, exactly (it could print 1-2% big);
+  H follows the art's own proportions.
+- 4CP: exact hex or Pantone per color, Numo's own 4CP swatches listed first,
+  type a PMS for a solid background, vector backgrounds print as vector,
+  white inside 4CP art cuts out to the background as the proof shows.
+- White inside the art on pens and totes cuts out (the proof matches).
+- "Match <part>" inks (match the bias, the stitching, the zipper).
+- Pastel Pink and Light Coral neoprene, Yellow thread (data/colors_app.json).
+- Picking art from a template: Side 2 comes out the right way up; customer
+  TIF templates keep their rings and white ink; picking from a mockup leaves
+  out the bottom's colored circle.
+- Jotter: both sides read toward the clip, Side 2 is the pen rolled over,
+  prints 0.02" shorter than the listed height; plain Black ink.
+- Art editor: the main app's new editor, clients see its Colors view only.
+- Proof: the bottom imprint on the info line; many color combos go in columns.
+Also: each client's exports are their own (see above); the Jotter's Side 1
+mask was a 12.5 MB PNG, now 37 KB (same pixels).
+
+## Bringing the main app's changes over
+Python files: take the main app's own copy, except server.py, engine.py
+(this copy reads data/colors_app.json) and client_login.py (this copy only).
+server.py and static/configurator.html are rebuilt from the main app's by
+two scripts kept outside this repo (port_server.py, port_html.mjs): they take
+the internal-only parts out, put the client rules back in and strip comments
+from the page. Rebuild them that way rather than copying either file across
+by hand.
 
 ## Update 2026-10-09 (from the main app)
 Today's main-app changes, merged into this copy's own files (nothing

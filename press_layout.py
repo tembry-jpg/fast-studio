@@ -67,7 +67,7 @@ from screenprint import (ink_bbox_points, recolor_form_to_spot,
 
 logging.getLogger("pdfrw").setLevel(logging.ERROR)
 
-ALL_SLOTS = ("side1", "bottom", "side2")
+ALL_SLOTS = ("side1", "bottom", "side2", "wrap")
 
 # Bump this whenever the proof page changes. It is reported by
 # /api/press-available/<product_id> so you can confirm from a browser which
@@ -175,6 +175,21 @@ PRESS_TEMPLATES = {
     },
     # Horizontal Bank Bag 10.5" x 5.5" (9210-02), expanded vinyl and laminated
     # nylon: one die, one template, separate Front and Back sheets.
+    # 9613 Mixing Glass 16oz (pint glass), direct screen print: Side 1,
+    # Side 2 or one wrap on a single print file (tools/make_9613_template.py).
+    "9613-DIRECT-1C": {"template": PRESS_DIR / "9613-DIRECT-1C.pdf",
+                       "spec":     PRESS_DIR / "press_spec_9613.json"},
+    "9613": {"template": PRESS_DIR / "9613-DIRECT-1C.pdf",
+             "spec":     PRESS_DIR / "press_spec_9613.json"},
+    # 9729 Challenger Mug, direct screen print: Side 1 (Right Hand Drinker),
+    # Side 2 (Left Hand Drinker) or a wrap (tools/make_9729_template.py).
+    # Printed like the 9613: -Film and -Xitron files.
+    "9729": {"template": PRESS_DIR / "9729-DIRECT-1C.pdf",
+             "spec":     PRESS_DIR / "press_spec_9729.json"},
+    # The same glass as a waterslide decal (products "9613-DECAL"): the
+    # template gives the proof; the print files are decal plates (decal.py).
+    "9613-DECAL": {"template": PRESS_DIR / "9613-DIRECT-1C.pdf",
+                   "spec":     PRESS_DIR / "press_spec_9613.json"},
     "9210-02-EV-1C": {"template": PRESS_DIR / "9210-02-1C.pdf",
                       "spec": PRESS_DIR / "press_spec_9210-02.json", "stitched": False},
     "9210-02-LN-1C": {"template": PRESS_DIR / "9210-02-1C.pdf",
@@ -348,6 +363,112 @@ def missing_press_files():
             if press_template_status(pid) != "ok"}
 
 
+def _page_inherited(page_obj, key):
+    node = page_obj
+    while node is not None:
+        if key in node:
+            return node[key]
+        node = node.get("/Parent")
+    return None
+
+
+def _art_page_index(path, count):
+    """The first page with any ink on it (art saved on page 2 behind a blank page 1)."""
+    if count <= 1:
+        return 0
+    import subprocess, tempfile
+    from PIL import Image
+    for i in range(min(count, 10)):
+        with tempfile.TemporaryDirectory() as td:
+            subprocess.run(["pdftoppm", "-r", "18", "-png", "-singlefile", "-f", str(i + 1),
+                            "-l", str(i + 1), str(path), f"{td}/p"], capture_output=True, timeout=60)
+            try:
+                im = Image.open(f"{td}/p.png").convert("L")
+            except OSError:
+                continue
+            if im.point(lambda v: 255 if v < 250 else 0).getbbox():
+                return i
+    return 0
+
+
+def _own_page_boxes(path, work_dir=None):
+    """
+    The art PDF as given, or a copy the press build and the preview read alike.
+
+    Everything downstream reads page one, from 0,0, upright, at its MediaBox.
+    Valid PDFs say those things in other ways, and these broke or skewed a
+    press export (13 variants of one logo, 2026-10-20):
+      - the page size inherited from the page tree (FENDT_pure_1C_black.pdf):
+        "'NoneType' object is not iterable", no sheets at all
+      - /Rotate: the art printed sideways against how every viewer shows it
+      - a page box written max-first: a solid block instead of the art
+      - a CropBox inside the MediaBox: art outside what Acrobat/Illustrator
+        show came along, and the art printed smaller
+      - art on page 2 behind a blank page 1: blank sheets
+    The copy is one page: the visible box (CropBox within MediaBox) moved to
+    0,0, the rotation applied - the page's own content and resources wrapped,
+    not rewritten, so vector stays exactly as drawn. A file that needs none of
+    it is used as it is. Called on upload too, so the preview, the print file
+    and the press sheets all start from the same page.
+    """
+    import pikepdf
+    path = Path(path)
+    try:
+        pdf = pikepdf.open(str(path))
+    except Exception:
+        return str(path)                          # unreadable here: let the build say why
+    with pdf:
+        idx = _art_page_index(path, len(pdf.pages))
+        obj = pdf.pages[idx].obj
+        media = _page_inherited(obj, "/MediaBox")
+        if media is None:
+            return str(path)
+        mb = [float(v) for v in media]
+        full = [min(mb[0], mb[2]), min(mb[1], mb[3]), max(mb[0], mb[2]), max(mb[1], mb[3])]
+        box = list(full)
+        crop = _page_inherited(obj, "/CropBox")
+        if crop is not None:
+            cb = [float(v) for v in crop]
+            cb = [min(cb[0], cb[2]), min(cb[1], cb[3]), max(cb[0], cb[2]), max(cb[1], cb[3])]
+            box = [max(full[0], cb[0]), max(full[1], cb[1]), min(full[2], cb[2]), min(full[3], cb[3])]
+            if box[2] <= box[0] or box[3] <= box[1]:
+                box = list(full)
+        rot = int(_page_inherited(obj, "/Rotate") or 0) % 360
+        own = obj.get("/MediaBox")
+        if (idx == 0 and own is not None and [float(v) for v in own] == box
+                and box[0] == 0 and box[1] == 0 and rot == 0):
+            return str(path)
+        res = _page_inherited(obj, "/Resources")
+        w, h = box[2] - box[0], box[3] - box[1]
+        # Page space -> upright space at 0,0: the visible box to the origin,
+        # then turned as a viewer turns it (/Rotate is clockwise).
+        r = {0: (1, 0, 0, 1, 0, 0), 90: (0, -1, 1, 0, 0, w),
+             180: (-1, 0, 0, -1, w, h), 270: (0, 1, -1, 0, h, 0)}[rot]
+        W, H = (h, w) if rot in (90, 270) else (w, h)
+        n = lambda v: f"{v:.4f}".rstrip("0").rstrip(".")
+        head = (f"q {' '.join(n(v) for v in r)} cm 1 0 0 1 {n(-box[0])} {n(-box[1])} cm "
+                f"{n(box[0])} {n(box[1])} {n(w)} {n(h)} re W n\n").encode()
+        old = obj.get("/Contents")
+        parts = list(old) if isinstance(old, pikepdf.Array) else ([old] if old is not None else [])
+        for i in reversed(range(len(pdf.pages))):
+            if i != idx:
+                del pdf.pages[i]
+        obj = pdf.pages[0].obj
+        for key in ("/CropBox", "/BleedBox", "/TrimBox", "/ArtBox", "/Rotate", "/UserUnit"):
+            if key in obj:
+                del obj[key]
+        if "/Rotate" in pdf.Root.Pages:
+            del pdf.Root.Pages["/Rotate"]
+        obj["/MediaBox"] = pikepdf.Array([0, 0, W, H])
+        if res is not None:
+            obj["/Resources"] = res
+        obj["/Contents"] = pikepdf.Array([pdf.make_stream(head)] + parts
+                                         + [pdf.make_stream(b"\nQ\n")])
+        out = Path(work_dir or path.parent) / (path.stem + ".clean.pdf")
+        pdf.save(str(out))
+    return str(out)
+
+
 def art_as_pdf(path, work_dir=None):
     """
     The imposition places artwork as vector, so the source has to be a PDF.
@@ -359,7 +480,7 @@ def art_as_pdf(path, work_dir=None):
     path = Path(path)
     ext = path.suffix.lower()
     if ext in (".pdf", ".ai"):
-        return str(path)
+        return _own_page_boxes(path, work_dir)
     out = Path(work_dir or path.parent) / (path.stem + ".press.pdf")
     if ext == ".svg":
         import cairosvg
@@ -676,12 +797,27 @@ class Artwork:
         # a hidden colour that sat at the edge of the art would otherwise
         # change the ink bounds between the preview and the press sheet.
         self.hidden_rgbs = list(hidden_rgbs or [])
-        box = [float(v) for v in PdfReader(self.path).pages[0].MediaBox]
+        box = [float(v) for v in PdfReader(self.path).pages[0].inheritable.MediaBox]
         ink = ink_bbox_points(self.path, tuple(box)) or tuple(box)
         self.x0, self.y0, self.x1, self.y1 = ink
         self.w, self.h = self.x1 - self.x0, self.y1 - self.y0
 
-    def _fit_scale(self, zone_w, zone_h, scale_mult=1.0, circular=False, art_rot=0.0):
+    def _fine_w(self):
+        """The ink box measured finer (600 dpi), for art printed at an exact
+        width; the box is kept, so placement uses the same edges."""
+        if not getattr(self, "_fine", False):
+            self._fine = True
+            try:
+                box = [float(v) for v in PdfReader(self.path).pages[0].inheritable.MediaBox]
+                ink = ink_bbox_points(self.path, tuple(box), dpi=600)
+                if ink and ink[2] > ink[0] and ink[3] > ink[1]:
+                    self.x0, self.y0, self.x1, self.y1 = ink
+                    self.w, self.h = self.x1 - self.x0, self.y1 - self.y0
+            except Exception:
+                pass
+        return self.w
+
+    def _fit_scale(self, zone_w, zone_h, scale_mult=1.0, circular=False, art_rot=0.0, absolute=None):
         """
         The factor that fits this art inside a zone, proportions kept.
 
@@ -697,6 +833,16 @@ class Artwork:
         whose diagonal is the diameter, so scale by the art's diagonal rather
         than by its longest side.
         """
+        # An exact scale (placement "abs"): art already sized for the press,
+        # such as a glass's taper-corrected art, which is meant to run wider
+        # on the screen than the imprint area it fills on the glass.
+        # The width the configurator says, exactly (placement "w_pt").
+        if isinstance(absolute, dict):
+            w = float(absolute.get("w_pt") or 0)
+            fw = self._fine_w()
+            return w / fw if w > 0 and fw > 1e-6 else scale_mult
+        if absolute:
+            return float(absolute)
         if circular:
             diagonal = (self.w ** 2 + self.h ** 2) ** 0.5
             return (zone_w / diagonal) * scale_mult
@@ -707,7 +853,7 @@ class Artwork:
         bw, bh = self.w * c + self.h * n, self.w * n + self.h * c
         return min(min(zone_w / self.w, zone_h / self.h) * scale_mult, zone_w / bw, zone_h / bh)
 
-    def fitted_size(self, zone_w, zone_h, scale_mult=1.0, circular=False, art_rot=0.0):
+    def fitted_size(self, zone_w, zone_h, scale_mult=1.0, circular=False, art_rot=0.0, absolute=None):
         """
         The size this art actually prints at in a zone, in points.
 
@@ -722,11 +868,11 @@ class Artwork:
         proof has to be the figure the press actually lays down, and two copies
         of the same formula are two things to keep in step.
         """
-        s = self._fit_scale(zone_w, zone_h, scale_mult, circular, art_rot)
+        s = self._fit_scale(zone_w, zone_h, scale_mult, circular, art_rot, absolute)
         return self.w * s, self.h * s
 
     def draw(self, c, cx, cy, zone_w, zone_h, rot_deg, scale_mult=1.0,
-             circular=False, off_x=0.0, off_y=0.0, art_rot=0.0, paint=None):
+             circular=False, off_x=0.0, off_y=0.0, art_rot=0.0, paint=None, absolute=None):
         """
         Draw the art in a zone, at the size and place the customer put it.
 
@@ -740,7 +886,7 @@ class Artwork:
         on the die, and on a tote's back panel it is 180° whatever the
         customer did.
         """
-        s = self._fit_scale(zone_w, zone_h, scale_mult, circular, art_rot)
+        s = self._fit_scale(zone_w, zone_h, scale_mult, circular, art_rot, absolute)
         dw, dh = self.w * s, self.h * s
         c.saveState()
         c.translate(cx, cy)
@@ -753,6 +899,15 @@ class Artwork:
         c.translate(-dw / 2, -dh / 2)
         c.scale(s, s)
         c.translate(-self.x0, -self.y0)
+        # Where this placement lands on the page, for the check that every
+        # press sheet really carries the art (_check_sheets_have_art).
+        rects = getattr(c, "_art_rects", None)
+        if rects is not None:
+            a, b, cc, d, e, f = c._currentMatrix
+            pts = [(a * x + cc * y + e, b * x + d * y + f)
+                   for x in (self.x0, self.x1) for y in (self.y0, self.y1)]
+            rects.append((min(p[0] for p in pts), min(p[1] for p in pts),
+                          max(p[0] for p in pts), max(p[1] for p in pts)))
         c.doForm(makerl(c, self._form_for(c, paint)))
         c.restoreState()
 
@@ -1690,6 +1845,19 @@ def _wrap_text(c, text, font, size, width):
     return lines
 
 
+def info_label(sides, slots):
+    """
+    The proof's Info line: how the sides print, and the bottom when it prints
+    too - "2 Sides Same + Bottom", "1 Side + Bottom", "Bottom only". It used
+    to say only the sides, so a job with a bottom imprint read as if it had
+    none.
+    """
+    base = {"1side": "1 Side", "2same": "2 Sides Same", "2diff": "2 Sides Different"}.get(sides)
+    if "bottom" in (slots or ()):
+        return f"{base} + Bottom" if base else "Bottom only"
+    return base
+
+
 def _info_and_note(c, x, y, right, meta, max_note_lines=8):
     """
     The proof's Info and Artist Note lines.
@@ -1805,8 +1973,9 @@ _MUTED = Color(0.45, 0.45, 0.45)
 _RULE = Color(0.85, 0.85, 0.85)
 
 
-def _field(c, x, y, label, value, size=9.0, label_w=78.0, swatch_hex=None):
-    """One `Label: value` line, with an optional colour chip before the value."""
+def _field(c, x, y, label, value, size=9.0, label_w=78.0, swatch_hex=None, max_w=None):
+    """One `Label: value` line, with an optional colour chip before the value.
+    max_w: the line's whole width; a value that would run past it is set smaller."""
     c.setFillColor(_MUTED)
     ls = size                                   # a long label ("Heathered Neoprene") fits its column
     while ls > 6 and c.stringWidth(str(label), "Helvetica", ls) > label_w - 4:
@@ -1817,8 +1986,13 @@ def _field(c, x, y, label, value, size=9.0, label_w=78.0, swatch_hex=None):
     if swatch_hex and _swatch(c, vx, y - 1.0, swatch_hex, size=size * 0.95):
         vx += size * 1.45
     c.setFillColor(_INK)
-    c.setFont("Helvetica-Bold", size)
-    c.drawString(vx, y, str(value if value not in (None, "") else "—"))
+    text = str(value if value not in (None, "") else "—")
+    vs = size
+    if max_w:
+        while vs > 5.5 and vx + c.stringWidth(text, "Helvetica-Bold", vs) > x + max_w:
+            vs -= 0.25
+    c.setFont("Helvetica-Bold", vs)
+    c.drawString(vx, y, text)
     return y - (size + 4.0)
 
 
@@ -2011,30 +2185,58 @@ def build_proof_page_multi(out_pdf, metas, flats, mockup_img=None):
     head_y = _proof_swatch_grid(c, x, PROOF_MARGIN + 14, w, m0.get("product_colors"))
     floor_y = head_y + 14
     # ── A block per variant ────────────────────────────────────────────────
+    # Up to 4 in one column, as before. More than 4 go in columns of 4, filled
+    # top to bottom then left to right (9 colours: 4 + 4 + 1); past 12, three
+    # columns with as many rows as it takes. A block always gets a full row's
+    # height, so the lines never run into the next colour (Numo, 2026-10-20:
+    # 9 colourways overlapped in one column).
+    import math as _math
     n = len(metas)
-    block_h = (y - floor_y) / n
-    col_w = 190.0
+    if n <= 4:
+        cols, rows = 1, max(n, 1)
+    else:
+        rows = 4
+        cols = _math.ceil(n / rows)
+        if cols > 3:
+            cols, rows = 3, _math.ceil(n / 3)
+    gap_x = 14.0
+    cell_w = (w - gap_x * (cols - 1)) / cols
+    block_h = (y - floor_y) / rows
+    one = cols == 1
+    fs = 9.0 if one else (8.0 if block_h >= 70 else 7.0)
+    lw = 78.0 if one else 50.0
+    col_w = 190.0 if one else min(118.0, cell_w * 0.62)
     for k, (mt, fl) in enumerate(zip(metas, flats)):
-        top = y - k * block_h
+        ci, ri = divmod(k, rows)
+        bx = x + ci * (cell_w + gap_x)
+        top = y - ri * block_h
         c.setStrokeColor(_RULE); c.setLineWidth(0.7)
-        c.line(x, top, x + w, top)
-        fy = top - 15
-        c.setFillColor(_INK); c.setFont("Helvetica-Bold", 10.5)
+        c.line(bx, top, bx + cell_w, top)
+        fy = top - (15 if one else 12)
+        c.setFillColor(_INK)
         body = mt.get("item_color") or {}
-        c.drawString(x, fy, f"{k + 1}.  {body.get('name') or 'Color ' + str(k + 1)}"
-                     + (f"   ·   line {mt['line_no']}" if mt.get("line_no") else ""))
-        fy -= 16
-        fy = _field(c, x, fy, body.get("label") or "Item Color", body.get("name"), swatch_hex=body.get("hex"))
+        title = f"{k + 1}.  {body.get('name') or 'Color ' + str(k + 1)}" \
+            + (f"   ·   line {mt['line_no']}" if mt.get("line_no") else "")
+        ts = 10.5 if one else 9.0
+        while ts > 6.5 and c.stringWidth(title, "Helvetica-Bold", ts) > (cell_w if one else col_w + 30):
+            ts -= 0.25
+        c.setFont("Helvetica-Bold", ts)
+        c.drawString(bx, fy, title)
+        fy -= 16 if one else 13
+        fy = _field(c, bx, fy, body.get("label") or "Item Color", body.get("name"), size=fs, label_w=lw,
+                    swatch_hex=body.get("hex"), max_w=col_w)
         for extra in mt.get("components_extra") or []:
-            fy = _field(c, x, fy, extra.get("label") or "", extra.get("name"), swatch_hex=extra.get("hex"))
+            fy = _field(c, bx, fy, extra.get("label") or "", extra.get("name"), size=fs, label_w=lw,
+                        swatch_hex=extra.get("hex"), max_w=col_w)
         inks_list = mt.get("imprint_inks") or []
         ink = mt.get("imprint") or {}
         if len(inks_list) > 1:
-            fy = _ink_field(c, x, fy, "Imprint", inks_list, x + col_w)
+            fy = _ink_field(c, bx, fy, "Imprint", inks_list, bx + col_w, size=fs, label_w=lw)
         else:
-            fy = _field(c, x, fy, "Imprint", ink.get("name"), swatch_hex=ink.get("hex"))
+            fy = _field(c, bx, fy, "Imprint", ink.get("name"), size=fs, label_w=lw,
+                        swatch_hex=ink.get("hex"), max_w=col_w)
         if mt.get("quantity"):
-            fy = _field(c, x, fy, "Quantity", f'{int(mt["quantity"]):,}')
+            fy = _field(c, bx, fy, "Quantity", f'{int(mt["quantity"]):,}', size=fs, label_w=lw, max_w=col_w)
         if fl and Path(fl).exists():
             try:
                 # Trimmed to the item, so each lay fills its block.
@@ -2048,14 +2250,14 @@ def build_proof_page_multi(out_pdf, metas, flats, mockup_img=None):
                                     min(pim.width, bb[2] + mpx), min(pim.height, bb[3] + mpx)))
                 im = ImageReader(pim)
                 iw, ih = im.getSize()
-                aw, ah = w - col_w - 8, block_h - 10
+                aw, ah = cell_w - col_w - 8, block_h - 10
                 sc = min(aw / iw, ah / ih)
                 fw, fh = iw * sc, ih * sc
-                c.drawImage(im, x + col_w + 8 + (aw - fw) / 2, top - 5 - ah + (ah - fh) / 2, fw, fh, mask="auto")
+                c.drawImage(im, bx + col_w + 8 + (aw - fw) / 2, top - 5 - ah + (ah - fh) / 2, fw, fh, mask="auto")
                 # The vector panels, placed as the whole lay would be (it was trimmed).
                 _W0, _H0 = _Im.open(str(fl)).size
                 _cx0, _cy0 = ((max(0, bb[0] - mpx), max(0, bb[1] - mpx)) if bb else (0, 0))
-                _X, _Yt = x + col_w + 8 + (aw - fw) / 2 - _cx0 * sc, top - 5 - ah + (ah - fh) / 2 + fh + _cy0 * sc
+                _X, _Yt = bx + col_w + 8 + (aw - fw) / 2 - _cx0 * sc, top - 5 - ah + (ah - fh) / 2 + fh + _cy0 * sc
                 draw_flat_vectors(c, fl, _X, _Yt - _H0 * sc, _W0 * sc, _H0 * sc)
             except Exception as e:
                 print(f"⚠️ Flat lay could not be placed on the proof: {e}")
@@ -2094,7 +2296,8 @@ def _build_proof_page(out_pdf, meta, flat_png=None, mockup_img=None):
     # disappears under it.
     text_right = PROOF_W - PROOF_MARGIN
     mock_bottom = PROOF_H
-    if mockup_img and Path(mockup_img).exists():
+    big_mockup = bool(meta.get("mockup_as_lay")) and not flat_png
+    if mockup_img and Path(mockup_img).exists() and not big_mockup:
         try:
             from reportlab.lib.utils import ImageReader
             im = ImageReader(str(mockup_img))
@@ -2211,6 +2414,22 @@ def _build_proof_page(out_pdf, meta, flat_png=None, mockup_img=None):
             draw_flat_vectors(c, flat_png, (PROOF_W - fw) / 2, floor_y + (avail_h - fh) / 2, fw, fh)
         except Exception as e:
             print(f"⚠️ Flat lay could not be placed on the proof: {e}")
+    elif big_mockup and mockup_img and Path(mockup_img).exists():
+        # A glass has no flat lay: its mockup (three glasses) fills the middle.
+        try:
+            from reportlab.lib.utils import ImageReader
+            im = ImageReader(str(mockup_img))
+            iw, ih = im.getSize()
+            avail_h = max(80.0, y - floor_y - 8)
+            s = min(w / iw, avail_h / ih)
+            fw, fh = iw * s, ih * s
+            mx, my = (PROOF_W - fw) / 2, floor_y + (avail_h - fh) / 2
+            c.drawImage(im, mx, my, fw, fh, mask="auto")
+            c.setStrokeColor(_RULE)
+            c.setLineWidth(0.6)
+            c.rect(mx, my, fw, fh, fill=0, stroke=1)
+        except Exception as e:
+            print(f"⚠️ Mockup could not be placed on the proof: {e}")
 
     c.setFillColor(_MUTED)
     c.setFont("Helvetica", 7.5)
@@ -2240,6 +2459,173 @@ def _pick_proof_page(spec, two_sided):
         if fallback is None:
             fallback = int(pn)
     return fallback or 1
+
+
+_ALL_WHITE = {}
+
+
+def _art_is_all_white(pdf_path):
+    """True when everything the art paints is white or near it: a logo drawn
+    white to stand on the product colour. Measured on a small transparent
+    render; at least 97 % of the inked pixels must be white."""
+    key = str(pdf_path)
+    if key in _ALL_WHITE:
+        return _ALL_WHITE[key]
+    res = False
+    try:
+        import subprocess, tempfile
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as td:
+            subprocess.run(["pdftocairo", "-png", "-transp", "-r", "36", "-singlefile", key, f"{td}/a"],
+                           capture_output=True, timeout=60)
+            im = Image.open(f"{td}/a.png").convert("RGBA")
+        px = [p for p in im.getdata() if p[3] > 128]
+        if px:
+            white = sum(1 for p in px if min(p[:3]) >= 235)
+            res = white / len(px) >= 0.97
+    except Exception:
+        res = False
+    _ALL_WHITE[key] = res
+    return res
+
+
+def unify_spots_and_drop_group(pdf_path):
+    """
+    Last pass on a press file, for the RIP:
+      - every spot ink (/White, /PANTONE 343 C ...) is ONE colour-space
+        definition on the sheet. The art's separation and the caption each
+        wrote their own (/White came out with two different CMYK alternates),
+        which is how Illustrator and some RIPs end up with two swatches or two
+        plates for one ink - the same thing 2026-10-08p fixed for Registration;
+      - no transparency anywhere: a screen prints solid ink or nothing, so a
+        press sheet has no use for it, but a sheet that carries any (a page or
+        form transparency group, an opacity under 100 %, a soft mask, a blend
+        mode) is flattened by a separating RIP, which drops Registration from
+        the spot plates and can lose or convert the spot inks. Art imported from
+        a customer's TIF template brought the template's own transparency along
+        (ghost koozies at 25-60 % opacity, transparency groups): Ghostscript's
+        separation of those sheets had 0 % registration on the White plate.
+        Every group is removed and every graphics state made opaque and Normal;
+      - a compressed stream with a bad checksum is written again cleanly.
+    Returns {"spots_unified": n, "groups_dropped": n, "gstates_opaque": n,
+             "streams_repaired": n}.
+    """
+    import pikepdf, zlib
+    out = {"spots_unified": 0, "groups_dropped": 0, "gstates_opaque": 0, "streams_repaired": 0}
+    with pikepdf.open(str(pdf_path), allow_overwriting_input=True) as pdf:
+        canon, seen = {}, set()
+
+        def walk(res):
+            if res is None:
+                return
+            cs = res.get("/ColorSpace")
+            if cs is not None:
+                for k in list(cs.keys()):
+                    v = cs[k]
+                    if isinstance(v, pikepdf.Array) and len(v) >= 4 and str(v[0]) == "/Separation" \
+                            and str(v[1]) not in ("/All", "/None"):
+                        name = str(v[1])
+                        if name not in canon:
+                            canon[name] = v if v.is_indirect else pdf.make_indirect(v)
+                            if not v.is_indirect:
+                                cs[k] = canon[name]
+                        elif v.objgen != canon[name].objgen or not v.is_indirect:
+                            cs[k] = canon[name]
+                            out["spots_unified"] += 1
+            for _, x in (res.get("/XObject") or {}).items():
+                if x.objgen in seen:
+                    continue
+                seen.add(x.objgen)
+                if x.get("/Subtype") == "/Form":
+                    walk(x.get("/Resources"))
+            for _, pat in (res.get("/Pattern") or {}).items():
+                if pat.objgen not in seen:
+                    seen.add(pat.objgen)
+                    walk(pat.get("/Resources"))
+        for page in pdf.pages:
+            walk(page.obj.get("/Resources"))
+        for o in pdf.objects:
+            if not isinstance(o, (pikepdf.Dictionary, pikepdf.Stream)):
+                continue
+            try:
+                if "/Group" in o and str((o.get("/Group") or {}).get("/S")) == "/Transparency":
+                    del o["/Group"]
+                    out["groups_dropped"] += 1
+                if o.get("/Type") == "/ExtGState" or any(k in o for k in ("/CA", "/ca", "/SMask", "/BM")) \
+                        and not isinstance(o, pikepdf.Stream):
+                    changed = False
+                    for k in ("/CA", "/ca"):
+                        if k in o and float(o[k]) < 1:
+                            o[k] = 1.0; changed = True
+                    if "/SMask" in o and str(o["/SMask"]) != "/None":
+                        o["/SMask"] = pikepdf.Name.None_ if hasattr(pikepdf.Name, "None_") else pikepdf.Name("/None"); changed = True
+                    if "/BM" in o and str(o["/BM"]) not in ("/Normal", "/Compatible"):
+                        o["/BM"] = pikepdf.Name.Normal; changed = True
+                    out["gstates_opaque"] += changed
+            except Exception:
+                continue
+        # A compressed stream whose checksum is wrong (the 5010 template carries one)
+        # still renders in most viewers, but a strict RIP can stop on it: written again
+        # from what it decompresses to.
+        for o in pdf.objects:
+            if isinstance(o, pikepdf.Stream) and str(o.get("/Filter")) == "/FlateDecode" \
+                    and "/DecodeParms" not in o:
+                raw = o.read_raw_bytes()
+                try:
+                    zlib.decompress(raw)
+                except zlib.error:
+                    try:
+                        data = zlib.decompressobj().decompress(raw)
+                    except zlib.error:
+                        continue
+                    o.write(data)                         # re-compressed cleanly on save
+                    out["streams_repaired"] += 1
+        pdf.save(str(pdf_path))
+    return out
+
+
+def _check_sheets_have_art(pdf_path, sheet_rects, dpi=24):
+    """
+    Stop the export when a press sheet came out without its art.
+
+    Every step between the upload and the sheet (recolouring to one ink,
+    dropping hidden colours, forcing registration, tidying) can lose art in a
+    file built some way nobody tested, and a sheet with only its crosshairs
+    and captions still looks like a finished file. This renders each sheet
+    small and looks for ink where the art was placed; a sheet with none at any
+    of its positions fails the build, with the sheet named, instead of going
+    to the screens. About a tenth of a second a sheet.
+    """
+    if not sheet_rects:
+        return
+    import subprocess, tempfile
+    from PIL import Image
+    k = dpi / 72.0
+    for idx, (rects, name) in sorted(sheet_rects.items()):
+        with tempfile.TemporaryDirectory() as td:
+            r = subprocess.run(["pdftoppm", "-r", str(dpi), "-png", "-singlefile",
+                                "-f", str(idx + 1), "-l", str(idx + 1), str(pdf_path), f"{td}/s"],
+                               capture_output=True, timeout=120)
+            try:
+                im = Image.open(f"{td}/s.png").convert("RGB")
+            except OSError:
+                return                                    # can't render here: nothing to say
+        W, H = im.size
+        # Ink = anything not paper-white. White ink shows as its pink stand-in and a
+        # pale PMS (663 C, 9224 C) as a near-white tint, so any channel even a little
+        # below white counts; inside the art's own box an empty sheet is pure white.
+        r_, g_, b_ = im.split()
+        from PIL import ImageChops
+        dark = ImageChops.darker(ImageChops.darker(r_, g_), b_).point(lambda v: 255 if v < 250 else 0)
+        for x0, y0, x1, y1 in rects:
+            box = (max(0, int(x0 * k)), max(0, int(H - y1 * k)),
+                   min(W, int(x1 * k) + 1), min(H, int(H - y0 * k) + 1))
+            if box[2] > box[0] and box[3] > box[1] and dark.crop(box).getbbox():
+                break
+        else:
+            raise ValueError(f"The {name} press sheet came out without the artwork. "
+                             "Nothing was sent to the press: open the art in Illustrator, "
+                             "save it as a new PDF and upload that.")
 
 
 def build(template_pdf, spec_path, art_pdf, out_path,
@@ -2346,10 +2732,17 @@ def build(template_pdf, spec_path, art_pdf, out_path,
             if key not in by_src:
                 n = len(by_src)
                 stem = Path(src).stem
+                # Art drawn in white (a customer's TIF template: white logo on the
+                # body colour) is all ink, not all knockout. Taking its white for a
+                # knockout left the press sheets blank (KK_wills40_fast, 2026-10).
+                if one_ink and _art_is_all_white(src):
+                    sl_inks = [{"hex": "#FFFFFF", "sources": ["#FFFFFF"], "pms": pms_name,
+                                "pms_hex": pms_hex or "#FFFFFF", "hidden": False}] \
+                        + [i for i in sl_inks if i.get("hidden")]
                 # Art the one-color editor wrote (name ends .1c-<tag>) is ink in
                 # black and knockouts in white by construction, so its white is
                 # always a knockout - even when its one ink is White.
-                ko_white = one_ink or bool(re.search(r"\.1c-[0-9a-f]{8}", stem))
+                ko_white = (one_ink and not _art_is_all_white(src)) or bool(re.search(r"\.1c-[0-9a-f]{8}", stem))
                 pp = work / f"{stem}.sep{n}-press.pdf"
                 pr = work / f"{stem}.sep{n}-proof.pdf"
                 # Traced images: disjoint, trapped inks -> overprint (see separate()).
@@ -2379,6 +2772,18 @@ def build(template_pdf, spec_path, art_pdf, out_path,
                     -_m.degrees(float(p.get("rot", 0.0) or 0.0)))
         except (TypeError, ValueError):
             return 1.0, 0.0, 0.0, 0.0
+    def absolute(slot_id):
+        """An exact scale for this slot's art, when its placement gives one."""
+        try:
+            p_ = placement.get(slot_id) or {}
+            v = float(p_.get("abs") or 0)
+            if v > 0:
+                return v
+            # The W the artist set, in points: printed exactly that wide.
+            w = float(p_.get("w_pt") or 0)
+            return {"w_pt": w} if w > 0 else None
+        except (TypeError, ValueError):
+            return None
     # Multi-colour: the ink caption is written one name per ink, each in its
     # own separation, so a screen shows only its own ink's name.
     spot_runs = None
@@ -2411,6 +2816,7 @@ def build(template_pdf, spec_path, art_pdf, out_path,
     d1, d2 = off["d_side1"], off["d_side2"]
     sw, sh, cd = off["side_w"], off["side_h"], off["circle_d"]
 
+    sheet_rects = {}                  # output page index -> (art rects, sheet name)
     pages = []
     # What each output page is, in the same order as `pages`. The proof and the
     # press sheets come out of one loop and some template pages are dropped, so
@@ -2503,6 +2909,7 @@ def build(template_pdf, spec_path, art_pdf, out_path,
 
         ov = f"{out_path}.ov{pn}.pdf"
         c = rlcanvas.Canvas(ov, pagesize=(pw, ph))
+        c._art_rects = [] if not guide else None
 
         if guide:
             # Die cut -> neoprene colour, seam lines -> stitching colour.
@@ -2595,11 +3002,11 @@ def build(template_pdf, spec_path, art_pdf, out_path,
                 if arts_proof:
                     arts_proof[name].draw(c, z["cx"], z["cy"], zw_, zh_, rot,
                                           scale_mult=sc, circular=(name == "bottom"),
-                                          off_x=ox, off_y=oy, art_rot=arot, paint="keep")
+                                          off_x=ox, off_y=oy, art_rot=arot, absolute=absolute(name), paint="keep")
                 else:
                     arts[name].draw(c, z["cx"], z["cy"], zw_, zh_, rot,
                              scale_mult=sc, circular=(name == "bottom"),
-                             off_x=ox, off_y=oy, art_rot=arot,
+                             off_x=ox, off_y=oy, art_rot=arot, absolute=absolute(name),
                              paint=(tuple(ink_rgb), tuple(body_rgb or (1, 1, 1))))
             # Cover the legend and the step-1 instruction, which described
             # elements this proof no longer shows.
@@ -2669,9 +3076,9 @@ def build(template_pdf, spec_path, art_pdf, out_path,
                 if not z:
                     continue
                 label = {"side1": "SIDE 1 IMPRINT", "side2": "SIDE 2 IMPRINT",
-                         "bottom": "BOTTOM IMPRINT"}[sl]
+                         "bottom": "BOTTOM IMPRINT", "wrap": "WRAP IMPRINT"}[sl]
                 aw, ah = arts[sl].fitted_size(*nominal_zone_pts(product, sl, z["w"], z["h"]),
-                                         scale_mult=place(sl)[0],
+                                         scale_mult=place(sl)[0], absolute=absolute(sl),
                                          circular=(sl == "bottom"), art_rot=place(sl)[3])
                 rows.append((label, f'{aw/72:.2f}" W x {ah/72:.2f}" H', None))
                 art_sizes.append({
@@ -2755,6 +3162,9 @@ def build(template_pdf, spec_path, art_pdf, out_path,
                     # themselves (koozies); a strip that folds over its middle
                     # (the key fob) prints both halves the same way up.
                     "side2":  ((cx + ux * pd2, cy + uy * pd2), base + spec.get("side2_turn", 180), (sw, sh)),
+                    # One piece all the way round (the 9613 pint glass),
+                    # centred on the position.
+                    "wrap":   ((cx, cy), base, (off.get("wrap_w", sw), off.get("wrap_h", sh))),
                 }
                 only = press.get("sides")
                 for name in slots:
@@ -2767,7 +3177,7 @@ def build(template_pdf, spec_path, art_pdf, out_path,
                         # The bottom position prints inside the die circle.
                         (arts_press or arts)[name].draw(c, px, py, zw, zh, rot,
                                  scale_mult=sc, circular=(name == "bottom"),
-                                 off_x=ox, off_y=oy, art_rot=arot,
+                                 off_x=ox, off_y=oy, art_rot=arot, absolute=absolute(name),
                                  # black = ink, white = hole; the registration
                                  # pass makes them 100 % and 0 % of the screen
                                  paint=("keep" if arts_press else ((0.0, 0.0, 0.0), (1.0, 1.0, 1.0))))
@@ -2779,6 +3189,8 @@ def build(template_pdf, spec_path, art_pdf, out_path,
             # this page is only the shape the flat lay is cut from.
             guide_page_obj = page
             continue
+        if c._art_rects:
+            sheet_rects[len(pages)] = (c._art_rects, sheet_label(press) or f"page {pn}")
         pages.append(page)
         # Numbered by the TEMPLATE's page, not this file's. The export keeps
         # only one of the two guide pages, so output indices shift by one on a
@@ -2835,7 +3247,7 @@ def build(template_pdf, spec_path, art_pdf, out_path,
             "customer": extra.get("customer"),
             "artist": extra.get("artist"),
             "artist_note": extra.get("artist_note"),
-            "info": SIDES_LABEL.get(sides),
+            "info": info_label(sides, slots),
             "revision": extra.get("revision"),
             "quantity": extra.get("quantity"),
             "item_color": ({"label": body_comp.get("label"),
@@ -2848,6 +3260,9 @@ def build(template_pdf, spec_path, art_pdf, out_path,
             "accepted_risks": accepted_risks,
             "product_colors": extra.get("product_colors"),
             "footer": extra.get("footer"),
+            # A glass has no flat lay: its mockup (three glasses) fills the
+            # middle of the proof instead of sitting small in the corner.
+            "mockup_as_lay": bool(spec.get("proof_mockup_lay")),
         }
         # A file of its own, not page one of the press document.
         #
@@ -2884,11 +3299,232 @@ def build(template_pdf, spec_path, art_pdf, out_path,
             print(f"⚠️ press file not tidied: {t['skipped']}")
     except Exception as e:
         print(f"⚠️ press file not tidied: {e}")
+    try:
+        unify_spots_and_drop_group(out_path)
+    except Exception as e:
+        print(f"⚠️ spot inks not unified: {e}")
+    _check_sheets_have_art(out_path, sheet_rects)
     return dict(out=str(out_path), proof_page=proof_page,
                 two_sided=two_sided, slots=slots, pages=len(pages),
                 page_names=page_names, flat_proof=(two_png or flat_png),
                 sheet_note=sheet_note, screens=screens,
                 proof=proof_pdf)
+
+
+def _build_glass(cfg, spec, pdf_art, out_path, slots, pms_name, pms_hex, kw):
+    """
+    A tapered glass (the 9613), printed flat on a rotary press that tilts the
+    glass to follow its taper. The proof shows the art as the customer placed
+    it; the print file carries it widened by the item's set amount
+    (PRODUCTS[...]["glass_widen"], 5 % on the 9613) - same height, same
+    centre - so it reads true where the glass curves away. Then the Xitron
+    copy beside it.
+    """
+    import math
+    import taper
+    from products import PRODUCTS
+    zones = spec["guide_pages"]["1"]["zones"]
+    product = kw.get("product")
+    widen = float((PRODUCTS.get(product) or {}).get("glass_widen") or 0)
+    # Taper fix: each row widened for the glass's diameter at its own height,
+    # so the whole print comes out at its true width (x widen) - circles round.
+    glass = taper.GLASSES.get(str(product)) if (PRODUCTS.get(product) or {}).get("glass_taper_fix") else None
+    lip_y = float(spec.get("lip_line_y") or 0)
+    placement = dict(kw.get("placement") or {})
+    if "wrap" in slots and ({"side1", "side2"} & set(slots)):
+        raise ValueError("A glass prints Side 1 / Side 2 or a wrap, not both - clear one of them.")
+    arts = pdf_art if isinstance(pdf_art, dict) else {sl: pdf_art for sl in slots}
+
+    if (PRODUCTS.get(product) or {}).get("print_method") == "decal":
+        return _build_decal(cfg, spec, arts, out_path, slots, pms_name, pms_hex, kw)
+
+    if widen <= 0 and not glass:
+        info = build(cfg["template"], cfg["spec"], arts, out_path, slots=slots,
+                     pms_name=pms_name, pms_hex=pms_hex, **kw)
+        info["widen_notes"] = []
+    else:
+        # 1. The proof, from the art as placed.
+        tmp_press = Path(f"{out_path}.proofbuild.pdf")
+        info = build(cfg["template"], cfg["spec"], arts, tmp_press, slots=slots,
+                     pms_name=pms_name, pms_hex=pms_hex, **kw)
+        tmp_press.unlink(missing_ok=True)
+        if not kw.get("include_press_sheets", True):
+            return info
+        # 2. The print file: each location's art widened about its centre,
+        # drawn at exactly the scale the proof used.
+        wide, place2, notes = {}, {}, []
+        for sl in slots:
+            z = zones[sl]
+            zw, zh = nominal_zone_pts(product, sl, z["w"], z["h"])
+            p = placement.get(sl) or {}
+            sc = float(p.get("sc", 1.0) or 1.0)
+            rot = -math.degrees(float(p.get("rot", 0) or 0))
+            a = Artwork(arts[sl])
+            # An exact scale already set (art at 4imprint's approved size)
+            # stands; otherwise the scale the proof used.
+            s = float(p["abs"]) if p.get("abs") else a._fit_scale(zw, zh, sc, False, rot,
+                                                                   {"w_pt": float(p["w_pt"])} if p.get("w_pt") else None)
+            if abs(rot) > 0.5:
+                wide[sl], place2[sl] = arts[sl], p
+                notes.append(f"{sl}: turned art printed without the {widen:.0%} widening")
+                continue
+            dst = str(Path(out_path).with_name(f"{Path(out_path).stem}-{sl}-wide.pdf"))
+            try:
+                if glass and lip_y:
+                    # The art's centre prints this far below the Lip Line;
+                    # the glass's diameter there sets the press's match (the
+                    # middle row comes out widened by exactly `widen`).
+                    zcy = float(z.get("cy", 0)) - float(p.get("oy", 0) or 0) * zh
+                    depth_c = (lip_y - zcy) / 72.0
+                    g2 = dict(glass, match_d=(1.0 + widen) * taper.diameter(glass, depth_c))
+                    t = taper.warp_pdf(arts[sl], dst, g2, depth_c, about_x=(a.x0 + a.x1) / 2,
+                                       about_y=(a.y0 + a.y1) / 2, scale=s)
+                    info.setdefault("taper_notes", []).append(f"{sl}: taper fix {100 * (t['stretch_top'] - 1):+.1f}% at the top of the art, "
+                                 f"{100 * (t['stretch_center'] - 1):+.1f}% middle, "
+                                 f"{100 * (t['stretch_bottom'] - 1):+.1f}% bottom")
+                else:
+                    t = taper.widen_pdf(arts[sl], dst, 1.0 + widen, about_x=(a.x0 + a.x1) / 2)
+            except Exception as e:
+                wide[sl], place2[sl] = arts[sl], p
+                notes.append(f"{sl}: printed without the {widen:.0%} widening ({e})")
+                continue
+            if t["images"]:
+                notes.append(f"{sl}: {t['images']} picture(s) in the art not widened")
+            wide[sl], place2[sl] = dst, dict(p, abs=s)
+            if glass and lip_y:
+                # A row-by-row widening can move the art's ink box sideways
+                # (lopsided art); keep the art's own centre where it was.
+                b = Artwork(dst)
+                shift = ((a.x0 + a.x1) / 2 - (b.x0 + b.x1) / 2) * s
+                if abs(shift) > 0.01:
+                    place2[sl]["ox"] = float(p.get("ox", 0) or 0) - shift / zw
+        kw2 = dict(kw, placement=place2, proof_path=str(Path(f"{out_path}.proof2.pdf")))
+        info2 = build(cfg["template"], cfg["spec"], wide, out_path, slots=slots,
+                      pms_name=pms_name, pms_hex=pms_hex, **kw2)
+        for f in Path(out_path).parent.glob(Path(out_path).name + ".proof2.pdf*"):
+            f.unlink(missing_ok=True)
+        info["out"], info["pages"], info["page_names"] = info2["out"], info2["pages"], info2["page_names"]
+        info["widen_notes"] = notes
+    # The Xitron (direct-to-screen) copy: the same file, its marks added.
+    if spec.get("xitron_marks"):
+        x = Path(out_path).with_name(Path(out_path).stem + "-xitron.pdf")
+        overlay_marks(out_path, Path(cfg["template"]).parent / spec["xitron_marks"], x,
+                      drop_layers=spec.get("xitron_drop_layers") or ())
+        info["xitron"] = str(x)
+    return info
+
+
+def _build_decal(cfg, spec, arts, out_path, slots, pms_name, pms_hex, kw):
+    """
+    A glass decorated with a screen-printed waterslide decal (9613-DECAL).
+    The proof comes from the item's template as usual (the art as placed, in
+    its PMS inks). The print files are decal plates (decal.make_plates): white
+    back, one plate per ink, cover coat - each location's art separated by ink
+    at the size it prints, 1:1.
+    """
+    import math
+    import onecolor
+    import decal
+    from products import PRODUCTS
+    product = kw.get("product")
+    opts = (PRODUCTS.get(product) or {}).get("decal") or {}
+    zones = spec["guide_pages"]["1"]["zones"]
+    placement = dict(kw.get("placement") or {})
+    info = build(cfg["template"], cfg["spec"], arts, Path(f"{out_path}.proofbuild.pdf"), slots=slots,
+                 pms_name=pms_name, pms_hex=pms_hex, **kw)
+    Path(f"{out_path}.proofbuild.pdf").unlink(missing_ok=True)
+    if not kw.get("include_press_sheets", True):
+        return info
+    work = Path(out_path).parent
+    inks_all = kw.get("inks")
+    if not inks_all:
+        inks_all = [{"hex": pms_hex or "#000000", "sources": None, "pms": pms_name or "Ink 1",
+                     "pms_hex": pms_hex or "#000000", "hidden": False}]
+    locs, names, hexes = [], [], {}
+    labels = {"side1": "Side 1", "side2": "Side 2", "wrap": "Wrap"}
+    for i, sl in enumerate(slots):
+        sl_inks = (inks_all.get(sl) or []) if isinstance(inks_all, dict) else inks_all
+        for ink in sl_inks:
+            if not ink.get("hidden") and ink.get("pms"):
+                hexes.setdefault(ink["pms"], ink.get("pms_hex") or ink.get("hex"))
+        sep = work / f"{Path(out_path).stem}-{sl}.decal-sep.pdf"
+        got = onecolor.separate(str(arts[sl]), sl_inks, sep, "press", white_is_knockout=True) or []
+        for nm in got:
+            if nm not in names:
+                names.append(nm)
+        # The art at the size it prints, 1:1, on a page of its own.
+        z = zones[sl]
+        zw, zh = nominal_zone_pts(product, sl, z["w"], z["h"])
+        p = placement.get(sl) or {}
+        a = Artwork(str(sep))
+        s = float(p["abs"]) if p.get("abs") else None
+        rot = -math.degrees(float(p.get("rot", 0) or 0))
+        w, h = a.fitted_size(zw, zh, scale_mult=float(p.get("sc", 1.0) or 1.0), art_rot=rot, absolute=s)
+        one = work / f"{Path(out_path).stem}-{sl}.decal-1to1.pdf"
+        from reportlab.pdfgen import canvas as _cv
+        c = _cv.Canvas(str(one), pagesize=(w, h))
+        a.draw(c, w / 2, h / 2, zw, zh, 0, scale_mult=float(p.get("sc", 1.0) or 1.0),
+               art_rot=rot, absolute=s, paint="keep")
+        c.save()
+        locs.append((labels.get(sl, sl), str(one)))
+    res = decal.make_plates(locs, names, work, Path(out_path).stem, opts=opts,
+                            info={"order": kw.get("order_id"), "item": kw.get("item"), "hex": hexes})
+    for f in work.glob(f"{Path(out_path).stem}-*.decal-*.pdf"):
+        f.unlink(missing_ok=True)
+    info["decal"] = res
+    info["widen_notes"] = res.get("notes") or []
+    if res.get("notes"):
+        info["sheet_note"] = "Decal: " + "; ".join(res["notes"])
+    return info
+
+
+def overlay_marks(press_pdf, marks_pdf, out_pdf, drop_layers=()):
+    """
+    A copy of a one-page press file with a machine's marks laid over it (the
+    9613 pint glass's Xitron direct-to-screen marks). The marks file is the
+    same page size and already in registration (/All). drop_layers: template
+    layers (by name) the machine doesn't want, taken out of the page - the
+    Xitron file has no round registration targets ("Register marks").
+    """
+    import pikepdf
+    with pikepdf.open(str(press_pdf)) as pdf, pikepdf.open(str(marks_pdf)) as mk:
+        for pg in pdf.pages:
+            if drop_layers:
+                props = pg.Resources.get("/Properties") or {}
+                gone = {k for k, v in props.items()
+                        if str(v.get("/Name", "")) in set(drop_layers)}
+                out, depth, skip_at, qnet = [], 0, None, 0
+                for operands, op in pikepdf.parse_content_stream(pg):
+                    o = str(op)
+                    if o in ("BDC", "BMC"):
+                        depth += 1
+                        if skip_at is None and o == "BDC" and len(operands) > 1 \
+                                and str(operands[0]) == "/OC" and str(operands[1]) in gone:
+                            skip_at, qnet = depth, 0
+                            continue
+                    if o == "EMC":
+                        if skip_at == depth:
+                            skip_at = None
+                            depth -= 1
+                            # A layer can open a save (q) it closes after its
+                            # end, or close one opened before it (the 9729's
+                            # Register marks do): keep the balance.
+                            if qnet > 0:
+                                out.extend([([], pikepdf.Operator("q"))] * qnet)
+                            elif qnet < 0:
+                                out.extend([([], pikepdf.Operator("Q"))] * -qnet)
+                            continue
+                        depth -= 1
+                    if skip_at is None:
+                        out.append((operands, op))
+                    elif o == "q":
+                        qnet += 1
+                    elif o == "Q":
+                        qnet -= 1
+                pg.Contents = pdf.make_stream(pikepdf.unparse_content_stream(out))
+            pg.add_overlay(mk.pages[0])
+        pdf.save(str(out_pdf))
+    return str(out_pdf)
 
 
 def build_for_job(product_id, art_path, slots, pms_name, pms_hex,
@@ -2916,6 +3552,17 @@ def build_for_job(product_id, art_path, slots, pms_name, pms_hex,
             pdf_art[sl] = conv[ap]
     else:
         pdf_art = art_as_pdf(art_path, work_dir=work)
+    spec = json.loads(Path(cfg["spec"]).read_text())
+    if spec.get("glass"):
+        return _build_glass(cfg, spec, pdf_art, out_path, slots, pms_name, pms_hex,
+                            dict(order_id=order_id, item=item or product_id,
+                                 product=product_id, components=components,
+                                 hidden_colors=hidden_colors, placement=placement,
+                                 accepted_risks=accepted_risks, proof_extra=proof_extra,
+                                 mockup_img=mockup_img, proof_path=proof_path,
+                                 sides=sides, inks=inks,
+                                 include_press_sheets=include_press_sheets,
+                                 caption_names=caption_names))
     return build(cfg["template"], cfg["spec"], pdf_art, out_path,
                  slots=slots, pms_name=pms_name, pms_hex=pms_hex,
                  item=item or product_id, order_id=order_id,
@@ -3159,7 +3806,16 @@ def build_flat_proof(proof_pdf, spec, out_png, proof_page=1, size=1600, dpi=220,
         if flat.get("handles"):
             pieces = [(label, _with_handles(part)) for label, part in pieces]
 
-        bottom = crop(bcx - cd / 2, bcx + cd / 2, c_bot, c_top) if cd else None
+        # The bottom is cut at the product's own round bottom (the die circle
+        # between the two panels), not at circle_d, which is the IMPRINT circle:
+        # cut at that, the disc was only the printable area and the art filled
+        # it edge to edge - on the 1080 a 1.7" phone number looked as wide as
+        # the whole bottom, where on the press sheet it sits well inside the die.
+        # (a hair inside the gap, so the mask never catches the die's own edge)
+        die_d = 0.97 * (float(panels[0][0]) - float(panels[1][1])) if (cd and len(panels) > 1) else 0
+        if not (cd < die_d < cd * 1.6):
+            die_d = cd
+        bottom = crop(bcx - die_d / 2, bcx + die_d / 2, bcy - die_d / 2, bcy + die_d / 2) if cd else None
         if bottom is not None:
             # Masked to a circle. The square crop carries the corners where the
             # tabs meet the disc, which read as a rounded square rather than the
@@ -3203,7 +3859,9 @@ def build_flat_proof(proof_pdf, spec, out_png, proof_page=1, size=1600, dpi=220,
 
     if bottom is not None:
         room = size - (top + ph + cap_h + label_gap) - margin
-        cd_px = int(min(room - cap_h - label_gap, size * 0.28))
+        # At the panels' scale, so the bottom reads at its true size beside the
+        # sides; smaller only when it can't fit.
+        cd_px = int(min(bottom.width * scale, room - cap_h - label_gap))
         if cd_px > 20:
             b = bottom.resize((cd_px, cd_px), Image.LANCZOS)
             bx = (size - cd_px) // 2
