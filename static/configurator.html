@@ -5774,6 +5774,7 @@ function updateJotterInkSwatch(){
 }
 function R(){
 if(syncMatchInks()) return;
+imprintOneEnforce();
 oneSideApply();
 
 if(S.prod?.pen_label){ try{ clearTimeout(PL.t); PL.t = setTimeout(() => penLabelRender(), 250); }catch(e){} }
@@ -8454,11 +8455,47 @@ function hasSidePair(){
   const ids = (S.prod?.slots || []).map(s => s.id);
   return ids.includes("side1") && ids.includes("side2");
 }
-function sidesSame(){ return hasSidePair() && S.sides !== "diff"; }
+function sidesSame(){ return hasSidePair() && !imprintOne() && S.sides !== "diff"; }
+function imprintOne(){ return Number(S.prod?.max_imprints) === 1 && hasSidePair(); }
+function imprintSide(){ return S.printSide === "side2" ? "side2" : "side1"; }
+function imprintOff(){ return imprintSide() === "side1" ? "side2" : "side1"; }
+function imprintReal(id){ const sl = S.slots?.[id]; return !!(sl?.img && !sl.isDefault); }
+function imprintPick(t){
+  if(t === "side1" || t === "side2"){ S.printSide = t; return [t]; }
+  if(t === "all" || t === "sides"){
+    const all = RESTORE.legacySlots || S.prod?.slots?.map(s => s.id) || [];
+    return (t === "sides" ? ["side1", "side2"] : all).filter(id => id !== imprintOff());
+  }
+  return null;
+}
+function imprintOneEnforce(){
+  if(!imprintOne() || !S.slots) return;
+  if(imprintReal(imprintOff()) && !imprintReal(imprintSide())) S.printSide = imprintOff();
+  const off = imprintOff();
+  if(S.slots[off]?.img){
+    S.slots[off] = {img:null, ox:0, oy:0, sc:1, rot:0, file:null};
+    if(S.act === off) S.act = imprintSide();
+  }
+  S.sides = "diff";
+}
+function setImprintSide(id){
+  if(!imprintOne() || id === imprintSide()) return;
+  const from = imprintSide(), a = S.slots[from];
+  S.printSide = id;
+  if(a?.img && !a.isDefault)
+    S.slots[id] = {...a, ox:0, oy:0, _thumb:null, _thumbFor:null, mc: (typeof mcCloneSet === "function" ? mcCloneSet(a.mc) : a.mc)};
+  S.slots[from] = {img:null, ox:0, oy:0, sc:1, rot:0, file:null};
+  S.act = id;
+  if(typeof MC !== "undefined"){ MC.offer = null; MC.editing = -1; }
+  renderArtworkPanel(); updateAEPanel();
+  if(typeof renderSeparationsPanel === "function") renderSeparationsPanel();
+  R();
+}
 function pairedIds(id){
   return (sidesSame() && (id === "side1" || id === "side2")) ? ["side1", "side2"] : [id];
 }
 function uploadTargets(t){
+  if(imprintOne()){ const one = imprintPick(t); if(one) return one; }
   const all = RESTORE.legacySlots || S.prod?.slots?.map(s => s.id) || ["side1","side2","bottom"];
   if(t === "all") return all;
   if(t === "sides") return ["side1", "side2"];
@@ -8497,6 +8534,17 @@ function renderSidesToggle(){
   const el = document.getElementById("az-sides");
   if(!el) return;
   if(!hasSidePair()){ el.style.display = "none"; el.innerHTML = ""; return; }
+  if(imprintOne()){
+    const ps = imprintSide(), lab = id => (S.prod.slots.find(s => s.id === id)?.label || id);
+    el.style.display = "";
+    el.innerHTML = `<div class="az-sides-lbl">Prints on one side — which one?</div>
+    <div class="az-seg">
+      <button class="${ps === "side1" ? "on" : ""}" onclick="setImprintSide('side1')">${lab("side1")}</button>
+      <button class="${ps === "side2" ? "on" : ""}" onclick="setImprintSide('side2')">${lab("side2")}</button>
+    </div>
+    <div class="az-sides-note" style="font-size:11px;color:var(--muted);margin-top:5px">This item has one imprint location. The other side stays blank.</div>`;
+    return;
+  }
   const same = sidesSame();
   el.style.display = "";
   el.innerHTML = CUSTOMER ? `<div class="az-sides-lbl">Same logo on both sides?</div>
@@ -9494,7 +9542,7 @@ function renderArtworkPanel(){
   foot.style.display  = anyArt ? "" : "none";
   if(!anyArt && !pair){ cards.innerHTML = ""; return; }
 
-  const shown = (S.prod.slots||[]).filter(sl => !(same && sl.id === "side2"))
+  const shown = (S.prod.slots||[]).filter(sl => !(same && sl.id === "side2") && !(imprintOne() && sl.id === imprintOff()))
     .map(sl => (same && sl.id === "side1") ? {...sl, label: "Sides 1 & 2 · same art"} : sl);
   cards.innerHTML = shown.map(slot => {
     const id  = slot.id;

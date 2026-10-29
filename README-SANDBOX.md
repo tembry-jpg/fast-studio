@@ -63,6 +63,17 @@ reopened proof is marked with the session that made it; another session gets
 "expired" / "unknown" for it, even with the exact link. Exports are deleted
 after an hour, uploads after a day.
 
+## Update 2026-10-29: pens print one side
+- The Jotter (0837-24HR-IMP) prints in ONE imprint location here. Clients see
+  both sides of the pen, pick "Side 1" or "Side 2" under Artwork, and the
+  other side stays blank. server.py, CLIENT_ONE_IMPRINT: add an item id to
+  give it the same rule (any item with Side 1 / Side 2).
+- The export holds to it whatever the browser sends (_one_imprint): the proof
+  says "1 Side", and the proof's lay and the 2X2 both show the two sides with
+  the art on the chosen one only - the same picture.
+- SVG art now shows on the pen drawings in the proof and the 2X2 (it was left
+  off; PDF/AI/PNG art was fine). The main app has the same gap.
+
 ## Update 2026-10-28 (from the main app, as of 2026-10-28)
 Brought over from the main app (nothing NetSuite came across). What clients see:
 - Size: the W typed is the W on the proof, exactly (it could print 1-2% big);

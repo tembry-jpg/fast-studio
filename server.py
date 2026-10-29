@@ -684,6 +684,46 @@ if SANDBOX:
     _prune_products()
 
 
+# Items that print in ONE imprint location here, though they have two (the
+# pens: Side 1 or Side 2, not both). The configurator still shows both sides,
+# lets the client pick which one prints, and keeps the other empty; the
+# export holds to it too (_one_imprint), so the proof shows that one side.
+CLIENT_ONE_IMPRINT = {"0837-24HR-IMP"}
+for _pid in CLIENT_ONE_IMPRINT:
+    if _pid in PRODUCTS:
+        PRODUCTS[_pid]["max_imprints"] = 1
+
+
+def _one_imprint(meta):
+    # An export of a one-location item keeps the art of one side only (the
+    # first side the job has art on): the press job, the proof's sides and the
+    # embedded job are trimmed, whatever the browser sent.
+    pid = ((meta.get("press") or {}).get("product_id") or (meta.get("proof") or {}).get("product_id")
+           or meta.get("product_id") or "")
+    if (PRODUCTS.get(pid) or {}).get("max_imprints") != 1:
+        return
+    sides = ("side1", "side2")
+    press = meta.get("press") if isinstance(meta.get("press"), dict) else {}
+    snap = meta.get("snapshot") if isinstance(meta.get("snapshot"), dict) else {}
+    have = [s for s in (press.get("slots") or []) if s in sides] \
+        or [s for s in sides if (snap.get("slots") or {}).get(s)]
+    keep = have[0] if have else None
+    drop = [s for s in sides if s != keep]
+    if press:
+        press["slots"] = [s for s in (press.get("slots") or []) if s not in drop]
+        for k in ("art_paths", "placement", "inks_by_slot", "bg_by_slot"):
+            if isinstance(press.get(k), dict):
+                for s in drop:
+                    press[k].pop(s, None)
+        press["sides"] = "1side" if keep else None
+    if isinstance(meta.get("proof"), dict) and keep:
+        meta["proof"]["sides"] = "1side"
+    if isinstance(snap.get("slots"), dict):
+        for s in drop:
+            snap["slots"].pop(s, None)
+        snap["sides"] = "diff"
+
+
 def _client_catalog(out):
     by_id = {p["id"]: p for p in out}
     cat = []
@@ -760,6 +800,7 @@ def get_products():
             "base_id": p.get("base_id") or pid,
             "is_screenprint": is_screenprint(pid),
             "supports_pms_assign": supports_pms_assign(pid),
+            "max_imprints": p.get("max_imprints"),
             "max_spot_inks": _max_inks_for(pid) if supports_pms_assign(pid) else 0,
             "metal_of": p.get("metal_of"),
             "twin_of": p.get("twin_of"),
@@ -2264,7 +2305,7 @@ def _pdf_worker(job_id, product, order_id, saved_paths, body):
                         dx = slot_x + (slot_w - draw_w) / 2 + ox_pt
                         dy = slot_y - slot_h + (slot_h - draw_h) / 2 - oy_pt
 
-                        art_sizes.append({"label": slot["label"], "id": slot["id"], "size": f'{draw_w / 72:.2f}" W × {draw_h / 72:.2f}" H', "x": dx - slot_x, "y": slot_y - (dy + draw_h), "w": draw_w, "h": draw_h, "rot": float((placement.get(slot["id"]) or {}).get("rot") or 0), "file": None, "clip": None})
+                        art_sizes.append({"label": slot["label"], "id": slot["id"], "size": f'{draw_w / 72:.2f}" W × {draw_h / 72:.2f}" H', "x": dx - slot_x, "y": slot_y - (dy + draw_h), "w": draw_w, "h": draw_h, "rot": float((placement.get(slot["id"]) or {}).get("rot") or 0), "file": _svg_tight_png(art_path), "clip": None})
                         begin_slot_transform()
                         c.translate(dx, dy)
                         c.scale(scale, scale)
@@ -2582,6 +2623,26 @@ def _unique_id(prefix):
     """
     import secrets
     return f"{prefix}_{int(time.time() * 1000)}{secrets.randbelow(10 ** 9):09d}"
+
+
+def _svg_tight_png(path):
+    """SVG art as a PNG cropped to its ink, for the proof's and the 2X2's
+    drawn panels (the pens), which place art from a picture. None if it
+    can't be drawn: the panel then falls back as before."""
+    try:
+        import cairosvg
+        out = Path(str(path) + ".tight.png")
+        if not out.exists():
+            buf = io.BytesIO()
+            cairosvg.svg2png(bytestring=Path(path).read_bytes(), write_to=buf, output_width=2000)
+            with Image.open(io.BytesIO(buf.getvalue())) as im:
+                im = im.convert("RGBA")
+                bb = im.getchannel("A").getbbox()
+                (im.crop(bb) if bb else im).save(out)
+        return str(out)
+    except Exception as e:
+        print(f"⚠️ SVG panel art not drawn: {e}")
+        return None
 
 
 def _svg_drawing(path):
@@ -4192,6 +4253,9 @@ def _generic_proof(print_pdf, prefix, serve_dir, pmeta, job, order, artist, mock
         flat = _flat_from_print(print_pdf, product, sizes, (comps[0].get("hex") if comps else None),
                                 Path(serve_dir) / (f"{prefix}-2X2.png" if two else f"{prefix}-flat.png"),
                                 two_by_two=two, hand=hand,
+                                # One-location items (the TIF pens): every side, the blank one
+                                # too, so the proof lays out exactly as the 2X2 does.
+                                show_all=product.get("max_imprints") == 1,
                                 writing_hex=(pmeta.get("pen_writing") or {}).get("hex"), part_hex=part_hex)
     extra = dict(_proof_extra(pid), **_proof_order_fields(order), **_artist_fields(artist))
     inks = press_layout._imprint_inks(pmeta.get("inks") or [])
@@ -4870,6 +4934,7 @@ def export_bundle():
 
         # ── Press sheets, when the product has a measured template ──────────
         press_ok = False
+        _one_imprint(meta)
         press = meta.get("press")
         if press and SANDBOX:
             press["sheets_shared"] = True     # the proof only: no press sheets are made
