@@ -63,6 +63,37 @@ reopened proof is marked with the session that made it; another session gets
 "expired" / "unknown" for it, even with the exact link. Exports are deleted
 after an hour, uploads after a day.
 
+## Update 2026-10-29: 4CP background step; ink follows the art
+- 4CP insulators (0070-3w, 1080-3w, 9100-4CP, 0472-4CP): step 1 is now
+  "Background". Pick Solid color (or a PMS), Gradient, Pattern (the stock
+  backgrounds, as pictures), Your picture or None, and "Add shapes & text on
+  top" opens the design studio on Side 1's panel. Side 2: Same as Side 1, or
+  Upside down. Bottom: Same background, or a Solid color. Step 2 puts the
+  logo on top. The server lays it onto the print sheet (server.py,
+  /api/bg-sheet - Side 2 turned to suit, vector, PMS kept as a named spot)
+  and it becomes the item's full-bleed background.
+- "Upload a finished design" takes one file for the whole item, laid out like
+  the template ("Download the template (PDF)", /api/bg-template/<item>). With
+  only a background the client can go straight to review.
+- One-color items: the ink starts as the art's own color (its nearest PMS,
+  e.g. red art -> 186 C) instead of Black C; once the client picks an ink by
+  hand, new uploads keep it.
+- Port tools: port_html.mjs now also reads bgd.js and autoink.js (same folder).
+
+## Update 2026-10-29: pictures saved as PDF / AI
+- A PDF or AI that holds only a placed picture (a JPG/PNG placed in
+  Illustrator and saved) is read as that picture on the one-color and spot
+  items: traced to vector like a PNG upload, instead of being refused as
+  "a placed image rather than vector artwork" (server.py,
+  _picture_only_pdf_to_png). Real vector art is untouched.
+- onecolor.py (this copy differs from the main app's here): two colors within
+  delta E 12 count as one for the "detail inside another color" knockout.
+  A traced picture's dark shape with a slightly lighter rim (the smiley's
+  eyes) printed as an outline; it now prints solid. Worth copying into the
+  main app too.
+- Every catalog item now reads as This Is Fast on the items page (the 4CP
+  ones were Standard).
+
 ## Update 2026-10-29: pens print one side
 - The Jotter (0837-24HR-IMP) prints in ONE imprint location here. Clients see
   both sides of the pen, pick "Side 1" or "Side 2" under Artwork, and the

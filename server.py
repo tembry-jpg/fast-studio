@@ -729,7 +729,9 @@ def _client_catalog(out):
     cat = []
     for n, (pid, name, photo) in enumerate(CLIENT_CATALOG):
         if pid and pid in by_id:
-            p = dict(by_id[pid], name=name, label=name, display_label=name, coming_soon=False, catalog_order=n)
+            # Every item here is a This Is Fast item, the 4CP ones included.
+            p = dict(by_id[pid], name=name, label=name, display_label=name, coming_soon=False, catalog_order=n,
+                     program="This Is Fast")
             if photo:
                 p["thumb_url"] = f"/static/sandbox/{photo}"
             cat.append(p)
@@ -1319,6 +1321,18 @@ def rasterize():
                 return jsonify({"error": f"EPS could not be converted: {e}"}), 500
             orig_path = converted
             ext = ".pdf"
+
+        # A PDF / AI that is only a placed picture (a JPG or PNG saved into a
+        # PDF wrapper, like a logo placed in Illustrator and saved) is read as
+        # that picture: drawn to a PNG, it goes the way a PNG upload goes -
+        # traced to vector on one-color and spot items - instead of being
+        # turned away as "a placed image rather than vector artwork".
+        if ext in {".pdf", ".ai"} and (enforce_1c or assign_pms) and vectorize.available():
+            _png = _picture_only_pdf_to_png(orig_path)
+            if _png:
+                orig_path, ext = _png, ".png"
+                f.filename = Path(f.filename or "art").stem + ".png"
+                trace_raster, trace_multi = enforce_1c, assign_pms
 
         # Live text: outlined here when the file carries its fonts, so the
         # preview, the press files and Illustrator never depend on the font;
@@ -2623,6 +2637,42 @@ def _unique_id(prefix):
     """
     import secrets
     return f"{prefix}_{int(time.time() * 1000)}{secrets.randbelow(10 ** 9):09d}"
+
+
+def _picture_only_pdf_to_png(path):
+    """The page of a PDF / AI that holds nothing but placed pictures, drawn
+    as a PNG at the pictures' own resolution (x2, at most 4000 px), on a
+    transparent page. None when the page has any vector drawing, text or
+    nested forms - real vector art keeps the vector path."""
+    import pikepdf, subprocess
+    try:
+        with pikepdf.open(str(path)) as pdf:
+            page = pdf.pages[0]
+            xo = (page.Resources.get("/XObject") or {}) if page.get("/Resources") else {}
+            imgs = [v for v in xo.values() if str(v.get("/Subtype")) == "/Image"]
+            if not imgs or any(str(v.get("/Subtype")) != "/Image" for v in xo.values()):
+                return None
+            draw = {"m", "l", "c", "v", "y", "h", "re", "S", "s", "f", "F", "f*", "B", "B*", "b", "b*",
+                    "Tj", "TJ", "'", '"', "sh", "BI"}
+            scale = 1.0
+            for operands, op in pikepdf.parse_content_stream(page):
+                o = str(op)
+                if o in draw:
+                    return None
+                if o == "cm" and len(operands) == 6:
+                    scale = max(scale, abs(float(operands[0])), abs(float(operands[3])))
+            px = max(int(v.get("/Width") or 0) for v in imgs)
+            mb = [float(v) for v in page.mediabox]
+        dpi = max(72.0, min(600.0, 72.0 * 2 * px / max(1.0, scale)))
+        dpi = min(dpi, 4000 * 72.0 / max(1.0, mb[2] - mb[0], mb[3] - mb[1]))
+        out = Path(str(path) + ".picture")
+        subprocess.run(["pdftocairo", "-png", "-transp", "-singlefile", "-r", f"{dpi:.1f}", str(path), str(out)],
+                       check=True, capture_output=True, timeout=120)
+        png = Path(str(out) + ".png")
+        return png if png.exists() else None
+    except Exception as e:
+        print(f"picture-in-PDF check skipped: {e}")
+        return None
 
 
 def _svg_tight_png(path):
@@ -5241,6 +5291,224 @@ def _layout_art_pdf(src, uploads, full_color=False):
             return out
         return _trace_for_one_color(Path(src), uploads)
     return Path(press_layout.art_as_pdf(str(src), work_dir=str(uploads)))
+
+
+def _bg_regions(product):
+    """The sheet cut into the parts each background fills (points, y up):
+    Side 1, the bottom and Side 2 bands across the whole sheet width, split
+    halfway between the locations, and each side's visible panel (its bleed
+    zone) inside its band. None if the item isn't laid out that way."""
+    W, H = float(product.get("page_w") or 0), float(product.get("page_h") or 0)
+    z = product.get("bleed_zones") or {}
+    if W <= 0 or H <= 0 or not all(k in z for k in ("side1", "side2")):
+        return None
+
+    def rect(k):                        # zone fractions are from the top-left
+        r = z[k]
+        return [r["x"] * W, H - (r["y"] + r["h"]) * H, r["w"] * W, r["h"] * H]
+    s1, s2 = rect("side1"), rect("side2")
+    b = rect("bottom") if "bottom" in z else None
+    s1_bottom = s1[1]                                   # y of Side 1's lower edge
+    s2_top = s2[1] + s2[3]
+    if b:
+        cut1 = (s1_bottom + b[1] + b[3]) / 2.0
+        cut2 = (b[1] + s2_top) / 2.0
+    else:
+        cut1 = cut2 = (s1_bottom + s2_top) / 2.0
+    return {"W": W, "H": H,
+            "side1": {"band": [0.0, cut1, W, H - cut1], "zone": s1},
+            "side2": {"band": [0.0, 0.0, W, cut2], "zone": s2},
+            "bottom": {"band": [0.0, cut2, W, cut1 - cut2], "zone": b} if b else None}
+
+
+def _bg_color(hex_, pms=None):
+    from reportlab.lib.colors import HexColor, CMYKColorSep
+    hx = hex_ if re.fullmatch(r"#[0-9A-Fa-f]{6}", str(hex_ or "")) else "#FFFFFF"
+    nm = str(pms or "").strip()
+    if nm:
+        try:
+            from screenprint import hex_to_cmyk
+            full = nm if nm.upper().startswith("PANTONE") else "PANTONE " + nm
+            cy, ma, ye, k = hex_to_cmyk(PANTONE_RGB.get(full) or hx)
+            return CMYKColorSep(cy, ma, ye, k, spotName=full, density=1)
+        except Exception:
+            pass
+    return HexColor(hx)
+
+
+def _bg_draw_base(c, base, band, zone, product_id):
+    """One part's background: solid, gradient, picture or stock, filling the
+    band (pictures cover it, centred on the visible panel)."""
+    from reportlab.lib.colors import HexColor
+    x, y, w, h = band
+    c.saveState()
+    p = c.beginPath(); p.rect(x, y, w, h); c.clipPath(p, stroke=0, fill=0)
+    kind = base.get("type")
+    if kind == "solid":
+        c.setFillColor(_bg_color(base.get("hex"), base.get("pms")))
+        c.rect(x, y, w, h, stroke=0, fill=1)
+    elif kind == "gradient":
+        stops = [s for s in (base.get("stops") or []) if re.fullmatch(r"#[0-9A-Fa-f]{6}", str(s))][:2] or ["#FFFFFF", "#000000"]
+        if len(stops) == 1:
+            stops.append(stops[0])
+        zx, zy, zw, zh = zone or band
+        d = str(base.get("dir") or "down")
+        # Drawn in the side's own way up: "down" = top colour at the top.
+        pts = {"down": (zx, zy + zh, zx, zy), "right": (zx, zy, zx + zw, zy),
+               "diag": (zx, zy + zh, zx + zw, zy)}.get(d, (zx, zy + zh, zx, zy))
+        c.linearGradient(pts[0], pts[1], pts[2], pts[3], (HexColor(stops[0]), HexColor(stops[1])), extend=True)
+    elif kind in ("stock", "image"):
+        src = _stock_bg_path(product_id, base.get("stock")) if kind == "stock" else _in_uploads(base.get("path"))
+        if src:
+            zx, zy, zw, zh = zone or band
+            cx, cy = zx + zw / 2.0, zy + zh / 2.0
+            if Path(src).suffix.lower() in (".pdf", ".ai"):
+                from pdfrw import PdfReader
+                from pdfrw.buildxobj import pagexobj
+                from pdfrw.toreportlab import makerl
+                xo = pagexobj(PdfReader(str(src)).pages[0])
+                bb = [float(v) for v in xo.BBox]
+                iw, ih = bb[2] - bb[0], bb[3] - bb[1]
+                s = max(w / iw, h / ih, zw / iw, zh / ih)
+                c.translate(cx - iw * s / 2.0, cy - ih * s / 2.0); c.scale(s, s); c.translate(-bb[0], -bb[1])
+                c.doForm(makerl(c, xo))
+            else:
+                with Image.open(src) as im:
+                    iw, ih = im.size
+                # cover the whole band, centred on the panel
+                s = max(w / iw, h / ih) * 1.0
+                need = max(abs(cx - x), abs(x + w - cx)) * 2 / iw, max(abs(cy - y), abs(y + h - cy)) * 2 / ih
+                s = max(s, need[0], need[1])
+                c.drawImage(str(src), cx - iw * s / 2.0, cy - ih * s / 2.0, iw * s, ih * s, mask="auto")
+    else:
+        c.setFillColor(HexColor("#FFFFFF")); c.rect(x, y, w, h, stroke=0, fill=1)
+    c.restoreState()
+
+
+def _bg_draw_design(c, design_pdf, zone):
+    """The shapes / text / art drawn on top, fitted to the visible panel."""
+    from pdfrw import PdfReader
+    from pdfrw.buildxobj import pagexobj
+    from pdfrw.toreportlab import makerl
+    xo = pagexobj(PdfReader(str(design_pdf)).pages[0])
+    bb = [float(v) for v in xo.BBox]
+    zx, zy, zw, zh = zone
+    c.saveState()
+    c.translate(zx, zy); c.scale(zw / (bb[2] - bb[0]), zh / (bb[3] - bb[1])); c.translate(-bb[0], -bb[1])
+    c.doForm(makerl(c, xo))
+    c.restoreState()
+
+
+@app.route("/api/bg-template/<pid>")
+def bg_template(pid):
+    """A PDF the size of the item's print sheet with Side 1, the bottom and
+    Side 2 marked, for a client laying out a finished design themselves."""
+    from reportlab.pdfgen import canvas as rlcanvas
+    from reportlab.lib.colors import HexColor
+    product = PRODUCTS.get(pid) or {}
+    reg = _bg_regions(product)
+    if not reg:
+        return jsonify({"error": "No template for this item."}), 404
+    buf = io.BytesIO()
+    c = rlcanvas.Canvas(buf, pagesize=(reg["W"], reg["H"]))
+    c.setTitle(f"{pid} background template")
+    for sid, label in (("side1", "SIDE 1"), ("bottom", "BOTTOM"), ("side2", "SIDE 2 (upside down on this sheet)")):
+        part = reg.get(sid)
+        if not part:
+            continue
+        bx, by, bw, bh = part["band"]
+        c.setFillColor(HexColor({"side1": "#EEF3FB", "bottom": "#F1F8F2", "side2": "#FBF0EE"}[sid]))
+        c.rect(bx, by, bw, bh, stroke=0, fill=1)
+        z = part.get("zone")
+        if z:
+            c.setStrokeColor(HexColor("#6B1A2A")); c.setDash(4, 3); c.setLineWidth(0.8)
+            if sid == "bottom":
+                c.ellipse(z[0], z[1], z[0] + z[2], z[1] + z[3], stroke=1, fill=0)
+            else:
+                c.rect(z[0], z[1], z[2], z[3], stroke=1, fill=0)
+            c.setDash()
+            c.setFillColor(HexColor("#6B1A2A")); c.setFont("Helvetica-Bold", 9)
+            cx, cy = z[0] + z[2] / 2.0, z[1] + z[3] / 2.0
+            c.saveState()
+            if sid == "side2":
+                c.translate(cx, cy); c.rotate(180); c.translate(-cx, -cy)
+            c.drawCentredString(cx, cy, label if sid != "side2" else "SIDE 2")
+            c.setFont("Helvetica", 6.5)
+            if sid != "bottom":
+                c.drawCentredString(cx, cy - 11, "dashed line = what shows on the item")
+            c.restoreState()
+    c.setFont("Helvetica", 6); c.setFillColor(HexColor("#555555"))
+    c.drawString(6, 6, "Fill every colored band edge to edge (it is trimmed). Side 2 is printed upside down - turn your Side 2 art 180 degrees.")
+    c.showPage(); c.save()
+    resp = make_response(buf.getvalue())
+    resp.headers["Content-Type"] = "application/pdf"
+    resp.headers["Content-Disposition"] = f'attachment; filename="{pid}-background-template.pdf"'
+    return resp
+
+
+@app.route("/api/bg-sheet", methods=["POST"])
+def bg_sheet():
+    """
+    The whole-item background for a 4CP insulator, from one side's design.
+
+    Side 1 is designed; Side 2 is the same (upright on the item) or the same
+    turned upside down; the bottom carries the background on or takes a solid
+    colour. Laid onto the item's print sheet (Side 2 lies upside down on it)
+    as one vector PDF, which the page then uses as the full-bleed background.
+
+    {product_id, base: {type: solid|gradient|stock|image|none, hex, pms,
+     stops, dir, stock, path}, design_pdf, side2: same|flip,
+     bottom: {mode: same|solid, hex, pms}}
+    """
+    import hashlib
+    from reportlab.pdfgen import canvas as rlcanvas
+    body = request.get_json(silent=True) or {}
+    pid = str(body.get("product_id") or "")
+    product = PRODUCTS.get(pid) or {}
+    reg = _bg_regions(product)
+    if not reg:
+        return jsonify({"error": "This item has no background layout."}), 400
+    base = body.get("base") if isinstance(body.get("base"), dict) else {"type": "none"}
+    design = _in_uploads(body.get("design_pdf")) if body.get("design_pdf") else None
+    side2 = "flip" if body.get("side2") == "flip" else "same"
+    bottom = body.get("bottom") if isinstance(body.get("bottom"), dict) else {"mode": "same"}
+    key = hashlib.sha1(json.dumps([pid, base, str(design or ""), side2, bottom, 1], sort_keys=True,
+                                  default=str).encode()).hexdigest()[:14]
+    (UPLOADS_DIR / "_bg").mkdir(parents=True, exist_ok=True)
+    out = UPLOADS_DIR / "_bg" / f"{pid}-{key}-background.pdf"
+    try:
+        if not out.exists():
+            c = rlcanvas.Canvas(str(out), pagesize=(reg["W"], reg["H"]))
+            for sid in ("side1", "side2"):
+                band, zone = reg[sid]["band"], reg[sid]["zone"]
+                # Side 2 lies upside down on the sheet: turned 180 there it
+                # reads upright on the item ("same"); left as drawn, it reads
+                # upside down ("flip").
+                turn = sid == "side2" and side2 == "same"
+                c.saveState()
+                if turn:
+                    bx, by, bw, bh = band
+                    cx, cy = bx + bw / 2.0, by + bh / 2.0
+                    c.translate(cx, cy); c.rotate(180); c.translate(-cx, -cy)
+                    zx, zy, zw, zh = zone
+                    zone = [2 * cx - zx - zw, 2 * cy - zy - zh, zw, zh]
+                _bg_draw_base(c, base, band, zone, pid)
+                if design:
+                    _bg_draw_design(c, design, zone)
+                c.restoreState()
+            if reg.get("bottom"):
+                b = reg["bottom"]
+                if bottom.get("mode") == "solid":
+                    _bg_draw_base(c, {"type": "solid", "hex": bottom.get("hex"), "pms": bottom.get("pms")},
+                                  b["band"], b["zone"], pid)
+                else:
+                    _bg_draw_base(c, base, b["band"], b["zone"], pid)
+            c.showPage(); c.save()
+        return jsonify({"saved_path": str(out)})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        out.unlink(missing_ok=True)
+        return jsonify({"error": f"The background couldn't be built: {e}"}), 500
 
 
 @app.route("/api/compose", methods=["POST"])

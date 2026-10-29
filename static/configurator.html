@@ -424,6 +424,30 @@ body.cust .cust-hide,body.cust #artist-btn,body.cust #master-debug-btn,body.cust
 body.cust #view-toggle,body.cust #var-box,body.cust #restore-btn,body.cust #json-btn,body.cust #tif-import-row,
 body.cust #ns-card,body.cust #ns-fa-card,body.cust #export-preview,body.cust #am-after{display:none!important}
 #ink-btn,#ink-pop,#export-preview,#em-opts,#am-open-ns,.sbx-hide{display:none!important}
+body.bgd-on #fill-panel-wrap,body.bgd-on #bleed-btn-row{display:none!important}
+.bgd{margin:0 0 14px}
+.bgd .lbl{margin-top:14px}
+.bgd-fin{border:1px dashed var(--border-hi);border-radius:10px;padding:10px 12px;font:13px/1.45 var(--sans);color:var(--text);background:var(--surface)}
+.bgd-finbtn{display:block;width:100%;margin:8px 0 4px}
+.bgd-hint{font:11.5px/1.4 var(--sans);color:var(--muted)}
+.bgd-link{background:none;border:none;padding:2px 0;color:var(--burgundy);text-decoration:underline;cursor:pointer;font:12px var(--sans)}
+.bgd-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.bgd-card{display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px 2px 6px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);cursor:pointer;font:11px/1.2 var(--sans);color:var(--text)}
+.bgd-card.on{border-color:var(--burgundy);box-shadow:0 0 0 2px var(--burg-lo)}
+.bgd-sw{width:30px;height:30px;border-radius:7px;border:1px solid var(--border)}
+.bgd-opts{margin-top:9px}
+.bgd-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bgd-color{width:38px;height:32px;padding:0;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer}
+.bgd-hex{width:88px;padding:7px 8px;border:1px solid var(--border);border-radius:6px;font:12px var(--mono)}
+.bgd-sel{padding:6px;border:1px solid var(--border);border-radius:6px;font:12px var(--sans)}
+.bgd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font:12px var(--sans);color:var(--muted)}
+.bgd-pat{border:1.5px solid var(--border);border-radius:8px;padding:3px;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;gap:3px}
+.bgd-pat.on{border-color:var(--burgundy)}
+.bgd-pat span{display:block;height:46px;border-radius:5px;background-size:cover;background-position:center}
+.bgd-pat i{font:10.5px/1.2 var(--sans);font-style:normal;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bgd-add{margin-top:10px;display:flex;align-items:center;gap:10px}
+.bgd-seg{margin-top:2px}
+@media (max-width:640px){.bgd-cards{grid-template-columns:repeat(3,1fr)}}
 #life-ov{position:fixed;inset:0;z-index:9000;background:rgba(20,16,14,.72);display:none;align-items:center;justify-content:center;padding:16px}
 #life-ov.on{display:flex}
 #life-ov .lf-box{background:var(--surface,#fff);border-radius:14px;max-width:min(92vw,880px);width:100%;padding:14px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
@@ -836,7 +860,7 @@ body.artist span.artist-only{display:inline}
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px"><a href="/" id="back-all" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:6px 10px 6px 0;border-right:1px solid var(--border);flex-shrink:0" title="Back to products"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>All</a><div id="prod-label" style="font-family:var(--serif);font-size:15px;font-weight:400;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div></div>
  <select class="sel" id="psel" onchange="onProduct()" style="display:none"></select>
 <div class="cust-steps" id="cust-steps">
-  <button data-s="1" onclick="custStep(1)"><b>1</b>Product color</button>
+  <button data-s="1" onclick="custStep(1)"><b>1</b><span id="cs1-lbl">Product color</span></button>
   <button data-s="2" onclick="custStep(2)"><b>2</b>Your logo</button>
   <button data-s="3" onclick="custStep(3)"><b>3</b>Review &amp; send</button>
 </div>
@@ -1203,6 +1227,7 @@ body.artist span.artist-only{display:inline}
   </div>
 </div>
 
+<div id="bgd" class="bgd" style="display:none"></div>
 <div id="fill-panel-wrap" style="display:none">
   <div class="lbl">Background Fill</div>
   <div class="fill-panel vis" id="fill-panel">
@@ -5547,6 +5572,7 @@ async function serverRasterize(f, slots, ext) {
     } else if(sp){
       clearArtworkRejection();
       S._glassMulti = 0;
+      { const _s0 = S.slots[slots[0]]; autoInkFromArt(_s0?.srcImg || _s0?.img); }
       const warns = data.validation?.warnings || [];
       fb.textContent = warns.length
         ? `✓ ${f.name} — ${warns[0].message}`
@@ -5775,6 +5801,7 @@ function updateJotterInkSwatch(){
 function R(){
 if(syncMatchInks()) return;
 imprintOneEnforce();
+bgdSync();
 oneSideApply();
 
 if(S.prod?.pen_label){ try{ clearTimeout(PL.t); PL.t = setTimeout(() => penLabelRender(), 250); }catch(e){} }
@@ -8603,6 +8630,7 @@ function openBgDesigner(){
 }
 function layoutSlotLabel(id){
   if(id === BG_SLOT) return "Background · whole item";
+  if(id === BGS_SLOT) return "Background · Side 1";
   if(sidesSame() && (id === "side1" || id === "side2")) return "Sides 1 & 2";
   return S.prod?.slots?.find(s => s.id === id)?.label || id;
 }
@@ -8683,6 +8711,7 @@ function studioBox0(it){
 
 function studioBoardFor(id){
   if(id === BG_SLOT) return { W: S.prod.page_w, H: S.prod.page_h, circle: false };
+  if(id === BGS_SLOT){ const z = bgdZonePts("side1"); return { W: z.W, H: z.H, circle: false }; }
   const sa = S.safe?.[id] || {}, iw = sa.iw || 3, ih = sa.ih || 3;
   return { W: iw * 72, H: ih * 72, circle: isCircleSlot(id) };
 }
@@ -8749,6 +8778,7 @@ function studioFromStack(old, W, H){
 function studioLoad(id, opts){
   const b = studioBoardFor(id); LY.W = b.W; LY.H = b.H; LY.circle = b.circle;
   if(id === BG_SLOT) return studioLoadBg(opts);
+  if(id === BGS_SLOT) return bgdLoadBoard();
   const sl = S.slots[id];
   LY.undo = []; LY.redo = []; LY.sel = -1;
   if(sl?.layout?.board){
@@ -8801,7 +8831,7 @@ function layoutSwitchSlot(id){
   if(LY.inAE && typeof AE !== "undefined" && AE.open && id !== BG_SLOT){ AE.slots = pairedIds(id); AE.lyApplied = LY.undo.length; CUT.key = null; }
   studioRender(); layoutUploadPending();
 }
-function closeLayout(){ document.getElementById("ly-scrim").classList.remove("vis"); }
+function closeLayout(){ document.getElementById("ly-scrim").classList.remove("vis"); if(typeof bgdLayoutClosed === "function") bgdLayoutClosed(); }
 
 function layoutForSave(ly){
   const base = { board: ly.board || null, W: ly.W || null };
@@ -8831,7 +8861,7 @@ function studioAdd(it){ studioPush(); LY.items.push(it); LY.sel = LY.items.lengt
 
 function studioKeepIn(it){
   if(!it || !LY.W || !LY.H) return;
-  if(LY.slot === BG_SLOT) return;
+  if(LY.slot === BG_SLOT || LY.slot === BGS_SLOT) return;
   for(let pass = 0; pass < 3; pass++){
     const b = studioBox(it), bw = b.x1 - b.x0, bh = b.y1 - b.y0;
     const f = Math.min(1, LY.W / Math.max(bw, 1e-6), LY.H / Math.max(bh, 1e-6));
@@ -9060,6 +9090,7 @@ function studioProps(){
 
 function studioBg(){
   if(LY.slot === BG_SLOT) return bgBaseColor();
+  if(LY.slot === BGS_SLOT) return BGD.base.type === "solid" ? (BGD.base.hex || "#ffffff") : "#ffffff";
   const hex = S.prod?.material === "jotter" ? S.jotter?.hex : S.neo?.hex;
   return /^#[0-9a-f]{6}$/i.test(hex || "") ? hex : "#f4f0ea";
 }
@@ -9177,6 +9208,7 @@ function studioDraw(){
   g.fillStyle = studioBg();
   if(LY.circle){ g.beginPath(); g.arc(LY.W / 2, LY.H / 2, Math.min(LY.W, LY.H) / 2, 0, Math.PI * 2); g.fill(); }
   else g.fillRect(0, 0, LY.W, LY.H);
+  if(LY.slot === BGS_SLOT && BGD.preview) g.drawImage(BGD.preview, 0, 0, LY.W, LY.H);
   g.save();
   if(LY.circle){ g.beginPath(); g.arc(LY.W / 2, LY.H / 2, Math.min(LY.W, LY.H) / 2, 0, Math.PI * 2); g.clip(); }
   for(const it of LY.items) studioDrawItem(g, it, k);
@@ -9242,9 +9274,13 @@ function studioDraw(){
 function studioCheck(){
   const msgs = [];
   for(const it of LY.items){
-    if(LY.slot === BG_SLOT) break;
+    if(LY.slot === BG_SLOT || LY.slot === BGS_SLOT) break;
     const b = studioBox(it);
     if(b.x0 < -0.5 || b.y0 < -0.5 || b.x1 > LY.W + 0.5 || b.y1 > LY.H + 0.5){ msgs.push("Part of the design is outside the print area — it won't print."); break; }
+  }
+  if(LY.slot === BGS_SLOT && !msgs.length){
+    studioNote("Side 1 as it shows on the item. Anything past the edge is trimmed; your logo goes on top in the next step.");
+    return;
   }
   if(LY.slot === BG_SLOT && !msgs.length){
     studioNote("The whole item, edge to edge: anything past the edge is trimmed. The imprint art goes on top of this.");
@@ -9453,6 +9489,7 @@ async function layoutDone(){
     const d = await r.json();
     if(!r.ok || d.error) throw new Error(d.error || "Could not build the design");
     if(LY.slot === BG_SLOT){ await bgDesignApply(d, items); return; }
+    if(LY.slot === BGS_SLOT){ await bgdDesignApply(d, items); return; }
     const targets = pairedIds(LY.slot);
     const keep = { board: { W: LY.W, H: LY.H }, items: items.map(it => ({...it})) };
     const oldInks = S.slots[targets[0]]?.mc?.inks || [];
@@ -9957,6 +9994,57 @@ function matchGroupHTML(pickJs, curName){
     const nm = "Match " + c.label;
     return `<button type="button" class="pms-mt${curName === nm ? " on" : ""}" title="Print in the ${e(c.label.toLowerCase())} color (${e(c.name)}). It follows the ${e(c.label.toLowerCase())} if that color changes." onclick="${pickJs({name: nm, hex: c.hex})}"><i style="background:${c.hex}"></i><span>${e(c.label)}</span><small>${e(c.name)}</small></button>`;
   }).join("") + `</div>`;
+}
+
+function artMainHex(img){
+  if(!img?.width) return null;
+  const s = Math.min(1, 200 / Math.max(img.width, img.height));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(img.width * s)); c.height = Math.max(1, Math.round(img.height * s));
+  const g = c.getContext("2d", {willReadFrequently: true}); g.drawImage(img, 0, 0, c.width, c.height);
+  let d; try{ d = g.getImageData(0, 0, c.width, c.height).data; }catch(e){ return null; }
+  const bins = new Map();
+  for(let i = 0; i < d.length; i += 4){
+    if(d[i + 3] < 160) continue;
+    const k = ((d[i] >> 3) << 10) | ((d[i + 1] >> 3) << 5) | (d[i + 2] >> 3);
+    const b = bins.get(k) || [0, 0, 0, 0]; b[0]++; b[1] += d[i]; b[2] += d[i + 1]; b[3] += d[i + 2]; bins.set(k, b);
+  }
+  let best = null;
+  for(const b of bins.values()) if(!best || b[0] > best[0]) best = b;
+  if(!best) return null;
+  const h = v => Math.round(v / best[0]).toString(16).padStart(2, "0");
+  return "#" + h(best[1]) + h(best[2]) + h(best[3]);
+}
+function _hexLab(hex){
+  const n = parseInt(String(hex).slice(1), 16), f = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const r = f(n >> 16 & 255), g = f(n >> 8 & 255), b = f(n & 255);
+  const X = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047, Y = 0.2126 * r + 0.7152 * g + 0.0722 * b, Z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+  const t = v => v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116;
+  return [116 * t(Y) - 16, 500 * (t(X) - t(Y)), 200 * (t(Y) - t(Z))];
+}
+async function autoInkFromArt(img){
+  if(!isScreenPrint() || RESTORE.active) return;
+  const cur = SP.ink?.name || null;
+  if(cur && cur !== SP_DEFAULT_INK.name && cur !== SP.autoInk) return;
+  const hex = artMainHex(img); if(!hex) return;
+  await loadPmsLibrary();
+  const L = _hexLab(hex);
+  let pick = null;
+  if(L[0] > 92 && Math.hypot(L[1], L[2]) < 6) pick = (SP.library || []).find(c => c.name === "White");
+  else if(L[0] < 22 && Math.hypot(L[1], L[2]) < 12) pick = SP_DEFAULT_INK;
+  else {
+    let bd = Infinity;
+    for(const c of (SP.library || [])){
+      if(!/^#[0-9a-f]{6}$/i.test(c.hex || "") || !/^PANTONE /.test(c.name)) continue;
+      const m = _hexLab(c.hex), dd = (m[0] - L[0]) ** 2 + (m[1] - L[1]) ** 2 + (m[2] - L[2]) ** 2;
+      if(dd < bd){ bd = dd; pick = c; }
+    }
+  }
+  if(!pick || pick.name === cur) return;
+  setScreenPrintInk(pick.name, pick.hex);
+  SP.autoInk = pick.name;
+  const fb = document.getElementById("fb");
+  if(fb) fb.textContent = `✓ Ink set to ${pick.name.replace(/^PANTONE\s+/, "")} to match your art — change it any time.`;
 }
 
 function setScreenPrintInk(name, hex){
@@ -13232,9 +13320,242 @@ let CUSTOMER = (() => {
 let CSTEP = 1;
 const CUST_HD = { 1: "Pick your product color", 2: "Add your logo", 3: "Review & send" };
 function custHasArt(){ return Object.values(S.slots || {}).some(sl => sl?.img); }
+
+function custCanReview(){ return custHasArt() || (typeof bgdOn === "function" && bgdOn() && !!S.bleed?.img); }
+
+const BGS_SLOT = "__bgside";
+const BGD = { pid: null, base: { type: "solid", hex: "#FFFFFF", pms: null }, side2: "same",
+              bottom: { mode: "same", hex: "#FFFFFF" }, design: null, seq: 0, t: null,
+              stock: null, img: null, imgFor: null, built: null, finished: false, pmsOpen: false };
+function bgdOn(){
+  const z = S.prod?.bleed_zones;
+  return !!(typeof CUSTOMER !== "undefined" && CUSTOMER && typeof bgBoardOk === "function" && bgBoardOk()
+            && z?.side1 && z?.side2);
+}
+function bgdZonePts(id){
+  const z = S.prod.bleed_zones[id], W = S.prod.page_w, H = S.prod.page_h;
+  return { W: z.w * W, H: z.h * H };
+}
+function bgdSync(){
+  const el = document.getElementById("bgd");
+  if(!el) return;
+  const on = bgdOn();
+  document.body.classList.toggle("bgd-on", on);
+  const lbl = document.getElementById("cs1-lbl");
+  if(lbl) lbl.textContent = on ? "Background" : "Product color";
+  CUST_HD[1] = on ? "Design your background" : "Pick your product color";
+  const hd = document.getElementById("cust-hd");
+  if(hd && typeof CSTEP !== "undefined" && CSTEP === 1 && hd.textContent !== CUST_HD[1]) hd.textContent = CUST_HD[1];
+  if(!on){ el.style.display = "none"; return; }
+  if(BGD.pid !== S.pid){
+    Object.assign(BGD, { pid: S.pid, base: { type: "solid", hex: "#FFFFFF", pms: null }, side2: "same",
+                         bottom: { mode: "same", hex: "#FFFFFF" }, design: null, stock: null, img: null,
+                         built: null, finished: false });
+    el.style.display = "";
+    bgdRender();
+  }
+
+  const fin = !!(S.bleed?.img && !S.bleed._bgd && !S.bleed._isStockBg);
+  if(fin !== BGD.finished){ BGD.finished = fin; bgdRender(); }
+}
+function bgdEsc(t){ return String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function bgdRender(){
+  const el = document.getElementById("bgd"); if(!el || !bgdOn()) return;
+  const b = BGD.base, t = b.type;
+  const card = (k, label, sw) => `<button class="bgd-card${t === k ? " on" : ""}" onclick="bgdType('${k}')"><span class="bgd-sw" style="${sw}"></span>${label}</button>`;
+  let opts = "";
+  if(t === "solid"){
+    opts = `<div class="bgd-row"><input type="color" value="${bgdEsc(b.hex)}" oninput="bgdSolid(this.value)" class="bgd-color">
+      <input class="bgd-hex" value="${bgdEsc(b.hex)}" maxlength="7" onchange="bgdSolid(this.value)">
+      <button class="bgd-link" onclick="bgdPmsToggle()">${b.pms ? "PMS " + bgdEsc(String(b.pms).replace(/^PANTONE\s+/, "")) : "Pick a PMS"}</button></div>
+      <div id="bgd-pms" style="display:${BGD.pmsOpen ? "" : "none"}"><input class="pms-search" placeholder="Search PMS — 186 C, 7621…" oninput="bgdPmsList(this.value)"><div id="bgd-pms-list" style="max-height:180px;overflow-y:auto"></div></div>`;
+  } else if(t === "gradient"){
+    const s = b.stops || ["#FFFFFF", "#1C4FD0"];
+    opts = `<div class="bgd-row"><input type="color" value="${s[0]}" oninput="bgdStop(0,this.value)" class="bgd-color"> → <input type="color" value="${s[1]}" oninput="bgdStop(1,this.value)" class="bgd-color">
+      <select onchange="bgdDir(this.value)" class="bgd-sel">${[["down","Top to bottom"],["right","Left to right"],["diag","Diagonal"]].map(([v, l]) => `<option value="${v}"${(b.dir || "down") === v ? " selected" : ""}>${l}</option>`).join("")}</select></div>`;
+  } else if(t === "stock"){
+    opts = `<div class="bgd-grid" id="bgd-stock">Loading patterns…</div>`;
+    setTimeout(bgdStockGrid, 0);
+  } else if(t === "image"){
+    opts = `<div class="bgd-row"><button class="bt b2" onclick="document.getElementById('bgd-fi').click()">${b.path ? "Replace picture" : "↑ Upload a picture"}</button>
+      <span class="bgd-hint">${b.path ? bgdEsc(b.name || "your picture") : "JPG, PNG or PDF — it covers each side"}</span></div>`;
+  } else {
+    opts = `<div class="bgd-hint">Plain white — your logo goes on the white item.</div>`;
+  }
+  const s0 = (b.stops || ["#FFFFFF", "#1C4FD0"]);
+  el.innerHTML = BGD.finished ? `
+    <div class="bgd-fin">✓ Your finished design is on the item.
+      <div class="bgd-hint">Add a logo on top in the next step if you like, or go straight to review.</div>
+      <button class="bgd-link" onclick="bgdUnfinish()">Design a background here instead</button></div>` : `
+    <div class="bgd-fin">Have the whole design finished already?
+      <button class="bt b2 bgd-finbtn" onclick="upBleed()">↑ Upload a finished design</button>
+      <div class="bgd-hint">One file laid out like our template: Side 1, the bottom, Side 2.
+        <a class="bgd-link" href="/api/bg-template/${encodeURIComponent(S.pid)}" download>Download the template (PDF)</a></div></div>
+    <div class="lbl">Background</div>
+    <div class="bgd-cards">
+      ${card("solid", "Solid color", `background:${bgdEsc(b.type === "solid" ? b.hex : "#3a7bd5")}`)}
+      ${card("gradient", "Gradient", `background:linear-gradient(${s0[0]},${s0[1]})`)}
+      ${card("stock", "Pattern", "background:repeating-linear-gradient(45deg,#6b1a2a 0 4px,#e9d8c4 4px 8px)")}
+      ${card("image", "Your picture", "background:linear-gradient(135deg,#9bc 0,#fc9 100%)")}
+      ${card("none", "None", "background:#fff")}
+    </div>
+    <div class="bgd-opts">${opts}</div>
+    <div class="bgd-add">
+      <button class="bt b2" onclick="bgdOpenDesign()">✎ ${BGD.design ? "Edit shapes &amp; text" : "Add shapes &amp; text on top"}</button>
+      ${BGD.design ? `<button class="bgd-link" onclick="bgdClearDesign()">remove</button>` : ""}
+    </div>
+    <div class="lbl">Side 2</div>
+    <div class="az-seg bgd-seg">
+      <button class="${BGD.side2 === "same" ? "on" : ""}" onclick="bgdSide2('same')">Same as Side 1</button>
+      <button class="${BGD.side2 === "flip" ? "on" : ""}" onclick="bgdSide2('flip')">Upside down</button>
+    </div>
+    <div class="lbl">Bottom</div>
+    <div class="az-seg bgd-seg">
+      <button class="${BGD.bottom.mode === "same" ? "on" : ""}" onclick="bgdBottom('same')">Same background</button>
+      <button class="${BGD.bottom.mode === "solid" ? "on" : ""}" onclick="bgdBottom('solid')">Solid color</button>
+    </div>
+    ${BGD.bottom.mode === "solid" ? `<div class="bgd-row"><input type="color" value="${bgdEsc(BGD.bottom.hex)}" oninput="bgdBottomHex(this.value)" class="bgd-color"><span class="bgd-hint">the bottom's color</span></div>` : ""}
+    <div class="bgd-hint" id="bgd-status">${BGD.built ? "✓ Background is on the item." : ""}</div>
+    <input type="file" id="bgd-fi" accept=".jpg,.jpeg,.png,.webp,.pdf,.ai,.eps,.svg" style="display:none" onchange="bgdPicture(this)">`;
+}
+function bgdType(k){
+  if(BGD.base.type === k) return;
+  const keep = BGD.base;
+  BGD.base = k === "solid" ? { type: "solid", hex: keep.hex || "#FFFFFF", pms: keep.pms || null }
+           : k === "gradient" ? { type: "gradient", stops: keep.stops || ["#FFFFFF", "#1C4FD0"], dir: keep.dir || "down" }
+           : k === "stock" ? { type: "stock", stock: keep.stock || null }
+           : k === "image" ? { type: "image", path: keep.path || null, name: keep.name || "" }
+           : { type: "none" };
+  bgdRender();
+  if(k === "solid" || k === "gradient" || k === "none" || (k === "stock" && BGD.base.stock) || (k === "image" && BGD.base.path)) bgdBuild();
+}
+function bgdSolid(v){
+  v = String(v || "").trim(); if(!/^#?[0-9a-f]{6}$/i.test(v)) return;
+  if(v[0] !== "#") v = "#" + v;
+  BGD.base = { type: "solid", hex: v.toUpperCase(), pms: null };
+  const hx = document.querySelector("#bgd .bgd-hex"); if(hx && document.activeElement !== hx) hx.value = BGD.base.hex;
+  const col = document.querySelector("#bgd .bgd-color"); if(col && document.activeElement !== col) col.value = BGD.base.hex;
+  const pm = document.querySelector("#bgd .bgd-row .bgd-link"); if(pm) pm.textContent = "Pick a PMS";
+  bgdBuild();
+}
+async function bgdPmsToggle(){ BGD.pmsOpen = !BGD.pmsOpen; bgdRender(); if(BGD.pmsOpen){ await loadPmsLibrary(); bgdPmsList(""); } }
+function bgdPmsList(q){ pmsPickerFill(document.getElementById("bgd-pms-list"), q, "bgdPmsPick", []); }
+function bgdPmsPick(name, hex){ BGD.base = { type: "solid", hex: String(hex).toUpperCase(), pms: name }; BGD.pmsOpen = false; bgdRender(); bgdBuild(); }
+function bgdStop(i, v){ const s = (BGD.base.stops || ["#FFFFFF", "#1C4FD0"]).slice(); s[i] = v.toUpperCase(); BGD.base.stops = s; bgdBuild(); }
+function bgdDir(v){ BGD.base.dir = v; bgdBuild(); }
+function bgdSide2(m){ BGD.side2 = m; bgdRender(); bgdBuild(); }
+function bgdBottom(m){ BGD.bottom.mode = m; bgdRender(); bgdBuild(); }
+function bgdBottomHex(v){ BGD.bottom.hex = v.toUpperCase(); bgdBuild(); }
+function bgdUnfinish(){ S.bleed = { img: null, ox: 0, oy: 0, sc: 1, rot: 0 }; BGD.finished = false; BGD.built = null; bgdRender(); R(); }
+function bgdClearDesign(){ BGD.design = null; bgdRender(); bgdBuild(); }
+async function bgdStockGrid(){
+  const box = document.getElementById("bgd-stock"); if(!box) return;
+  try{
+    if(!BGD.stock) BGD.stock = await (await fetch(`/api/stock-backgrounds/${encodeURIComponent(S.pid)}`)).json();
+    const r = BGD.stock, files = Array.isArray(r) ? r : (r.files || []);
+    const base = Array.isArray(r) ? `/static/assets/${assetId()}/stockbackgrounds` : (r.base_url || `/static/assets/${assetId()}/stockbackgrounds`);
+    BGD.stockBase = base;
+    if(!files.length){ box.textContent = "No patterns for this item."; return; }
+    box.innerHTML = files.map(f => {
+      const nm = f.replace(/\.(jpg|jpeg|png)$/i, "");
+      const th = r.thumb_base ? `${r.thumb_base}/${encodeURIComponent(nm)}.jpg` : `${base}/${encodeURIComponent(f)}`;
+      return `<button class="bgd-pat${BGD.base.stock === f ? " on" : ""}" title="${bgdEsc(nm)}" onclick="bgdStock(${bgdEsc(JSON.stringify(f))})"><span style="background-image:url('${th}')"></span><i>${bgdEsc(nm)}</i></button>`;
+    }).join("");
+  }catch(e){ box.textContent = "Patterns couldn't be loaded."; }
+}
+function bgdStock(f){ BGD.base = { type: "stock", stock: f }; bgdRender(); bgdBuild(); }
+async function bgdPicture(inp){
+  const f = inp.files?.[0]; inp.value = ""; if(!f) return;
+  const st = document.getElementById("bgd-status"); if(st) st.textContent = "⏳ Reading your picture…";
+  const fd = new FormData(); fd.append("file", f, f.name); fd.append("slot_id", "bgimg"); fd.append("purpose", "layout");
+  if(S.pid) fd.append("product_id", S.pid);
+  try{
+    const r = await (await fetch("/api/rasterize", { method: "POST", body: fd })).json();
+    if(r.error) throw new Error(r.error);
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = `data:${r.preview_mime};base64,${r.preview_b64}`; });
+    BGD.img = img;
+    BGD.base = { type: "image", path: r.saved_path, name: f.name };
+    bgdRender(); bgdBuild();
+  }catch(e){ if(st) st.textContent = "⚠ " + e.message; }
+}
+function bgdBuild(){
+  clearTimeout(BGD.t);
+  BGD.t = setTimeout(bgdBuildNow, 250);
+}
+async function bgdBuildNow(){
+  const seq = ++BGD.seq;
+  const st = () => document.getElementById("bgd-status");
+  if(st()) st().textContent = "⏳ Updating the background…";
+  try{
+    const r = await fetch("/api/bg-sheet", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ product_id: S.pid, base: BGD.base, design_pdf: BGD.design?.pdf || null,
+                             side2: BGD.side2, bottom: BGD.bottom }) });
+    const d = await r.json();
+    if(!r.ok || d.error) throw new Error(d.error || "The background couldn't be built.");
+    const fd = new FormData(); fd.append("server_path", d.saved_path); fd.append("slot_id", "bleed");
+    if(S.pid) fd.append("product_id", S.pid);
+    const p = await (await fetch("/api/rasterize", { method: "POST", body: fd })).json();
+    if(p.error) throw new Error(p.error);
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = `data:${p.preview_mime};base64,${p.preview_b64}`; });
+    if(seq !== BGD.seq) return;
+    if(typeof S_FILL !== "undefined" && S_FILL) S_FILL.mode = "none";
+    S.bleed = { img, ox: 0, oy: 0, sc: 1, rot: 0, file: null, cb: { x: 0, y: 0, w: img.width, h: img.height },
+                savedPath: d.saved_path, _fromLayout: true, _bgd: true };
+    BGD.built = d.saved_path; BGD.finished = false;
+    if(st()) st().textContent = "✓ Background is on the item.";
+    R();
+  }catch(e){ if(seq === BGD.seq && st()) st().textContent = "⚠ " + e.message; }
+}
+
+async function bgdBasePreview(W, H){
+  const k = Math.min(4, 1200 / Math.max(W, H)), c = document.createElement("canvas");
+  c.width = Math.round(W * k); c.height = Math.round(H * k);
+  const g = c.getContext("2d"), b = BGD.base;
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, c.width, c.height);
+  const cover = img => { const s = Math.max(c.width / img.width, c.height / img.height);
+    g.drawImage(img, (c.width - img.width * s) / 2, (c.height - img.height * s) / 2, img.width * s, img.height * s); };
+  if(b.type === "solid"){ g.fillStyle = b.hex || "#ffffff"; g.fillRect(0, 0, c.width, c.height); }
+  else if(b.type === "gradient"){
+    const s = b.stops || ["#FFFFFF", "#1C4FD0"], d = b.dir || "down";
+    const gr = d === "right" ? g.createLinearGradient(0, 0, c.width, 0) : d === "diag" ? g.createLinearGradient(0, 0, c.width, c.height) : g.createLinearGradient(0, 0, 0, c.height);
+    gr.addColorStop(0, s[0]); gr.addColorStop(1, s[1]); g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
+  } else if(b.type === "stock" && b.stock){
+    const img = new Image(); img.crossOrigin = "anonymous";
+    await new Promise(res => { img.onload = res; img.onerror = res; img.src = `${BGD.stockBase || `/static/assets/${assetId()}/stockbackgrounds`}/${encodeURIComponent(b.stock)}`; });
+    if(img.width) cover(img);
+  } else if(b.type === "image" && BGD.img) cover(BGD.img);
+  return c;
+}
+async function bgdOpenDesign(){
+  if(!bgdOn()) return;
+  BGD.preview = await bgdBasePreview(bgdZonePts("side1").W, bgdZonePts("side1").H);
+  await openLayout(BGS_SLOT, {});
+  const loc = document.getElementById("ly-slot")?.closest("label"); if(loc) loc.style.display = "none";
+}
+function bgdLayoutClosed(){
+  const loc = document.getElementById("ly-slot")?.closest("label"); if(loc) loc.style.display = "";
+}
+async function bgdDesignApply(d, items){
+  BGD.design = { pdf: d.saved_path, items: items.map(it => ({ ...it })), board: { W: LY.W, H: LY.H } };
+  closeLayout(); bgdLayoutClosed();
+  bgdRender(); await bgdBuildNow();
+}
+function bgdLoadBoard(){
+  LY.undo = []; LY.redo = []; LY.sel = -1;
+  const ds = BGD.design;
+  if(ds?.board){
+    const f = Math.min(LY.W / ds.board.W, LY.H / ds.board.H);
+    LY.items = ds.items.map(it => ({ ...it, x: it.x * f, y: it.y * f,
+      ...(it.size ? { size: it.size * f } : {}), ...(it.w ? { w: it.w * f } : {}), ...(it.h ? { h: it.h * f } : {}) }));
+  } else LY.items = [];
+  LY.sel = LY.items.length - 1;
+}
+
 function custStep(n){
   n = Math.max(1, Math.min(3, n | 0));
-  if(n === 3 && !custHasArt()){ n = 2; }
+  if(n === 3 && !custCanReview()){ n = 2; }
   CSTEP = n;
   document.body.dataset.cstep = n;
   document.querySelectorAll("#cust-steps button").forEach(b => {
@@ -13250,7 +13571,7 @@ function custStep(n){
   if(next){
     next.style.display = n === 3 ? "none" : "";
     next.textContent = n === 1 ? "Next: add your logo →" : "Next: review →";
-    next.disabled = n === 2 && !custHasArt();
+    next.disabled = n === 2 && !custCanReview();
     next.title = next.disabled ? "Add your logo or some text first" : "";
   }
   if(n === 3) custReview();
