@@ -80,7 +80,7 @@ function build(){
 }
 
 function hello(){
-  $("ask-log").innerHTML = `<div class="ask-row"><img class="ask-av" src="/static/img/greggers.png" alt=""><div class="ask-m a">Hi, I'm Greggers! Tell me what you'd like and attach your logo (the Attach button or drop it here), and I'll set it up for you. Ask me anything along the way.</div></div>
+  $("ask-log").innerHTML = `<div class="ask-row"><img class="ask-av" src="/static/img/greggers.png" alt=""><div class="ask-m a">Hi, I'm Greggers! I live in this website and have never once held a koozie, but I'm weirdly good at setting them up. Tell me what you'd like and attach your logo (the Attach button or drop it here), and I'll build it while you watch. Ask me anything along the way.</div></div>
     <div class="ask-hint">Try: "a red, a blue and a purple Kolder Kaddy with this logo, as big as it fits, in yellow" or "a 4CP Pocket Coolie with a navy background and this logo".</div>`;
 }
 
@@ -244,7 +244,10 @@ function label(c){
     move_art: `Moving ${locName(i.location)}`, rotate_art: `Rotating ${locName(i.location)}`,
     set_background: `Background: ${i.type || "update"}`, get_preview: "Looking at the mockup",
     show_lifestyle: "Opening the lifestyle photo", download_virtual: "Downloading the virtual",
-    go_to_review: "Going to Review & send"})[c.name] || c.name;
+    go_to_review: "Going to Review & send", get_design: `Reading the design on ${locName(i.location)}`,
+    make_design: `Designing ${locName(i.location)}`, edit_design: `Editing the design on ${locName(i.location)}`,
+    use_template: `Template: ${i.template}`, clear_inside: `Inner white: ${i.mode}`,
+    hide_color: `${i.hidden === false ? "Bringing back" : "Leaving out"} colour ${i.n}`})[c.name] || c.name;
 }
 
 // ── the tools: the configurator's own functions ──────────────────────────
@@ -355,7 +358,232 @@ function swatchesHTML(list){
     + `<i style="background:${esc(c.hex)}"></i>${esc(c.name.replace(/^PANTONE\s+/, ""))}</button>`).join("")}</div>`;
 }
 
+// ── the layout tool (text, shapes, arranging art) ─────────────────────────
+const TSIZE = {small: 0.12, medium: 0.2, large: 0.3, huge: 0.45};   // of the print area's height
+const clamp = (v, a, b) => Math.max(a, Math.min(b, Number(v) || 0));
+function lyBusy(){ return $("ly-scrim")?.classList.contains("vis"); }
+function lyLoc(location){
+  needLoc(location);
+  if(typeof BG_SLOT !== "undefined" && location === BG_SLOT) throw new Error("Use set_background for the 4CP background.");
+  return (typeof sidesSame === "function" && sidesSame() && location === "side2") ? "side1" : location;
+}
+async function lyOpen(location){
+  const id = lyLoc(location);
+  if(lyBusy()) closeLayout();
+  try{ custStep(2); }catch(e){}
+  await openLayout(id); await sleep(200);
+  return id;
+}
+async function lyFont(name){
+  const fonts = await layoutFonts();
+  if(!name) return "Oswald";
+  const n = String(name).toLowerCase().replace(/[^a-z0-9]/g, "");
+  const f = fonts.find(x => x.key.toLowerCase() === n || String(x.label).toLowerCase().replace(/[^a-z0-9]/g, "") === n)
+         || fonts.find(x => x.key.toLowerCase().includes(n) || n.includes(x.key.toLowerCase()));
+  if(!f) throw new Error(`No font "${name}". Fonts: ${fonts.map(x => x.label || x.key).join(", ")}`);
+  return f.key;
+}
+async function lyColor(it, c){
+  if(!c || isScreenPrint()) return;                        // one-ink items print everything in the ink
+  const s = String(c).trim();
+  if(/^#?[0-9a-f]{6}$/i.test(s)){ it.color = (s[0] === "#" ? s : "#" + s).toUpperCase(); it.pms = null; return; }
+  if(!SP.loaded && typeof loadPmsLibrary === "function") await loadPmsLibrary();
+  const k = /^white$/i.test(s) ? {name: "White", hex: "#FFFFFF"} : (_findInk(s) || _findInk("PANTONE " + s.replace(/^(pms|pantone)\s*/i, "")));
+  if(k){ it.color = k.hex; it.pms = k.name; return; }
+  const h = FAMILY[s.toLowerCase()];
+  if(h){ it.color = h; it.pms = null; return; }
+  throw new Error(`Unknown colour "${c}" - use a hex or a PANTONE name.`);
+}
+async function lyArt(f){
+  const fd = new FormData();
+  fd.append("file", f, f.name); fd.append("slot_id", LY.slot || "layout");
+  fd.append("product_id", S.pid || ""); fd.append("purpose", "layout");
+  const d = await (await fetch("/api/rasterize", {method: "POST", body: fd})).json();
+  if(d.error) throw new Error(`${f.name}: ${d.error}`);
+  let img = new Image();
+  await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = `data:${d.preview_mime};base64,${d.preview_b64}`; });
+  try{ const ko = knockoutRasterBackground(img); if(ko) img = ko; }catch(e){}
+  const it = {type: "art", src: d.saved_path, name: f.name, img, x: LY.W / 2, y: LY.H / 2};
+  it.w = Math.min(LY.W * 0.6, LY.H * 0.6 / studioArtAspect(it));
+  return it;
+}
+async function lyFonts(){ await Promise.all(LY.items.filter(i => i.type === "text").map(i => layoutEnsureFont(i.font, i.bold, i.italic))); }
+async function lyApply(location){
+  await lyFonts();
+  studioRender();
+  await layoutDone();
+  if(lyBusy()){
+    const why = ($("ly-note")?.textContent || "").replace(/^⚠\s*/, "").trim();
+    closeLayout();
+    throw new Error("The design didn't go on" + (why ? `: ${why}` : "."));
+  }
+  await settle();
+  for(const t of pairedIds(lyLoc(location))) if(S.slots[t]) S.slots[t]._askName = "design (art/text from the layout tool)";
+  const out = artInfo(location);
+  const w = typeof layoutTypeWarning === "function" ? layoutTypeWarning(lyLoc(location)) : "";
+  if(w) out.warning = w;
+  return out;
+}
+function lyDescribe(){
+  return LY.items.map((it, i) => it.type === "text"
+      ? {index: i, type: "text", text: it.text, font: it.font, size_pt: Math.round(it.size), bold: !!it.bold || undefined,
+         italic: !!it.italic || undefined, curve: it.curve || undefined, spacing: it.spacing || undefined,
+         color: layoutUsesColor() ? (it.pms || it.color) : undefined}
+    : it.type === "art" ? {index: i, type: "art", name: String(it.name || "art").replace(/^[a-z0-9]+_[0-9a-f]{10}_/i, "").replace(/\.(preview|press|octrace|4cp)[^/]*$/i, "")}
+    : {index: i, type: "shape", shape: it.shape, color: layoutUsesColor() ? (it.pms || it.color) : undefined});
+}
+function lyShape(shape, gw, gh){
+  const s = Math.min(LY.W, LY.H), st = Math.max(1.5, s * 0.02);
+  const b = {type: "shape", shape, color: "#000000", x: LY.W / 2, y: LY.H / 2, stroke: st};
+  if(shape === "line") b.w = Math.max(LY.W * 0.3, gw * 0.7);
+  else if(shape === "block") Object.assign(b, {w: LY.W * 0.5, h: LY.H * 0.12});
+  else if(shape === "ring") b.w = Math.max(gw, gh) * 1.3 || s * 0.9;
+  else if(shape === "frame") Object.assign(b, {w: (gw || LY.W * 0.7) * 1.15 + s * 0.06, h: (gh || LY.H * 0.6) * 1.2 + s * 0.06});
+  else b.w = s * 0.12;                                     // star, dot
+  return b;
+}
+
 const TOOLS = {
+  async get_design({location}){
+    const id = lyLoc(location);
+    if(lyBusy()) throw new Error("The customer has the layout tool open - let them finish, or ask them to close it.");
+    await layoutFonts();
+    LY.slot = id; studioLoad(id, {});
+    await lyFonts();
+    return {location, print_area_in: [r2(LY.W / 72), r2(LY.H / 72)], pieces: lyDescribe(),
+            colours: layoutUsesColor() ? "each piece can have its own colour" : "everything prints in the one ink",
+            fonts: (LY.fonts || []).map(f => f.label || f.key), shapes: ["line", "ring", "frame", "star", "dot", "block"],
+            templates: studioTemplates().map(t => t.name)};
+  },
+
+  async make_design({location, pieces, arrange}){
+    if(!(pieces || []).length) throw new Error("No pieces given.");
+    await lyOpen(location);
+    const logo = LY.items.find(i => i.type === "art");
+    if(logo?._uploading){ try{ await logo._uploading; }catch(e){ closeLayout(); throw e; } }
+    const hasText = pieces.some(p => p.type === "text" && (p.text || "").trim());
+    const flow = [], around = [], extra = [];
+    for(const p of pieces){
+      if(p.type === "logo"){
+        if(!logo){ closeLayout(); throw new Error(`${locName(location)} has no logo yet - place_art first, or add it as type 'art' with the attachment id.`); }
+        const it = {...logo};
+        if(hasText) it.w = Math.min(LY.W * (arrange === "row" ? 0.45 : 0.8), LY.H * (arrange === "row" ? 0.8 : 0.5) / studioArtAspect(it));
+        flow.push(it);
+      } else if(p.type === "art"){
+        const f = A.files[p.file];
+        if(!f){ closeLayout(); throw new Error(`No attachment "${p.file}".`); }
+        flow.push(await lyArt(f));
+      } else if(p.type === "text"){
+        if(!(p.text || "").trim()) continue;
+        const it = studioNewText(String(p.text), Math.max(10, LY.H * (TSIZE[p.size] || TSIZE.medium)));
+        Object.assign(it, {font: await lyFont(p.font), bold: !!p.bold, italic: !!p.italic,
+                           curve: clamp(p.curve, -100, 100), spacing: clamp(p.spacing, 0, 400), color: "#000000", pms: null});
+        await lyColor(it, p.color);
+        flow.push(it);
+      } else if(p.type === "shape"){
+        (["ring", "frame"].includes(p.shape) ? around : extra).push(p);
+        if(!["ring", "frame"].includes(p.shape)) flow.push({_shape: p});
+      }
+    }
+    LY.items = flow.filter(x => !x._shape);
+    await lyFonts();
+    // Lay the pieces out in a stack (or a row), then centre the group.
+    const gap = (arrange === "row" ? LY.W : LY.H) * 0.05;
+    let span = 0, cross = 0;
+    const placed = [];
+    for(const x of flow){
+      let it = x;
+      if(x._shape){
+        const gw = Math.max(0, ...placed.map(q => { const b = studioBox(q); return b.x1 - b.x0; }));
+        it = lyShape(x._shape.shape, gw, 0); await lyColor(it, x._shape.color);
+      }
+      it.x = 0; it.y = 0;
+      const b = studioBox(it), w = b.x1 - b.x0, h = b.y1 - b.y0;
+      if(arrange === "row"){ it.x = span - b.x0; it.y = -(b.y0 + b.y1) / 2; span += w + gap; cross = Math.max(cross, h); }
+      else { it.y = span - b.y0; it.x = -(b.x0 + b.x1) / 2; span += h + gap; cross = Math.max(cross, w); }
+      placed.push(it);
+    }
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for(const it of placed){ const b = studioBox(it); x0 = Math.min(x0, b.x0); y0 = Math.min(y0, b.y0); x1 = Math.max(x1, b.x1); y1 = Math.max(y1, b.y1); }
+    for(const it of placed){ it.x += LY.W / 2 - (x0 + x1) / 2; it.y += LY.H / 2 - (y0 + y1) / 2; }
+    const back = [];
+    for(const p of around){ const s = lyShape(p.shape, x1 - x0, y1 - y0); await lyColor(s, p.color); back.push(s); }
+    LY.items = [...back, ...placed];
+    if(!LY.items.length){ closeLayout(); throw new Error("Nothing to put on - add some text or art."); }
+    studioPush(); studioFitAll();
+    return {...await lyApply(location), pieces: lyDescribe()};
+  },
+
+  async edit_design({location, changes}){
+    await lyOpen(location);
+    if(!LY.items.length){ closeLayout(); throw new Error(`${locName(location)} has no design yet - use make_design.`); }
+    studioPush();
+    const del = [];
+    for(const c of changes || []){
+      const it = LY.items[c.index];
+      if(!it){ closeLayout(); throw new Error(`No piece ${c.index}. Pieces: ${JSON.stringify(lyDescribe())}`); }
+      if(c.delete){ del.push(c.index); continue; }
+      if(it.type === "text"){
+        if(c.text != null) it.text = String(c.text);
+        if(c.font) it.font = await lyFont(c.font);
+        if(c.bold != null) it.bold = !!c.bold;
+        if(c.italic != null) it.italic = !!c.italic;
+        if(c.curve != null) it.curve = clamp(c.curve, -100, 100);
+        if(c.spacing != null) it.spacing = clamp(c.spacing, 0, 400);
+      }
+      if(c.color && it.type !== "art") await lyColor(it, c.color);
+      if(c.scale){
+        const k = clamp(c.scale, 0.2, 5);
+        if(it.size) it.size *= k; if(it.w) it.w *= k; if(it.h) it.h *= k;
+        if(it.stroke && it.type === "shape" && it.shape !== "line") it.stroke *= Math.sqrt(k);
+      }
+      if(c.nudge){
+        const st = 0.05;
+        if(c.nudge === "left") it.x -= LY.W * st; if(c.nudge === "right") it.x += LY.W * st;
+        if(c.nudge === "up") it.y -= LY.H * st;   if(c.nudge === "down") it.y += LY.H * st;
+      }
+    }
+    for(const i of del.sort((a, b) => b - a)) LY.items.splice(i, 1);
+    await lyFonts();
+    LY.items.forEach(studioKeepIn);
+    if(!LY.items.length){ closeLayout(); removeArtFromSlot(lyLoc(location)); await sleep(150); return `Everything removed from ${locName(location)}.`; }
+    return {...await lyApply(location), pieces: lyDescribe()};
+  },
+
+  async use_template({location, template, texts}){
+    await lyOpen(location);
+    const list = studioTemplates(), want = String(template || "").toLowerCase();
+    const t = list.find(x => x.name.toLowerCase() === want) || list.find(x => x.name.toLowerCase().includes(want) || want.includes(x.name.toLowerCase()));
+    if(!t){ closeLayout(); throw new Error(`No template "${template}". Templates: ${list.map(x => x.name).join(", ")}`); }
+    studioPush();
+    LY.items = t.make().map(it => ({...it}));
+    const tx = LY.items.filter(i => i.type === "text");
+    (texts || []).forEach((s, k) => { if(tx[k] && s != null) tx[k].text = String(s); });
+    LY.items = LY.items.filter(i => i.type !== "text" || (i.text || "").trim());
+    await lyFonts(); studioFitAll();
+    return {...await lyApply(location), pieces: lyDescribe(),
+            note: tx.length > (texts || []).length ? "Some template lines still have placeholder text - fill them with edit_design." : undefined};
+  },
+
+  async clear_inside({location, mode}){
+    const sl = needArt(location);
+    if(!sl.koSrc) throw new Error("This art has no removed background to adjust (only pictures whose background was taken out have this).");
+    await setClearInner(location, mode === "clear"); await settle();
+    return {...artInfo(location), inner_white: mode === "clear" ? "cleared (item shows through)" : "prints"};
+  },
+
+  async hide_color({location, n, hidden}){
+    needArt(location);
+    if(!(typeof mcUsesSets === "function" && mcUsesSets())) throw new Error("This item doesn't list the logo's colours separately.");
+    const e = mcSets().find(x => x.ids.includes(location));
+    const ink = e?.set?.inks?.[(Number(n) || 0) - 1];
+    if(!ink) throw new Error(`No colour ${n}. Colours: ${JSON.stringify(artInfo(location).colors || [])}`);
+    const want = hidden !== false;
+    if(!!ink.hidden !== want) toggleMcHidden(e.id, n - 1);
+    await sleep(250);
+    return artInfo(location);
+  },
+
   async get_state(){
     await catalog();
     if(!S.prod) return {item: null, note: "No item open - use find_items and open_item."};

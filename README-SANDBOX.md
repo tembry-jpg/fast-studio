@@ -85,6 +85,15 @@ after an hour, uploads after a day.
   Out of credits (or the daily cap): "Greggers isn't available right now" -
   the controls keep working. Prompt caching keeps repeat calls cheap.
 - The review step now lists every colorway on the order.
+- Voice: witty, a bit sarcastic and self-deprecating, helpful first; jokes
+  only at his own expense, none when the client is confused or in a hurry.
+- Text and design: Greggers drives the layout tool - make_design (logo +
+  text lines + simple shapes, stacked or in a row), edit_design (change text,
+  font, arch, spacing, colour, size, nudge, delete), use_template (the
+  layout tool's templates), get_design. Light art editor: clear_inside
+  (inner white print/clear), hide_color (leave a logo colour out), plus
+  set_inks / set_white. Everything goes through the page's own layoutDone,
+  so it lands exactly as if the client had built it by hand.
 
 ## Update 2026-10-29: 4CP background step; ink follows the art
 - 4CP insulators (0070-3w, 1080-3w, 9100-4CP, 0472-4CP): step 1 is now

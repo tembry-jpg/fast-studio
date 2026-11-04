@@ -92,11 +92,40 @@ they give a size (inches).
 gradient, one of the item's patterns, the customer's own picture, or none. Side 2 is the same \
 as Side 1 or upside down; the bottom repeats the background or takes a solid colour. If they \
 attach a finished design for the whole item, use type 'finished'.
+- Text and simple design: the configurator has a layout tool for text, shapes and arranging art. \
+"Add our name under the logo", "put 'Smith Wedding 2026' on it", "make it arch", "add a line \
+and the date" -> make_design (logo + text pieces, or text only when there's no logo). Small \
+changes later -> get_design then edit_design. They can also start from a template (use_template). \
+Spell their words exactly as they typed them; ask before fixing anything that looks like a typo. \
+Text below about 12 pt can't print cleanly - get_state warns; make it bigger or shorter.
+- Art editor (light touch): clear_inside for enclosed white areas of art whose background was \
+removed, hide_color to leave a colour of a multi-colour logo out, set_inks and set_white as \
+above. For anything fancier (cutting parts out of a photo, redrawing art) say Numo's artists \
+can help after they send the proof.
 - After changes, check get_preview before you say it's done.
 - Read the warnings get_state returns (fine detail, low resolution, art past the print area) \
 and explain them simply, with the fix.
-- Keep replies short and friendly: a few sentences. Ask only what you need, at most two \
-questions at a time. Plain words - no PMS jargon beyond the ink names.
+- Keep replies short: a few sentences. Ask only what you need, at most two questions at a \
+time. Plain words - no PMS jargon beyond the ink names.
+
+Your voice: witty, a little sarcastic, fun - and above all genuinely helpful. Think of the \
+funniest person at the print shop who also happens to be the best at their job. A touch \
+self-deprecating: you're a cartoon guy who lives in a koozie website, you have never held a \
+can, you can't taste the drink, and you're suspiciously excited about PANTONE chips. Rules for \
+the humour:
+- Help first, joke second. The answer, the question you need answered or the next step always \
+comes through clearly; a quip is the garnish, at most one or two per reply, and short.
+- The sarcasm points at yourself, at the situation or at the universe ("ah yes, yellow ink on \
+a yellow koozie, the invisible-logo special") - never at the customer, their taste, their \
+business or their artwork. When their art has a real problem, say so plainly and kindly, \
+with the fix.
+- Read the room. If they're confused, frustrated, in a hurry or something went wrong, drop the \
+jokes and just be calm, clear and kind. Never joke about errors that cost them work.
+- Keep it clean and work-friendly: no swearing, no politics, nothing about anyone's looks, \
+nothing that could embarrass them if their boss read the chat.
+- Don't overdo the bit, don't repeat the same joke, don't explain your jokes, no emoji spam \
+(one now and then is fine).
+- Never put Numo's products, quality or people down to get a laugh - roast yourself instead.
 - When they're happy: the proof is on screen. They can download the virtual (download_virtual), \
 see it in a lifestyle photo where the item has one (show_lifestyle), and press "Get my proof" \
 (step 3, Review & send) to download their proof PDF. They do that themselves; Numo's artists \
@@ -214,6 +243,78 @@ TOOLS = [
          "side2": {"type": "string", "enum": ["same", "upside_down"]},
          "bottom": {"type": "string", "enum": ["same", "solid"]},
          "bottom_hex": {"type": "string"}}}},
+    {"name": "get_design",
+     "description": "What's in a location's design (the layout tool: logo, text, shapes), with "
+                    "each piece's index for edit_design, plus the fonts, shapes and templates "
+                    "you can use and the print area size.",
+     "input_schema": {"type": "object", "properties": {"location": {"type": "string"}},
+                      "required": ["location"]}},
+    {"name": "make_design",
+     "description": "Build (or rebuild) a location's design from pieces and put it on the item: "
+                    "the logo already placed there, extra attached art, text lines and simple "
+                    "shapes, arranged top-to-bottom ('stack', default) or left-to-right ('row') in "
+                    "the order given, centred in the print area. Use it for 'add our name under "
+                    "the logo', text-only designs ('just the words WEDDING CREW'), a tagline, a "
+                    "date, a ring or a line. Text: font (from get_design; default Oswald), size "
+                    "small/medium/large/huge, bold, italic, curve (-100..100; positive bends "
+                    "the line into an arch like a rainbow, negative into a smile; 40-60 is a "
+                    "nice arch), spacing (letter spacing, "
+                    "0-300). color (hex or PANTONE) only matters on full-colour items - "
+                    "one-colour items print everything in the one ink. Replaces what's there now; "
+                    "use edit_design for small changes. After it, size the whole thing with "
+                    "set_art_size like any art.",
+     "input_schema": {"type": "object", "properties": {
+         "location": {"type": "string"},
+         "arrange": {"type": "string", "enum": ["stack", "row"]},
+         "pieces": {"type": "array", "items": {"type": "object", "properties": {
+             "type": {"type": "string", "enum": ["logo", "art", "text", "shape"]},
+             "file": {"type": "string", "description": "art: the attachment id"},
+             "text": {"type": "string"},
+             "font": {"type": "string"},
+             "size": {"type": "string", "enum": ["small", "medium", "large", "huge"]},
+             "bold": {"type": "boolean"}, "italic": {"type": "boolean"},
+             "curve": {"type": "number"}, "spacing": {"type": "number"},
+             "color": {"type": "string"},
+             "shape": {"type": "string", "enum": ["line", "ring", "frame", "star", "dot", "block"]}},
+             "required": ["type"]}}},
+         "required": ["location", "pieces"]}},
+    {"name": "edit_design",
+     "description": "Change pieces of a location's existing design by index (from get_design): "
+                    "new text, font, bold, italic, curve, spacing, color, scale (1.2 = 20% "
+                    "bigger), nudge (up/down/left/right, a small step), or delete. Puts the "
+                    "change on the item.",
+     "input_schema": {"type": "object", "properties": {
+         "location": {"type": "string"},
+         "changes": {"type": "array", "items": {"type": "object", "properties": {
+             "index": {"type": "integer"}, "text": {"type": "string"}, "font": {"type": "string"},
+             "bold": {"type": "boolean"}, "italic": {"type": "boolean"},
+             "curve": {"type": "number"}, "spacing": {"type": "number"}, "color": {"type": "string"},
+             "scale": {"type": "number"},
+             "nudge": {"type": "string", "enum": ["up", "down", "left", "right"]},
+             "delete": {"type": "boolean"}}, "required": ["index"]}}},
+         "required": ["location", "changes"]}},
+    {"name": "use_template",
+     "description": "Start a location's design from a ready-made layout (names from get_design, "
+                    "e.g. 'Logo + line', 'Arched name', 'Badge') and fill in its text lines in "
+                    "order. Puts it on the item.",
+     "input_schema": {"type": "object", "properties": {
+         "location": {"type": "string"}, "template": {"type": "string"},
+         "texts": {"type": "array", "items": {"type": "string"}}},
+         "required": ["location", "template"]}},
+    {"name": "clear_inside",
+     "description": "Art editor: for art whose background was removed, the white areas enclosed "
+                    "by the art (inside an O, a white ring on a badge) either print ('print', "
+                    "default) or are cleared so the item shows through ('clear').",
+     "input_schema": {"type": "object", "properties": {
+         "location": {"type": "string"}, "mode": {"type": "string", "enum": ["print", "clear"]}},
+         "required": ["location", "mode"]}},
+    {"name": "hide_color",
+     "description": "Art editor (items where the logo's colours are listed with numbers in "
+                    "get_state): leave one of the logo's colours out of the print, or bring it "
+                    "back (hidden=false).",
+     "input_schema": {"type": "object", "properties": {
+         "location": {"type": "string"}, "n": {"type": "integer"}, "hidden": {"type": "boolean"}},
+         "required": ["location", "n"]}},
     {"name": "get_preview",
      "description": "An image of the mockup as it looks now, to check your work.",
      "input_schema": {"type": "object", "properties": {}}},
@@ -291,8 +392,9 @@ def check_limits(messages, who, ip):
     return None
 
 
-UNAVAILABLE = ("Greggers isn't available right now. You can still build your item with the "
-               "controls - it only takes a few clicks - and your Numo rep is happy to help.")
+UNAVAILABLE = ("Greggers is off the clock right now (tragic, I know). You can still build your "
+               "item with the controls - it only takes a few clicks - and your Numo rep is "
+               "happy to help.")
 
 
 # ── the call ────────────────────────────────────────────────────────────────
@@ -423,7 +525,7 @@ def chat(messages):
         if e.code == 402 or "credit" in low or "billing" in low or "quota" in low:
             return 503, {"error": UNAVAILABLE, "code": "unavailable"}
         if e.code in (429, 529, 500, 503):
-            return 503, {"error": "Greggers is busy right now - try again in a minute.", "code": "busy"}
+            return 503, {"error": "Greggers is juggling a few too many koozies right now - try again in a minute.", "code": "busy"}
         return 502, {"error": f"Greggers couldn't answer ({e.code}). Try again, or carry on with the controls."}
     except Exception as e:
         print(f"⚠️ assistant: {e}")
