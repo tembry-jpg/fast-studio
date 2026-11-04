@@ -363,6 +363,34 @@ def _dilate(mask, r):
 
 # ── public ─────────────────────────────────────────────────────────────────
 
+# Two colours this close (CIE76 delta E) are one colour for the knockout
+# rule: a traced picture puts a slightly lighter rim round a dark shape (its
+# anti-aliased edge), and the shape then looked like "detail inside another
+# colour" and was knocked out - the smiley's eyes printed as outlines.
+SAME_COLOUR_DE = 12.0
+
+
+def _lab_of_hex(h):
+    h = str(h or "#777777").lstrip("#")
+    r, g, b = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    lin = lambda c: c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = lin(r), lin(g), lin(b)
+    X = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047
+    Y = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    Z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883
+    t = lambda v: v ** (1 / 3) if v > 0.008856 else 7.787 * v + 16 / 116
+    return 116 * t(Y) - 16, 500 * (t(X) - t(Y)), 200 * (t(Y) - t(Z))
+
+
+def _near_same(h1, h2):
+    if h1 == h2:
+        return True
+    if not h1 or not h2:
+        return False
+    a, b = _lab_of_hex(h1), _lab_of_hex(h2)
+    return sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5 < SAME_COLOUR_DE
+
+
 def analyze(pdf_path, work_dir):
     """
     Number the shapes, render the ID map and the colour preview on the same
@@ -460,7 +488,7 @@ def analyze(pdf_path, work_dir):
         if not len(rid):
             s["auto"], s["why"] = "print", ""
             continue
-        other = np.array([(j >= 0 and hexes.get(j) != hexes[i] and not white.get(j, False))
+        other = np.array([(j >= 0 and not _near_same(hexes.get(j), hexes[i]) and not white.get(j, False))
                           for j in rid.tolist()])
         frac = float(other.mean())
         s["detail"] = round(frac, 2)

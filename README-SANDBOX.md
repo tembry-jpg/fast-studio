@@ -63,6 +63,29 @@ reopened proof is marked with the session that made it; another session gets
 "expired" / "unknown" for it, even with the exact link. Exports are deleted
 after an hour, uploads after a day.
 
+## Update 2026-11-04: Greggers (chat assistant)
+- An "Ask Greggers" button by Tutorial (with his picture, static/img/greggers.png) opens a chat on the right. The client
+  types what they want and attaches a logo; Claude builds it on their own
+  page with the configurator's own functions (item, colours, colorways, art,
+  sides / pen side, ink with clickable PANTONE swatches, size, 4CP
+  background), checks the mockup, and sends them to Review & send. The client
+  presses "Get my proof" themselves. No prices, no ordering, no exporting.
+- Files: assistant.py (server half: instructions, tools, limits), and
+  static/assistant.js (browser half: the panel and the tools). server.py
+  adds /api/assistant and /api/assistant/status; configurator.html adds the
+  button and the script. assistant.py / assistant.js belong to this repo only
+  (the port tools don't touch them).
+- Off until ANTHROPIC_API_KEY is set on the Railway service (the button stays
+  hidden). Optional: ASSISTANT_MODEL (default claude-sonnet-5),
+  ASSISTANT_DAILY_REQUESTS (calls to Claude per day for the whole site,
+  default 1500).
+- Limits: behind the client sign-in; 20 client messages per chat; 40 client
+  messages and 300 calls an hour per session; 600 calls an hour per address;
+  the daily cap above; 2,000 output tokens a reply; 6 pictures a request.
+  Out of credits (or the daily cap): "Greggers isn't available right now" -
+  the controls keep working. Prompt caching keeps repeat calls cheap.
+- The review step now lists every colorway on the order.
+
 ## Update 2026-10-29: 4CP background step; ink follows the art
 - 4CP insulators (0070-3w, 1080-3w, 9100-4CP, 0472-4CP): step 1 is now
   "Background". Pick Solid color (or a PMS), Gradient, Pattern (the stock

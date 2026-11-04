@@ -295,8 +295,8 @@
         <div class="choice-thumbs" id="thumbs-tif"></div>
         <div class="choice-body">
           <div class="tif-kicker">This Is Fast · 24 Hour Program</div>
-          <div class="choice-title">One-color screen print</div>
-          <div class="choice-sub">Fast-turn items printed in one PMS ink. <span id="count-tif"></span></div>
+          <div class="choice-title">Fast-turn printing</div>
+          <div class="choice-sub">One PMS ink, or full color on the pen and the 4CP items. <span id="count-tif"></span></div>
           <div class="card-cta">Open 24 HR items <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         </div>
       </a>
@@ -394,10 +394,10 @@ const FACETS = [
 ];
 const SHAPE_ORDER = ["Beverage Insulators", "Totes and Bags", "Key Chains", "Pens"];
 const MAT_ORDER = ["Neoprene", "Scuba Foam", "Metallic Neoprene", "Heathered Neoprene", "Denim", "Burlap", "Suede", "Canvas", "Plastic"];
-const PRINT_ORDER = ["Spot color", "Full color (4CP)", "One color · 24 HR"];
+const PRINT_ORDER = ["Spot color", "Full color (4CP)", "Full color · digital", "One color · 24 HR"];
 const PROGRAM_COPY = {
-  "This Is Fast": { kicker: "This Is Fast · 24 Hour Program", title: "One-color screen print, set up in minutes",
-    sub: "Upload your art — vector, or a PNG/JPG we convert for you — place it inside the approved imprint area, pick your PMS ink, and see the finished product before you submit." },
+  "This Is Fast": { kicker: "This Is Fast · 24 Hour Program", title: "Set up in minutes, printed in 24 hours",
+    sub: "Upload your art — vector, or a PNG/JPG we convert for you — place it inside the approved imprint area, pick your PMS ink (or keep your art's own colors on full-color items), and see the finished product before you submit." },
   "Standard": { kicker: "Standard Items", title: "Multi-color and full-color items",
     sub: "Screen print up to 5 spot colors with every color matched to Pantone, or full-color 4CP — with text, numbers and extra logos on any side." },
 };
@@ -464,7 +464,7 @@ function catCard(p) {
       </div>
     </div>`;
   const tags = [
-    p.program === "This Is Fast" ? `<span class="tag fast">24 HR · 1 color</span>` : `<span class="tag">${esc(p.printing)}${p.max_inks > 1 ? ` · up to ${p.max_inks} PMS` : ""}</span>`,
+    p.program === "This Is Fast" ? `<span class="tag fast">24 HR · ${/^full color/i.test(p.printing || "") ? "Full color" : "1 color"}</span>` : `<span class="tag">${esc(p.printing)}${p.max_inks > 1 ? ` · up to ${p.max_inks} PMS` : ""}</span>`,
     `<span class="tag">${esc(p.material_label)}</span>`,
     p.fits ? `<span class="tag">${esc(p.fits)}</span>` : "",
   ].join("");

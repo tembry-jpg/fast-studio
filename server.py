@@ -5399,6 +5399,31 @@ def _bg_draw_design(c, design_pdf, zone):
     c.restoreState()
 
 
+@app.route("/api/assistant/status")
+def assistant_status():
+    import assistant
+    return jsonify({"enabled": assistant.enabled()})
+
+
+@app.route("/api/assistant", methods=["POST"])
+def assistant_route():
+    """One turn of Ask Numo (assistant.py). Behind the client sign-in, with a
+    per-session and per-address limit, so the monthly credits can't be run
+    down from outside."""
+    import assistant
+    if request.content_length and request.content_length > assistant.MAX_BODY_BYTES:
+        return jsonify({"error": "That's too much to send at once - try a smaller picture."}), 413
+    body = request.get_json(silent=True) or {}
+    msgs = body.get("messages") if isinstance(body.get("messages"), list) else []
+    if not assistant.enabled():
+        return jsonify({"error": assistant.UNAVAILABLE, "code": "unavailable"}), 503
+    over = assistant.check_limits(msgs, client_login.owner_tag(), client_login._ip())
+    if over:
+        return jsonify(over[1]), over[0]
+    status, out = assistant.chat(msgs)
+    return jsonify(out), status
+
+
 @app.route("/api/bg-template/<pid>")
 def bg_template(pid):
     """A PDF the size of the item's print sheet with Side 1, the bottom and
