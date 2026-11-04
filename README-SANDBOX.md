@@ -63,8 +63,8 @@ reopened proof is marked with the session that made it; another session gets
 "expired" / "unknown" for it, even with the exact link. Exports are deleted
 after an hour, uploads after a day.
 
-## Update 2026-11-04: Greggers (chat assistant)
-- An "Ask Greggers" button by Tutorial (with his picture, static/img/greggers.png) opens a chat on the right. The client
+## Update 2026-11-04: Gweg (chat assistant)
+- An "Ask Gweg" button by Tutorial (with his picture, static/img/gweg.png) opens a chat on the right. The client
   types what they want and attaches a logo; Claude builds it on their own
   page with the configurator's own functions (item, colours, colorways, art,
   sides / pen side, ink with clickable PANTONE swatches, size, 4CP
@@ -82,12 +82,12 @@ after an hour, uploads after a day.
 - Limits: behind the client sign-in; 20 client messages per chat; 40 client
   messages and 300 calls an hour per session; 600 calls an hour per address;
   the daily cap above; 2,000 output tokens a reply; 6 pictures a request.
-  Out of credits (or the daily cap): "Greggers isn't available right now" -
+  Out of credits (or the daily cap): "Gweg isn't available right now" -
   the controls keep working. Prompt caching keeps repeat calls cheap.
 - The review step now lists every colorway on the order.
 - Voice: witty, a bit sarcastic and self-deprecating, helpful first; jokes
   only at his own expense, none when the client is confused or in a hurry.
-- Text and design: Greggers drives the layout tool - make_design (logo +
+- Text and design: Gweg drives the layout tool - make_design (logo +
   text lines + simple shapes, stacked or in a row), edit_design (change text,
   font, arch, spacing, colour, size, nudge, delete), use_template (the
   layout tool's templates), get_design. Light art editor: clear_inside

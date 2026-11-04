@@ -1,4 +1,4 @@
-// "Greggers": the chat assistant on the client site - the browser half.
+// "Gweg": the chat assistant on the client site - the browser half.
 //
 // The conversation lives here. Each turn goes to /api/assistant (assistant.py),
 // which forwards it to Claude with the instructions and the tool list. When
@@ -15,13 +15,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ── the panel ────────────────────────────────────────────────────────────
 const CSS = `
-#ask-btn.on{background:var(--burgundy);color:#fff;border-color:var(--burgundy)}
 #ask-panel{position:fixed;top:0;right:0;bottom:0;width:min(400px,100vw);background:var(--surface);border-left:1px solid var(--border);
   box-shadow:-8px 0 24px rgba(28,20,16,.10);display:none;flex-direction:column;z-index:9000;font-family:var(--sans)}
 #ask-panel.on{display:flex}
-.ask-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border)}
-.ask-head b{font-family:var(--serif);font-size:17px;color:var(--burgundy);flex:1}
-.ask-head button{border:1px solid var(--border);background:var(--surface);border-radius:7px;padding:4px 9px;font:600 11px var(--sans);color:var(--muted);cursor:pointer}
+.ask-head{position:relative;display:flex;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid var(--border);
+  background:linear-gradient(to bottom,var(--border) 0,var(--border) 50%,var(--cream) 50%,var(--cream) 100%)}
+.ask-name{flex:1;display:flex;flex-direction:column;line-height:1;color:var(--burgundy);padding-top:14px}
+.ask-name small{font:12px var(--mono);letter-spacing:.3px;margin:0 0 10px 2px}
+.ask-name b{font-family:var(--serif);font-size:42px;font-weight:500;letter-spacing:-.3px}
+.ask-hbtn{position:absolute;top:8px;right:10px;display:flex;gap:6px}
+.ask-hbtn button{border:1px solid rgba(107,26,42,.25);background:rgba(244,240,232,.85);border-radius:999px;padding:3px 10px;font:600 11px var(--sans);color:var(--burgundy);cursor:pointer}
+.ask-hbtn button:hover{background:var(--cream)}
 #ask-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
 .ask-m{max-width:88%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
 .ask-m.u{align-self:flex-end;background:var(--burgundy);color:#fff;border-bottom-right-radius:4px}
@@ -46,11 +50,16 @@ const CSS = `
 .ask-dots::after{content:"…";animation:askd 1.2s steps(4) infinite}
 @keyframes askd{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
 .ask-swm{max-width:100%}
-.ask-av-lg{width:34px;height:34px;border-radius:50%;flex:none}
+.ask-av-lg{width:92px;height:92px;border-radius:50%;flex:none;box-shadow:0 2px 8px rgba(28,20,16,.18)}
 .ask-row{display:flex;align-items:flex-end;gap:7px;align-self:flex-start;max-width:94%}
 .ask-row .ask-m{max-width:none}
-.ask-av{width:28px;height:28px;border-radius:50%;flex:none}
-#ask-btn img{width:18px;height:18px;border-radius:50%;margin:-3px 0}
+.ask-av{width:44px;height:44px;border-radius:50%;flex:none;box-shadow:0 1px 4px rgba(28,20,16,.15)}
+#ask-btn{position:relative;border:none;background:var(--border);color:var(--burgundy);border-radius:999px;margin-left:30px;
+  padding:5px 16px 5px 24px;font:500 12px var(--mono);letter-spacing:.2px;overflow:visible}
+#ask-btn:hover{background:var(--border-hi);color:var(--burgundy)}
+#ask-btn img{position:absolute;left:-22px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;
+  box-shadow:0 1px 4px rgba(28,20,16,.2);margin:0}
+#ask-btn.on{background:var(--burgundy);color:var(--cream)}
 .ask-swh{font-size:12px;color:var(--muted);margin-bottom:6px}
 .ask-sw{display:flex;flex-wrap:wrap;gap:6px}
 .ask-sw button{display:flex;align-items:center;gap:6px;border:1.5px solid var(--border);background:#fff;border-radius:8px;padding:4px 9px 4px 4px;cursor:pointer;font:600 11.5px var(--sans);color:var(--text)}
@@ -62,7 +71,7 @@ const CSS = `
 function build(){
   const st = document.createElement("style"); st.textContent = CSS; document.head.appendChild(st);
   const p = document.createElement("div"); p.id = "ask-panel";
-  p.innerHTML = `<div class="ask-head"><img class="ask-av-lg" src="/static/img/greggers.png" alt=""><b>Greggers</b><button onclick="askNew()" title="Start over">New chat</button><button onclick="askToggle(false)">Close</button></div>
+  p.innerHTML = `<div class="ask-head"><img class="ask-av-lg" src="/static/img/gweg.png" alt=""><div class="ask-name"><small>chatting with:</small><b>Gweg</b></div><div class="ask-hbtn"><button onclick="askNew()" title="Start over">New chat</button><button onclick="askToggle(false)">Close</button></div></div>
     <div id="ask-log"></div><div class="ask-pend" id="ask-pend"></div>
     <div class="ask-in"><button onclick="document.getElementById('ask-file').click()" title="Attach artwork">Attach</button>
       <textarea id="ask-text" rows="1" placeholder="e.g. a navy Kolder Kaddy with this logo in white"></textarea>
@@ -80,7 +89,7 @@ function build(){
 }
 
 function hello(){
-  $("ask-log").innerHTML = `<div class="ask-row"><img class="ask-av" src="/static/img/greggers.png" alt=""><div class="ask-m a">Hi, I'm Greggers! I live in this website and have never once held a koozie, but I'm weirdly good at setting them up. Tell me what you'd like and attach your logo (the Attach button or drop it here), and I'll build it while you watch. Ask me anything along the way.</div></div>
+  $("ask-log").innerHTML = `<div class="ask-row"><img class="ask-av" src="/static/img/gweg.png" alt=""><div class="ask-m a">Hi, I'm Gweg! I live in this website and have never once held a koozie, but I'm weirdly good at setting them up. Tell me what you'd like and attach your logo (the Attach button or drop it here), and I'll build it while you watch. Ask me anything along the way.</div></div>
     <div class="ask-hint">Try: "a red, a blue and a purple Kolder Kaddy with this logo, as big as it fits, in yellow" or "a 4CP Pocket Coolie with a navy background and this logo".</div>`;
 }
 
@@ -101,7 +110,7 @@ function log(cls, html){
   const d = document.createElement("div"); d.className = cls; d.innerHTML = html;
   if(/(^|\s)ask-m a(\s|$)/.test(cls) && !/ask-swm/.test(cls)){
     const row = document.createElement("div"); row.className = "ask-row";
-    const av = document.createElement("img"); av.className = "ask-av"; av.src = "/static/img/greggers.png"; av.alt = "";
+    const av = document.createElement("img"); av.className = "ask-av"; av.src = "/static/img/gweg.png"; av.alt = "";
     row.append(av, d);
     const l = $("ask-log"); l.appendChild(row); l.scrollTop = l.scrollHeight; return row;
   }
@@ -193,7 +202,7 @@ async function run(){
       const r = await fetch("/api/assistant", {method: "POST", headers: {"Content-Type": "application/json"},
                                                body: JSON.stringify({messages: forSend()})});
       const j = await r.json().catch(() => ({error: r.status === 401 ? "Your sign-in has expired - reload the page to sign in again."
-                                                                        : "Greggers sent back something unreadable."}));
+                                                                        : "Gweg sent back something unreadable."}));
       if(!r.ok || j.error){
         think.remove();
         log("ask-m e", esc(j.error || `Error ${r.status}`));

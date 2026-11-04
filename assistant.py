@@ -1,4 +1,4 @@
-"""Greggers: the chat assistant on the client site, server half.
+"""Gweg: the chat assistant on the client site, server half.
 
 The browser runs the conversation. Each turn it posts the messages here, and
 this adds the instructions and the tool list, forwards them to Claude (the
@@ -11,7 +11,7 @@ client's own page: pick the item and its colours, place art, set inks, size
 it, set a 4CP background, show the mockup. It has no order system, pricing,
 ordering or email, and it can't export or send anything.
 
-Off unless ANTHROPIC_API_KEY is set (the Ask Greggers button doesn't show).
+Off unless ANTHROPIC_API_KEY is set (the Ask Gweg button doesn't show).
   ANTHROPIC_API_KEY          the key (Railway variable only; never in code)
   ASSISTANT_MODEL            default claude-sonnet-5
   ASSISTANT_DAILY_REQUESTS   calls to Claude per day for the whole site
@@ -50,7 +50,7 @@ def enabled():
     return bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 
-SYSTEM = """You are Greggers, the friendly helper built into Numo Manufacturing's This Is \
+SYSTEM = """You are Gweg, the friendly helper built into Numo Manufacturing's This Is \
 Fast ordering site. If asked, you're Numo's ordering assistant (an AI). You talk with a customer (a business ordering promotional products) who would \
 rather describe what they want than work the configurator. They say something like "a red, a \
 blue and a purple Kolder Kaddy with this logo, as big as it fits, yellow ink" and you build it \
@@ -385,14 +385,14 @@ def check_limits(messages, who, ip):
         return 429, {"error": "That's a lot of messages for one hour - take a short break and try "
                               "again, or carry on with the controls.", "code": "slow_down"}
     if not _hit(f"calls-{who}", 3600, CALLS_PER_HOUR, now) or not _hit(f"ip-{ip}", 3600, IP_CALLS_PER_HOUR, now):
-        return 429, {"error": "Greggers needs a short break - try again in a few minutes. You can "
+        return 429, {"error": "Gweg needs a short break - try again in a few minutes. You can "
                               "carry on with the controls meanwhile.", "code": "slow_down"}
     if not _hit("site-day", 86400, _daily_limit(), now):
         return 503, {"error": UNAVAILABLE, "code": "unavailable"}
     return None
 
 
-UNAVAILABLE = ("Greggers is off the clock right now (tragic, I know). You can still build your "
+UNAVAILABLE = ("Gweg is off the clock right now (tragic, I know). You can still build your "
                "item with the controls - it only takes a few clicks - and your Numo rep is "
                "happy to help.")
 
@@ -525,8 +525,8 @@ def chat(messages):
         if e.code == 402 or "credit" in low or "billing" in low or "quota" in low:
             return 503, {"error": UNAVAILABLE, "code": "unavailable"}
         if e.code in (429, 529, 500, 503):
-            return 503, {"error": "Greggers is juggling a few too many koozies right now - try again in a minute.", "code": "busy"}
-        return 502, {"error": f"Greggers couldn't answer ({e.code}). Try again, or carry on with the controls."}
+            return 503, {"error": "Gweg is juggling a few too many koozies right now - try again in a minute.", "code": "busy"}
+        return 502, {"error": f"Gweg couldn't answer ({e.code}). Try again, or carry on with the controls."}
     except Exception as e:
         print(f"⚠️ assistant: {e}")
-        return 502, {"error": "Greggers couldn't be reached. Try again in a moment."}
+        return 502, {"error": "Gweg couldn't be reached. Try again in a moment."}
