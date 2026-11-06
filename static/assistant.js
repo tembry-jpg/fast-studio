@@ -89,7 +89,7 @@ function build(){
 }
 
 function hello(){
-  $("ask-log").innerHTML = `<div class="ask-row"><img class="ask-av" src="/static/img/gweg.png" alt=""><div class="ask-m a">Hi, I'm Gweg! I live in this website and have never once held a koozie, but I'm weirdly good at setting them up. Tell me what you'd like and attach your logo (the Attach button or drop it here), and I'll build it while you watch. Ask me anything along the way.</div></div>
+  $("ask-log").innerHTML = `<div class="ask-row"><img class="ask-av" src="/static/img/gweg.png" alt=""><div class="ask-m a">Hi, I'm Gweg! I live in this website and have never once held a can, but I'm weirdly good at dressing them up. Tell me what you'd like and attach your logo (the Attach button or drop it here), and I'll build it while you watch. Ask me anything along the way.</div></div>
     <div class="ask-hint">Try: "a red, a blue and a purple Kolder Kaddy with this logo, as big as it fits, in yellow" or "a 4CP Pocket Coolie with a navy background and this logo".</div>`;
 }
 

@@ -409,7 +409,7 @@ function esc(t) { return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;"
 function orderOf(list, v) { const i = list.indexOf(v); return i < 0 ? 99 : i; }
 
 // Search: every word must appear somewhere in the item's name, number,
-// material, print method, colours or the everyday words for it (koozie…).
+// material, print method, colours or the everyday words for it.
 const SYN = { koozie: "insulator", coozie: "insulator", koozy: "insulator", cozy: "insulator", huggie: "insulator",
               cooler: "insulator", bag: "tote", skinny: "slim", seltzer: "slim", "4cp": "full", fullcolor: "full",
               "1c": "one", "24hr": "24", fast: "fast", camo: "camo" };

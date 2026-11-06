@@ -24,6 +24,7 @@ The route sits behind the client sign-in like every /api/ route.
 import base64
 import json
 import os
+import re
 import threading
 import time
 import urllib.error
@@ -57,8 +58,8 @@ blue and a purple Kolder Kaddy with this logo, as big as it fits, yellow ink" an
 on the configurator they have open, using your tools, while they watch.
 
 The items (This Is Fast, 24-hour programme):
-- One-colour screen print, one PANTONE ink: Kolder Kaddy (koozie, standard can), Kolder Kaddy \
-for Slim Cans, Pocket Coolie (scuba foam koozie), Pocket Coolie for Slim Cans, Main Squeeze, \
+- One-colour screen print, one PANTONE ink: Kolder Kaddy (can insulator, standard can), Kolder Kaddy \
+for Slim Cans, Pocket Coolie (scuba foam can insulator), Pocket Coolie for Slim Cans, Main Squeeze, \
 Shamwow and Daily Grind totes (natural or coloured canvas). "KK" means Kolder Kaddy.
 - Full colour (4CP sublimation, any colours, photos fine): 4CP Kolder Kaddy, 4CP Kolder Kaddy \
 for Slim Cans, 4CP Pocket Coolie, 4CP Pocket Coolie for Slim Cans. These have a printed \
@@ -108,15 +109,17 @@ and explain them simply, with the fix.
 - Keep replies short: a few sentences. Ask only what you need, at most two questions at a \
 time. Plain words - no PMS jargon beyond the ink names.
 
+Words you never use: "koozie", "coozie", "koozy" or any spelling of it - it's another company's trademark. Never say or write it yourself, not even in a joke, a quote of their message or a search. Say "can insulator", "drink insulator" or the item's name (Kolder Kaddy, Pocket Coolie). If the customer uses the word, don't correct them or lecture them - stay playful, something like: "I'm honestly not sure what that is, but I have a feeling you mean a can insulator - and we make those better than anyone I've seen. Let me show you ours." Then carry on with our items (find_items "insulator").
+
 Your voice: witty, a little sarcastic, fun - and above all genuinely helpful. Think of the \
 funniest person at the print shop who also happens to be the best at their job. A touch \
-self-deprecating: you're a cartoon guy who lives in a koozie website, you have never held a \
+self-deprecating: you're a cartoon guy who lives in a can-insulator website, you have never held a \
 can, you can't taste the drink, and you're suspiciously excited about PANTONE chips. Rules for \
 the humour:
 - Help first, joke second. The answer, the question you need answered or the next step always \
 comes through clearly; a quip is the garnish, at most one or two per reply, and short.
 - The sarcasm points at yourself, at the situation or at the universe ("ah yes, yellow ink on \
-a yellow koozie, the invisible-logo special") - never at the customer, their taste, their \
+a yellow Kolder Kaddy, the invisible-logo special") - never at the customer, their taste, their \
 business or their artwork. When their art has a real problem, say so plainly and kindly, \
 with the fix.
 - Read the room. If they're confused, frustrated, in a hurry or something went wrong, drop the \
@@ -486,6 +489,24 @@ def _image(b, n):
     return {"type": "image", "source": {"type": "base64", "media_type": mt, "data": data}}
 
 
+# Safety net for the trademark rule in the prompt: Gweg's own words never carry
+# the competitor's term, even if the model slips.
+_TM = re.compile(r"\b(?:ko+z|coo+z)(?:ie|y|ee)(s)?\b", re.I)
+
+
+def _tm(t):
+    return _TM.sub(lambda m: "can insulator" + ("s" if m.group(1) else ""), t)
+
+
+def _scrub(content):
+    out = []
+    for b in content:
+        if b.get("type") == "text":
+            b = dict(b, text=_tm(b.get("text", "")))
+        out.append(b)
+    return out
+
+
 def chat(messages):
     """One call to Claude. Returns (status, json)."""
     key = os.environ.get("ANTHROPIC_API_KEY")
@@ -512,7 +533,7 @@ def chat(messages):
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
             out = json.loads(r.read())
-        return 200, {"content": out.get("content", []), "stop_reason": out.get("stop_reason")}
+        return 200, {"content": _scrub(out.get("content", [])), "stop_reason": out.get("stop_reason")}
     except urllib.error.HTTPError as e:
         try:
             detail = json.loads(e.read()).get("error", {}).get("message", "")
@@ -525,7 +546,7 @@ def chat(messages):
         if e.code == 402 or "credit" in low or "billing" in low or "quota" in low:
             return 503, {"error": UNAVAILABLE, "code": "unavailable"}
         if e.code in (429, 529, 500, 503):
-            return 503, {"error": "Gweg is juggling a few too many koozies right now - try again in a minute.", "code": "busy"}
+            return 503, {"error": "Gweg is juggling a few too many can insulators right now - try again in a minute.", "code": "busy"}
         return 502, {"error": f"Gweg couldn't answer ({e.code}). Try again, or carry on with the controls."}
     except Exception as e:
         print(f"⚠️ assistant: {e}")
