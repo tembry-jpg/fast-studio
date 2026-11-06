@@ -50,6 +50,7 @@ const CSS = `
 #ask-mic.rec{background:#c62828;border-color:#c62828;color:#fff;animation:askmic 1.2s ease-in-out infinite}
 @keyframes askmic{0%,100%{box-shadow:0 0 0 0 rgba(198,40,40,.45)}50%{box-shadow:0 0 0 7px rgba(198,40,40,0)}}
 #ask-text.rec{border-color:#c62828}
+#ask-mic.conv{background:#c62828;border-color:#c62828;color:#fff;opacity:.75}
 #ask-panel.drag #ask-log{outline:2px dashed var(--burgundy);outline-offset:-8px}
 .ask-hint{font-size:12px;color:var(--muted);line-height:1.5;padding:4px 2px}
 .ask-dots::after{content:"…";animation:askd 1.2s steps(4) infinite}
@@ -76,73 +77,170 @@ const CSS = `
 function build(){
   const st = document.createElement("style"); st.textContent = CSS; document.head.appendChild(st);
   const p = document.createElement("div"); p.id = "ask-panel";
-  p.innerHTML = `<div class="ask-head"><img class="ask-av-lg" src="/static/img/gweg.png" alt=""><div class="ask-name"><small>chatting with:</small><b>Gweg</b></div><div class="ask-hbtn"><button onclick="askNew()" title="Start over">New chat</button><button onclick="askToggle(false)">Close</button></div></div>
+  p.innerHTML = `<div class="ask-head"><img class="ask-av-lg" src="/static/img/gweg.png" alt=""><div class="ask-name"><small>chatting with:</small><b>Gweg</b></div><div class="ask-hbtn"><button id="ask-vo" onclick="askVoice()" title="Gweg reads his answers out loud when you talk to him" style="display:none">Voice on</button><button onclick="askNew()" title="Start over">New chat</button><button onclick="askToggle(false)">Close</button></div></div>
     <div id="ask-log"></div><div class="ask-pend" id="ask-pend"></div>
     <div class="ask-in"><button onclick="document.getElementById('ask-file').click()" title="Attach artwork">Attach</button>
       <textarea id="ask-text" rows="1" placeholder="e.g. a navy Kolder Kaddy with this logo in white"></textarea>
-      <button id="ask-mic" onclick="askMic()" title="Talk instead of typing" aria-label="Talk instead of typing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button>
+      <button id="ask-mic" onclick="askMic()" title="Talk with Gweg" aria-label="Talk with Gweg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button>
       <button class="go" id="ask-go" onclick="askSend()">Send</button>
       <input type="file" id="ask-file" multiple accept=".png,.jpg,.jpeg,.svg,.pdf,.ai,.eps,.tif,.tiff,.webp,.gif" style="display:none"></div>`;
   document.body.appendChild(p);
   const t = $("ask-text");
-  t.addEventListener("keydown", e => { if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); askSend(); } });
+  t.addEventListener("keydown", e => {
+    if(MIC.conv && !e.isComposing && e.key.length === 1) convEnd();    // typing ends the hands-free talk
+    if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); askSend(); }
+  });
   t.addEventListener("input", () => { t.style.height = "auto"; t.style.height = Math.min(140, t.scrollHeight) + "px"; });
   $("ask-file").addEventListener("change", e => { addFiles(e.target.files); e.target.value = ""; });
   p.addEventListener("dragover", e => { e.preventDefault(); p.classList.add("drag"); });
   p.addEventListener("dragleave", () => p.classList.remove("drag"));
   p.addEventListener("drop", e => { e.preventDefault(); p.classList.remove("drag"); addFiles(e.dataTransfer.files); });
   if(MIC.ok) $("ask-mic").style.display = "inline-flex";
+  if(MIC.ok && VO.ok){ $("ask-vo").style.display = ""; voUi(); }
   hello();
 }
 
 // ── talk instead of typing (the browser's own speech recognition) ──────────
 // Chrome, Edge and Safari, desktop and phone; Firefox has none, so the mic
-// button just doesn't show there. Words land in the box to check, then Send.
-const MIC = {ok: !!(window.SpeechRecognition || window.webkitSpeechRecognition), rec: null, on: false, base: ""};
+// button just doesn't show there.
+// Tapping the mic starts a hands-free conversation: Gweg listens, sends when
+// the customer stops talking, answers out loud, then listens again - until
+// they tap the mic, say "stop" / "bye", type, close the chat, or go quiet.
+const MIC = {ok: !!(window.SpeechRecognition || window.webkitSpeechRecognition), rec: null, on: false, conv: false, misses: 0, used: false};
+const PH = "e.g. a navy Kolder Kaddy with this logo in white";
 function micStop(){ if(MIC.rec){ try{ MIC.rec.stop(); }catch(e){} } }
-function micUi(on){
-  MIC.on = on;
-  $("ask-mic")?.classList.toggle("rec", on);
-  $("ask-text")?.classList.toggle("rec", on);
-  const m = $("ask-mic"); if(m) m.title = on ? "Stop listening" : "Talk instead of typing";
-  const t = $("ask-text"); if(t) t.placeholder = on ? "Listening… say what you'd like" : "e.g. a navy Kolder Kaddy with this logo in white";
+function micUi(state){                // "listen", "busy", "talk" (Gweg speaking) or "off"
+  MIC.on = state === "listen";
+  const m = $("ask-mic"), t = $("ask-text");
+  m?.classList.toggle("rec", state === "listen");
+  m?.classList.toggle("conv", state === "busy" || state === "talk");
+  t?.classList.toggle("rec", state === "listen");
+  if(m) m.title = state === "off" ? "Talk with Gweg" : state === "talk" ? "Cut in" : "Stop talking with Gweg";
+  if(t) t.placeholder = {listen: "Listening… just talk (tap the mic to stop)", busy: "Gweg is on it…",
+                         talk: "Gweg is talking - tap the mic to cut in", off: PH}[state];
 }
-window.askMic = function(){
-  if(!MIC.ok) return;
-  if(MIC.on) return micStop();
+// ── Gweg's voice (the browser's own text-to-speech, free) ─────────────────
+// When the customer talks to him, he answers out loud too; typing gets a
+// quiet answer. "Voice off" in the header mutes him for good on this browser.
+const VO = {ok: "speechSynthesis" in window && "SpeechSynthesisUtterance" in window, voice: null,
+            muted: (() => { try{ return localStorage.getItem("gweg-voice") === "off"; }catch(e){ return false; } })()};
+const VO_PICK = [/Microsoft (Andrew|Guy|Christopher|Eric|Davis|Brian) Online/i, /Microsoft (Andrew|Guy|Christopher|Eric|Davis|Brian)/i,
+                 /^(Aaron|Evan|Nathan|Tom|Alex)\b/i, /Google UK English Male/i, /^(Daniel|Arthur|Oliver)\b/i,
+                 /\bmale\b/i, /Google US English/i];
+function voPick(){
+  if(!VO.ok) return null;
+  const vs = speechSynthesis.getVoices().filter(v => /^en(-|_|$)/i.test(v.lang));
+  for(const re of VO_PICK){ const v = vs.find(x => re.test(x.name)); if(v) return v; }
+  return vs.find(v => /en-US/i.test(v.lang)) || vs[0] || null;
+}
+if(VO.ok){ VO.voice = voPick(); speechSynthesis.addEventListener?.("voiceschanged", () => { VO.voice = voPick(); }); }
+function voUi(){ const b = $("ask-vo"); if(b){ b.textContent = VO.muted ? "Voice off" : "Voice on"; b.style.opacity = VO.muted ? ".6" : ""; } }
+function voStop(){ if(VO.ok) try{ speechSynthesis.cancel(); }catch(e){} }
+window.askVoice = function(){
+  VO.muted = !VO.muted; voUi();
+  try{ localStorage.setItem("gweg-voice", VO.muted ? "off" : "on"); }catch(e){}
+  if(VO.muted) voStop();
+};
+function voSay(text, force){
+  if(!VO.ok || VO.muted || !(A.spoken || force)) return;
+  const plain = String(text)
+    .replace(/https?:\/\/\S+/g, "the link")
+    .replace(/[*_`#>|]+/g, "")
+    .replace(/\bPMS\b/g, "P M S").replace(/\b4CP\b/gi, "four C P").replace(/\boz\b/gi, "ounce")
+    .replace(/\s+/g, " ").trim();
+  if(!plain) return;
+  // One sentence per utterance: Chrome cuts long ones off after ~15 seconds.
+  for(const part of plain.match(/[^.!?]+[.!?]*\s*/g) || [plain]){
+    const u = new SpeechSynthesisUtterance(part.trim());
+    if(VO.voice){ u.voice = VO.voice; u.lang = VO.voice.lang; }
+    u.rate = 1.05; u.pitch = 0.95;
+    speechSynthesis.speak(u);
+  }
+}
+
+function convEnd(say){
+  MIC.conv = false; MIC.misses = 0;
+  micStop(); micUi("off");
+  if(say) voSay(say, true);
+}
+const STOP_WORDS = /^(stop|bye|goodbye|good bye|bye bye|that's all|that is all|that's it|i'm done|im done|never ?mind|nevermind|quit|exit|cancel)[.!]?$/i;
+function listen(){
+  if(!MIC.conv || A.busy || !A.open) return;
+  voStop();
   const R = window.SpeechRecognition || window.webkitSpeechRecognition;
   const r = new R();
   r.lang = navigator.language || "en-US";
-  r.continuous = true; r.interimResults = true;
+  r.continuous = false; r.interimResults = true;     // ends by itself when they pause
   const t = $("ask-text");
-  MIC.base = t.value.trim() ? t.value.trim() + " " : "";
-  let done = "";
+  const base = t.value.trim() ? t.value.trim() + " " : "";
+  let done = "", live = "", blocked = false;
   r.onresult = e => {
-    let live = "";
+    live = "";
     for(let i = e.resultIndex; i < e.results.length; i++){
       const txt = e.results[i][0].transcript;
       if(e.results[i].isFinal) done += txt; else live += txt;
     }
-    t.value = (MIC.base + done + live).replace(/\s+/g, " ").replace(/^\s/, "");
+    t.value = (base + done + live).replace(/\s+/g, " ").replace(/^\s/, "");
     t.dispatchEvent(new Event("input"));
   };
   r.onerror = e => {
-    if(e.error === "not-allowed" || e.error === "service-not-allowed")
+    if(e.error === "not-allowed" || e.error === "service-not-allowed"){
+      blocked = true;
       log("ask-m e", "I can't hear you - the browser blocked the microphone. Click the mic or lock icon by the web address, allow the microphone, and try again. (Typing works too!)");
-    else if(e.error === "audio-capture")
+    } else if(e.error === "audio-capture"){
+      blocked = true;
       log("ask-m e", "I couldn't find a microphone on this device. Typing works too!");
+    }
   };
-  r.onend = () => { MIC.rec = null; micUi(false); t.focus(); };
-  try{ r.start(); MIC.rec = r; micUi(true); }catch(e){ micUi(false); }
+  r.onend = () => {
+    MIC.rec = null;
+    if(!MIC.conv){ micUi("off"); return; }
+    if(blocked) return convEnd();
+    const said = (done || live).trim();
+    if(!said){
+      if(++MIC.misses >= 2){ convEnd(); log("ask-hint", "I'll stop listening for now - tap the mic when you want to talk again."); return; }
+      return listen();
+    }
+    MIC.misses = 0;
+    if(STOP_WORDS.test(said)){ t.value = ""; t.dispatchEvent(new Event("input")); return convEnd("Talk soon!"); }
+    MIC.used = true; micUi("busy");
+    askSend();
+  };
+  try{ r.start(); MIC.rec = r; micUi("listen"); }catch(e){ convEnd(); }
+}
+// After Gweg's answer: wait for him to finish talking, then listen again.
+function convNext(){
+  if(!MIC.conv) return;
+  if(!A.open) return convEnd();
+  micUi(VO.ok && !VO.muted ? "talk" : "busy");
+  const wait = () => {
+    if(!MIC.conv || A.busy) return;
+    if(VO.ok && (speechSynthesis.speaking || speechSynthesis.pending)) return setTimeout(wait, 250);
+    setTimeout(listen, 250);
+  };
+  setTimeout(wait, 400);
+}
+window.askMic = function(){
+  if(!MIC.ok) return;
+  if(MIC.conv){
+    // Cut in while he's talking; otherwise this ends the conversation.
+    if(!A.busy && !MIC.on && VO.ok && (speechSynthesis.speaking || speechSynthesis.pending)){ voStop(); return listen(); }
+    return convEnd();
+  }
+  voStop();
+  if(VO.ok && !VO.muted) try{ speechSynthesis.speak(new SpeechSynthesisUtterance("")); }catch(e){}   // unlocks speech on iPhone
+  MIC.conv = true; MIC.misses = 0;
+  listen();
 };
 
 function hello(){
   $("ask-log").innerHTML = `<div class="ask-row"><img class="ask-av" src="/static/img/gweg.png" alt=""><div class="ask-m a">Hi, I'm Gweg! I live in this website and have never once held a can, but I'm weirdly good at dressing them up. Tell me what you'd like and attach your logo (the Attach button or drop it here), and I'll build it while you watch. Ask me anything along the way.</div></div>
-    <div class="ask-hint">Try: "a red, a blue and a purple Kolder Kaddy with this logo, as big as it fits, in yellow" or "a 4CP Pocket Coolie with a navy background and this logo".</div>`;
+    <div class="ask-hint">${MIC.ok ? "Rather talk? Tap the mic and just chat with me - I'll talk back. " : ""}Try: "a red, a blue and a purple Kolder Kaddy with this logo, as big as it fits, in yellow" or "a 4CP Pocket Coolie with a navy background and this logo".</div>`;
 }
 
 window.askToggle = function(force){
   A.open = force ?? !A.open;
+  if(!A.open){ voStop(); convEnd(); }
   $("ask-panel")?.classList.toggle("on", A.open);
   $("ask-btn")?.classList.toggle("on", A.open);
   document.body.classList.toggle("ask-open", A.open);
@@ -151,6 +249,7 @@ window.askToggle = function(force){
 };
 window.askNew = function(){
   if(A.busy) return;
+  voStop(); convEnd(); A.spoken = false;
   A.msgs = []; A.pending = []; renderPending(); hello();
 };
 
@@ -205,7 +304,10 @@ window.askSend = async function(){
   if(A.busy) return;
   if(MIC.on) micStop();
   const t = $("ask-text"); const text = t.value.trim();
+  if(MIC.conv && !MIC.used) convEnd();         // they typed and pressed Send
   if(!text && !A.pending.length) return;
+  A.spoken = !!MIC.used; MIC.used = false;      // answer out loud only when they talked
+  voStop();
   t.value = ""; t.style.height = "auto";
   const ids = A.pending; A.pending = []; renderPending();
   log("ask-m u", esc(text) + (ids.length ? `<div class="ask-files">${ids.map(id => chipHTML(id)).join("")}</div>` : ""));
@@ -218,6 +320,8 @@ window.askSend = async function(){
     }
   }
   content.push({type: "text", text: text || "(see the attached file)"});
+  if(A.spoken && VO.ok && !VO.muted)
+    content.push({type: "text", text: "(Said out loud - your reply is read aloud: keep it short and easy to listen to, no lists.)"});
   A.msgs.push({role: "user", content});
   await run();
 };
@@ -225,6 +329,7 @@ window.askSend = async function(){
 window.askSay = function(text){
   if(A.busy) return;
   const t = $("ask-text"); if(!t) return;
+  MIC.used = A.spoken;                              // a tap keeps the conversation's voice
   t.value = text; askSend();
 };
 
@@ -262,7 +367,7 @@ async function run(){
       const blocks = j.content || [];
       A.msgs.push({role: "assistant", content: blocks});
       think.remove();
-      for(const b of blocks) if(b.type === "text" && b.text.trim()) log("ask-m a", mdLite(b.text.trim()));
+      for(const b of blocks) if(b.type === "text" && b.text.trim()){ log("ask-m a", mdLite(b.text.trim())); voSay(b.text.trim()); }
       const calls = blocks.filter(b => b.type === "tool_use");
       if(j.stop_reason !== "tool_use" || !calls.length) break;
       const results = [];
@@ -284,6 +389,7 @@ async function run(){
   }finally{
     think?.remove?.();
     A.busy = false; $("ask-go").disabled = false;
+    setTimeout(convNext, 0);
     // A dangling tool call (an error mid-turn) would break the next turn.
     const last = A.msgs[A.msgs.length - 1];
     if(last?.role === "assistant" && (last.content || []).some(b => b.type === "tool_use")) A.msgs.pop();
