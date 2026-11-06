@@ -3640,6 +3640,20 @@ def _mimaki_one(print_pdf, product, spec, parts, tag, prefix, out_dir, ink, colo
         except Exception as e:
             import traceback; traceback.print_exc()
             notes.append(f"{tag}: white could not be set to the WHITE spot ({e})")
+        # The Mimaki gets process colour: every PANTONE spot swatch dropped and
+        # its art painted in the CMYK that swatch carries, nothing left in RGB
+        # or gray, so the file is a CMYK document. WHITE stays a spot - the
+        # Mimaki prints white ink only from it. Proofs and the app keep PMS.
+        try:
+            import cmykpress
+            cr = cmykpress.convert(path)
+            notes.extend(f"{tag}: {p}" for p in cr["problems"])
+            left = cmykpress.leftovers(path)
+            if left:
+                notes.append(f"{tag}: not everything could be made CMYK ({', '.join(left)})")
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            notes.append(f"{tag}: the file could not be set to CMYK ({e})")
         # Shipped as PDF, straight into RasterLink. An EPS not written by
         # Illustrator opens in Illustrator on a made-up artboard (it trusts
         # only its own private data, whatever the %%BoundingBox says); a PDF's
