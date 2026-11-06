@@ -492,14 +492,16 @@ async function stockList(){
   }catch(e){ return []; }
 }
 async function bgInfo(){
-  if(!(typeof bgdOn === "function" && bgdOn())) return undefined;
-  const b = BGD.base || {};
-  const type = BGD.finished ? "finished design uploaded" : ({stock: "pattern", image: "picture"}[b.type] || b.type);
-  return {type, hex: b.hex, pms: b.pms, colors: b.stops,
-          direction: b.dir, pattern: b.stock ? b.stock.replace(/\.(jpg|jpeg|png)$/i, "") : undefined,
-          side2: BGD.side2 === "flip" ? "upside_down" : "same", bottom: BGD.bottom?.mode,
-          shapes_text_on_top: !!BGD.design,
-          patterns: (await stockList()).map(f => f.replace(/\.(jpg|jpeg|png)$/i, ""))};
+  if(!(typeof bgBoardOk === "function" && bgBoardOk())) return undefined;
+  const b = S.bleed || {};
+  let type, out = {};
+  if(b.img && b._isStockBg){ type = "pattern"; out.pattern = String(b._stockFile || "").replace(/\.(jpg|jpeg|png)$/i, ""); }
+  else if(b.img && b._fromLayout) type = "designed in the background editor";
+  else if(b.img) type = "uploaded full-bleed background";
+  else if(S_FILL.mode === "solid"){ type = "solid"; out.hex = S_FILL.solid.hex; out.pms = S_FILL.solid.pms || undefined; }
+  else if(S_FILL.mode === "gradient"){ type = "gradient"; out.colors = S_FILL.gradient.stops.map(x => x.hex); out.direction = S_FILL.gradient.dir; }
+  else type = "none";
+  return {type, ...out, patterns: (await stockList()).map(f => f.replace(/\.(jpg|jpeg|png)$/i, ""))};
 }
 
 // Colour words -> a target colour, for suggest_inks.
@@ -526,16 +528,20 @@ function swatchesHTML(list){
 const TSIZE = {small: 0.12, medium: 0.2, large: 0.3, huge: 0.45};   // of the print area's height
 const clamp = (v, a, b) => Math.max(a, Math.min(b, Number(v) || 0));
 function lyBusy(){ return $("ly-scrim")?.classList.contains("vis"); }
+const isBg = loc => String(loc || "").toLowerCase() === "background";
 function lyLoc(location){
+  if(isBg(location)){
+    if(!(typeof bgBoardOk === "function" && bgBoardOk())) throw new Error("Only the 4CP items have a background to design.");
+    return BG_SLOT;
+  }
   needLoc(location);
-  if(typeof BG_SLOT !== "undefined" && location === BG_SLOT) throw new Error("Use set_background for the 4CP background.");
   return (typeof sidesSame === "function" && sidesSame() && location === "side2") ? "side1" : location;
 }
 async function lyOpen(location){
   const id = lyLoc(location);
   if(lyBusy()) closeLayout();
-  try{ custStep(2); }catch(e){}
-  await openLayout(id); await sleep(200);
+  try{ custStep(id === BG_SLOT ? 1 : 2); }catch(e){}
+  await openLayout(id, id === BG_SLOT ? {bg: true} : undefined); await sleep(200);
   return id;
 }
 async function lyFont(name){
@@ -582,6 +588,7 @@ async function lyApply(location){
     throw new Error("The design didn't go on" + (why ? `: ${why}` : "."));
   }
   await settle();
+  if(isBg(location)) return {background: await bgInfo()};
   for(const t of pairedIds(lyLoc(location))) if(S.slots[t]) S.slots[t]._askName = "design (art/text from the layout tool)";
   const out = artInfo(location);
   const w = typeof layoutTypeWarning === "function" ? layoutTypeWarning(lyLoc(location)) : "";
@@ -596,15 +603,105 @@ function lyDescribe(){
     : it.type === "art" ? {index: i, type: "art", name: String(it.name || "art").replace(/^[a-z0-9]+_[0-9a-f]{10}_/i, "").replace(/\.(preview|press|octrace|4cp)[^/]*$/i, "")}
     : {index: i, type: "shape", shape: it.shape, color: layoutUsesColor() ? (it.pms || it.color) : undefined});
 }
-function lyShape(shape, gw, gh){
-  const s = Math.min(LY.W, LY.H), st = Math.max(1.5, s * 0.02);
+function lyShape(shape, gw, gh, Z){
+  Z = Z || {w: LY.W, h: LY.H};
+  const s = Math.min(Z.w, Z.h), st = Math.max(1.5, s * 0.02);
   const b = {type: "shape", shape, color: "#000000", x: LY.W / 2, y: LY.H / 2, stroke: st};
-  if(shape === "line") b.w = Math.max(LY.W * 0.3, gw * 0.7);
-  else if(shape === "block") Object.assign(b, {w: LY.W * 0.5, h: LY.H * 0.12});
+  if(shape === "line") b.w = Math.max(Z.w * 0.3, gw * 0.7);
+  else if(shape === "block") Object.assign(b, {w: Z.w * 0.5, h: Z.h * 0.12});
+  else if(shape === "band") Object.assign(b, {shape: "block", w: Z.w * 1.3, h: Math.max(gh * 1.4, Z.h * 0.22)});
   else if(shape === "ring") b.w = Math.max(gw, gh) * 1.3 || s * 0.9;
-  else if(shape === "frame") Object.assign(b, {w: (gw || LY.W * 0.7) * 1.15 + s * 0.06, h: (gh || LY.H * 0.6) * 1.2 + s * 0.06});
+  else if(shape === "frame") Object.assign(b, {w: (gw || Z.w * 0.7) * 1.15 + s * 0.06, h: (gh || Z.h * 0.6) * 1.2 + s * 0.06});
   else b.w = s * 0.12;                                     // star, dot
   return b;
+}
+
+// A 4CP background panel (Side 1, Side 2, bottom) on the whole-item board.
+function lyZone(id){
+  const z = S.prod?.bleed_zones?.[id];
+  if(!z) throw new Error(`This item has no ${id} panel.`);
+  return {cx: (z.x + z.w / 2) * LY.W, cy: (z.y + z.h / 2) * LY.H, w: z.w * LY.W, h: z.h * LY.H};
+}
+// Side 2 sits upside down on the print sheet, so it reads right on the item.
+function lyTurn(it, from, to){
+  it.x = to.cx - (it.x - from.cx); it.y = to.cy - (it.y - from.cy);
+  it.rot = ((it.rot || 0) + 180) % 360;
+  return it;
+}
+function lyBounds(items){
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for(const it of items){ const b = studioBox(it); x0 = Math.min(x0, b.x0); y0 = Math.min(y0, b.y0); x1 = Math.max(x1, b.x1); y1 = Math.max(y1, b.y1); }
+  return {x0, y0, x1, y1};
+}
+// Shrink a group to fit its panel (never grow), keeping it centred there.
+function lyFitZone(items, Z, k){
+  if(!items.length) return;
+  const b = lyBounds(items.filter(it => !(it.type === "shape" && it.shape === "block" && it.w > Z.w)));
+  const f = Math.min(1, (Z.w * k) / Math.max(1, b.x1 - b.x0), (Z.h * k) / Math.max(1, b.y1 - b.y0));
+  for(const it of items){
+    it.x = Z.cx + (it.x - Z.cx) * f; it.y = Z.cy + (it.y - Z.cy) * f;
+    if(it.size) it.size *= f; if(it.w) it.w *= f; if(it.h) it.h *= f;
+  }
+}
+function lyLogoFromSlot(){
+  const sl = S.slots?.side1?.img ? S.slots.side1 : Object.values(S.slots || {}).find(x => x?.img);
+  if(!sl) return null;
+  return typeof layoutArtFromSlot === "function" ? layoutArtFromSlot(sl) : null;
+}
+// Lay pieces out top-to-bottom (or in a row) around the centre of zone Z.
+async function lyBuild(pieces, arrange, Z, logo, location){
+  const hasText = pieces.some(p => p.type === "text" && (p.text || "").trim());
+  const flow = [], around = [];
+  for(const p of pieces){
+    if(p.type === "logo"){
+      if(!logo) throw new Error(isBg(location) ? "There's no logo placed yet - place_art first, or add it as type 'art' with the attachment id."
+                                              : `${locName(location)} has no logo yet - place_art first, or add it as type 'art' with the attachment id.`);
+      const it = {...logo};
+      it.w = hasText ? Math.min(Z.w * (arrange === "row" ? 0.45 : 0.8), Z.h * (arrange === "row" ? 0.8 : 0.5) / studioArtAspect(it))
+                     : (it.w || Math.min(Z.w * 0.8, Z.h * 0.8 / studioArtAspect(it)));
+      flow.push(it);
+    } else if(p.type === "art"){
+      const f = A.files[p.file];
+      if(!f) throw new Error(`No attachment "${p.file}".`);
+      const it = await lyArt(f);
+      it.w = Math.min(Z.w * 0.6, Z.h * 0.6 / studioArtAspect(it));
+      flow.push(it);
+    } else if(p.type === "text"){
+      if(!(p.text || "").trim()) continue;
+      const it = studioNewText(String(p.text), Math.max(6, Z.h * (TSIZE[p.size] || TSIZE.medium)));
+      Object.assign(it, {font: await lyFont(p.font), bold: !!p.bold, italic: !!p.italic, rot: 0,
+                         curve: clamp(p.curve, -100, 100), spacing: clamp(p.spacing, 0, 400), color: "#000000", pms: null});
+      await lyColor(it, p.color);
+      flow.push(it);
+    } else if(p.type === "shape"){
+      if(["ring", "frame", "band"].includes(p.shape)) around.push(p); else flow.push({_shape: p});
+    }
+  }
+  await Promise.all(flow.filter(i => i.type === "text").map(i => layoutEnsureFont(i.font, i.bold, i.italic)));
+  const gap = (arrange === "row" ? Z.w : Z.h) * 0.05;
+  let span = 0;
+  const placed = [];
+  for(const x of flow){
+    let it = x;
+    if(x._shape){
+      const gw = Math.max(0, ...placed.map(q => { const b = studioBox(q); return b.x1 - b.x0; }));
+      it = lyShape(x._shape.shape, gw, 0, Z); await lyColor(it, x._shape.color);
+    }
+    it.x = 0; it.y = 0;
+    const b = studioBox(it), w = b.x1 - b.x0, h = b.y1 - b.y0;
+    if(arrange === "row"){ it.x = span - b.x0; it.y = -(b.y0 + b.y1) / 2; span += w + gap; }
+    else { it.y = span - b.y0; it.x = -(b.x0 + b.x1) / 2; span += h + gap; }
+    placed.push(it);
+  }
+  const g = placed.length ? lyBounds(placed) : {x0: 0, y0: 0, x1: 0, y1: 0};
+  for(const it of placed){ it.x += Z.cx - (g.x0 + g.x1) / 2; it.y += Z.cy - (g.y0 + g.y1) / 2; }
+  const back = [];
+  for(const p of around){
+    const sh = lyShape(p.shape, g.x1 - g.x0, g.y1 - g.y0, Z);
+    sh.x = Z.cx; sh.y = Z.cy;
+    await lyColor(sh, p.color); back.push(sh);
+  }
+  return [...back, ...placed];
 }
 
 const TOOLS = {
@@ -612,8 +709,13 @@ const TOOLS = {
     const id = lyLoc(location);
     if(lyBusy()) throw new Error("The customer has the layout tool open - let them finish, or ask them to close it.");
     await layoutFonts();
-    LY.slot = id; studioLoad(id, {});
+    LY.slot = id;
+    studioLoad(id, {});
     await lyFonts();
+    if(id === BG_SLOT) return {location: "background", pieces: lyDescribe(), base: await bgInfo(),
+            panels: "pieces go on panel 'sides' (Side 1, repeated on Side 2 the right way up), 'side1', 'side2' or 'bottom'",
+            colours: "each piece can have its own colour", fonts: (LY.fonts || []).map(f => f.label || f.key),
+            shapes: ["line", "ring", "frame", "band", "star", "dot", "block"]};
     return {location, print_area_in: [r2(LY.W / 72), r2(LY.H / 72)], pieces: lyDescribe(),
             colours: layoutUsesColor() ? "each piece can have its own colour" : "everything prints in the one ink",
             fonts: (LY.fonts || []).map(f => f.label || f.key), shapes: ["line", "ring", "frame", "star", "dot", "block"],
@@ -622,59 +724,37 @@ const TOOLS = {
 
   async make_design({location, pieces, arrange}){
     if(!(pieces || []).length) throw new Error("No pieces given.");
-    await lyOpen(location);
-    const logo = LY.items.find(i => i.type === "art");
+    const id = await lyOpen(location);
+    const logo = id === BG_SLOT ? lyLogoFromSlot() : LY.items.find(i => i.type === "art");
     if(logo?._uploading){ try{ await logo._uploading; }catch(e){ closeLayout(); throw e; } }
-    const hasText = pieces.some(p => p.type === "text" && (p.text || "").trim());
-    const flow = [], around = [], extra = [];
-    for(const p of pieces){
-      if(p.type === "logo"){
-        if(!logo){ closeLayout(); throw new Error(`${locName(location)} has no logo yet - place_art first, or add it as type 'art' with the attachment id.`); }
-        const it = {...logo};
-        if(hasText) it.w = Math.min(LY.W * (arrange === "row" ? 0.45 : 0.8), LY.H * (arrange === "row" ? 0.8 : 0.5) / studioArtAspect(it));
-        flow.push(it);
-      } else if(p.type === "art"){
-        const f = A.files[p.file];
-        if(!f){ closeLayout(); throw new Error(`No attachment "${p.file}".`); }
-        flow.push(await lyArt(f));
-      } else if(p.type === "text"){
-        if(!(p.text || "").trim()) continue;
-        const it = studioNewText(String(p.text), Math.max(10, LY.H * (TSIZE[p.size] || TSIZE.medium)));
-        Object.assign(it, {font: await lyFont(p.font), bold: !!p.bold, italic: !!p.italic,
-                           curve: clamp(p.curve, -100, 100), spacing: clamp(p.spacing, 0, 400), color: "#000000", pms: null});
-        await lyColor(it, p.color);
-        flow.push(it);
-      } else if(p.type === "shape"){
-        (["ring", "frame"].includes(p.shape) ? around : extra).push(p);
-        if(!["ring", "frame"].includes(p.shape)) flow.push({_shape: p});
+    try{
+      if(id === BG_SLOT){
+        // Keep the base (pattern / picture covering the item); lay pieces out per panel.
+        const keep = LY.items.filter(it => it.type === "art" && it.w >= LY.W * 0.95);
+        const groups = {};
+        for(const p of pieces) (groups[(p.panel || "sides") + "|" + (p.spot || "middle")] ||= []).push(p);
+        const out = [];
+        for(const [key, ps] of Object.entries(groups)){
+          const [panel, spot] = key.split("|");
+          if(!["sides", "side1", "side2", "bottom"].includes(panel)) throw new Error(`Unknown panel "${panel}" - use sides, side1, side2 or bottom.`);
+          const zid = panel === "sides" ? "side1" : panel;
+          const Z = lyZone(zid);
+          // top / bottom: the upper or lower part of the panel, clear of a logo in the middle.
+          const Zs = (spot === "top" || spot === "bottom") && zid !== "bottom"
+            ? {cx: Z.cx, w: Z.w, h: Z.h * 0.26, cy: Z.cy + (spot === "top" ? -1 : 1) * Z.h * 0.35} : Z;
+          const items = await lyBuild(ps, arrange, Zs, logo, location);
+          lyFitZone(items, Zs, zid === "bottom" ? 0.7 : 0.88);
+          if(panel === "side2") items.forEach(it => lyTurn(it, Z, Z));
+          out.push(...items);
+          if(panel === "sides"){ const Z2 = lyZone("side2"); out.push(...items.map(it => lyTurn({...it}, Z, Z2))); }
+        }
+        LY.items = [...keep, ...out];
+      } else {
+        LY.items = await lyBuild(pieces, arrange, {cx: LY.W / 2, cy: LY.H / 2, w: LY.W, h: LY.H}, logo, location);
       }
-    }
-    LY.items = flow.filter(x => !x._shape);
-    await lyFonts();
-    // Lay the pieces out in a stack (or a row), then centre the group.
-    const gap = (arrange === "row" ? LY.W : LY.H) * 0.05;
-    let span = 0, cross = 0;
-    const placed = [];
-    for(const x of flow){
-      let it = x;
-      if(x._shape){
-        const gw = Math.max(0, ...placed.map(q => { const b = studioBox(q); return b.x1 - b.x0; }));
-        it = lyShape(x._shape.shape, gw, 0); await lyColor(it, x._shape.color);
-      }
-      it.x = 0; it.y = 0;
-      const b = studioBox(it), w = b.x1 - b.x0, h = b.y1 - b.y0;
-      if(arrange === "row"){ it.x = span - b.x0; it.y = -(b.y0 + b.y1) / 2; span += w + gap; cross = Math.max(cross, h); }
-      else { it.y = span - b.y0; it.x = -(b.x0 + b.x1) / 2; span += h + gap; cross = Math.max(cross, w); }
-      placed.push(it);
-    }
-    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-    for(const it of placed){ const b = studioBox(it); x0 = Math.min(x0, b.x0); y0 = Math.min(y0, b.y0); x1 = Math.max(x1, b.x1); y1 = Math.max(y1, b.y1); }
-    for(const it of placed){ it.x += LY.W / 2 - (x0 + x1) / 2; it.y += LY.H / 2 - (y0 + y1) / 2; }
-    const back = [];
-    for(const p of around){ const s = lyShape(p.shape, x1 - x0, y1 - y0); await lyColor(s, p.color); back.push(s); }
-    LY.items = [...back, ...placed];
+    }catch(e){ closeLayout(); throw e; }
     if(!LY.items.length){ closeLayout(); throw new Error("Nothing to put on - add some text or art."); }
-    studioPush(); studioFitAll();
+    studioPush(); if(id !== BG_SLOT) studioFitAll();
     return {...await lyApply(location), pieces: lyDescribe()};
   },
 
@@ -980,58 +1060,60 @@ const TOOLS = {
   },
 
   async set_background(i){
-    if(!(typeof bgdOn === "function" && bgdOn())) throw new Error("Only the 4CP items have a printed background.");
+    if(!(typeof bgBoardOk === "function" && bgBoardOk())) throw new Error("Only the 4CP items have a printed background.");
     try{ custStep(1); }catch(e){}
-    const was = BGD.seq;
     const hexOk = h => /^#?[0-9a-f]{6}$/i.test(String(h || "")) ? (String(h)[0] === "#" ? String(h) : "#" + h).toUpperCase() : null;
-    if(i.type === "finished"){
+    const clearBleed = () => {
+      if(S.bleed?.img){ S.bleed = {img: null, ox: 0, oy: 0, sc: 1, rot: 0}; const nm = $("fill-stock-bg-name"); if(nm) nm.textContent = "— None —"; }
+    };
+    if(i.type === "finished" || i.type === "picture"){
       const f = A.files[i.file];
       if(!f) throw new Error(`No attachment "${i.file}".`);
+      const before = S.bleed?.img;
       S.ub = true; S.ut = null;
       await onFile({files: [f], value: ""});
-      for(let k = 0; k < 120 && !(S.bleed?.img && !S.bleed._bgd); k++) await sleep(500);
-      if(!(S.bleed?.img && !S.bleed._bgd)) throw new Error("The finished design didn't go on: " + (($("fb")?.textContent || "").trim() || "check the file"));
-      await sleep(300); bgdSync();
-      return {background: "finished design for the whole item", note: "If it's laid out wrongly, they can download the template from the Background step."};
+      for(let k = 0; k < 120 && !(S.bleed?.img && S.bleed.img !== before); k++) await sleep(500);
+      if(!(S.bleed?.img && S.bleed.img !== before)) throw new Error("The background didn't go on: " + (($("fb")?.textContent || "").trim() || "check the file"));
+      await settle();
+      return {background: i.type === "finished" ? "finished design for the whole item" : "their picture, full bleed",
+              note: "It covers the whole item (Side 1, bottom, Side 2 as laid out in the file)."};
     }
-    if(BGD.finished) bgdUnfinish();
-    if(i.type === "solid"){
-      if(i.pms){
-        if(!SP.loaded) await loadPmsLibrary();
-        const k = _findInk(i.pms) || _findInk("PANTONE " + String(i.pms).replace(/^(pms|pantone)\s*/i, ""));
-        if(!k) throw new Error(`Unknown PANTONE "${i.pms}".`);
-        bgdPmsPick(k.name, k.hex);
-      } else {
-        const h = hexOk(i.hex); if(!h) throw new Error("Give a hex colour like #1C4FD0 (or a pms).");
-        bgdType("solid"); bgdSolid(h);
-      }
-    } else if(i.type === "gradient"){
-      const cs = (i.colors || []).map(hexOk).filter(Boolean);
-      if(cs.length < 2) throw new Error("A gradient needs two hex colours.");
-      bgdType("gradient"); BGD.base.stops = cs.slice(0, 2); BGD.base.dir = i.direction || BGD.base.dir || "down"; bgdRender(); bgdBuild();
-    } else if(i.type === "pattern"){
+    if(i.type === "pattern"){
       const files = await stockList();
       const want = String(i.pattern || "").toLowerCase();
       const f = files.find(x => x.replace(/\.(jpg|jpeg|png)$/i, "").toLowerCase() === want)
              || files.find(x => x.toLowerCase().includes(want));
       if(!f) throw new Error(`No pattern "${i.pattern}". Patterns: ${files.map(x => x.replace(/\.(jpg|jpeg|png)$/i, "")).join(", ")}`);
-      bgdType("stock"); bgdStock(f);
-    } else if(i.type === "picture"){
-      const f = A.files[i.file]; if(!f) throw new Error(`No attachment "${i.file}".`);
-      bgdType("image"); await bgdPicture({files: [f], value: ""});
+      selectStockBg(f);
+      for(let k = 0; k < 40 && S.bleed?._stockFile !== f; k++) await sleep(250);
+      await settle();
+      return {background: await bgInfo()};
+    }
+    clearBleed();
+    if(i.type === "solid"){
+      setFillMode("solid");
+      if(i.pms){
+        if(!SP.loaded) await loadPmsLibrary();
+        const k = _findInk(i.pms) || _findInk("PANTONE " + String(i.pms).replace(/^(pms|pantone)\s*/i, ""));
+        if(!k) throw new Error(`Unknown PANTONE "${i.pms}".`);
+        Object.assign(S_FILL.solid, {hex: k.hex, pms: k.name, pmsHex: k.hex, near: null});
+        for(const id of ["fill-solid-picker", "fill-solid-hex"]){ const el = $(id); if(el) el.value = k.hex; }
+        const pv = $("fill-solid-preview"); if(pv) pv.style.background = k.hex;
+        fillSolidBadge(); R();
+      } else {
+        const h = hexOk(i.hex); if(!h) throw new Error("Give a hex colour like #1C4FD0 (or a pms).");
+        await onFillSolidHex(h);
+      }
+    } else if(i.type === "gradient"){
+      const cs = (i.colors || []).map(hexOk).filter(Boolean);
+      if(cs.length < 2) throw new Error("A gradient needs two to four hex colours.");
+      S_FILL.gradient.stops = cs.slice(0, 4).map(hex => ({hex, pms: null}));
+      setFillMode("gradient"); renderGradientStops();
+      setGradientDir({down: "to bottom", right: "to right", diag: "135deg", up_right: "45deg"}[i.direction] || "to bottom");
     } else if(i.type === "none"){
-      bgdType("none");
-    }
-    if(i.side2) bgdSide2(i.side2 === "upside_down" ? "flip" : "same");
-    if(i.bottom === "solid"){ bgdBottom("solid"); const h = hexOk(i.bottom_hex); if(h) bgdBottomHex(h); }
-    else if(i.bottom === "same") bgdBottom("same");
-    // Wait for the server to lay it out.
-    for(let k = 0; k < 120; k++){
-      await sleep(400);
-      const st = ($("bgd-status")?.textContent || "");
-      if(BGD.seq !== was && st.includes("✓")) break;
-      if(st.startsWith("⚠")) throw new Error(st.replace(/^⚠\s*/, ""));
-    }
+      setFillMode("none");
+    } else throw new Error(`Unknown background type "${i.type}".`);
+    await settle();
     return {background: await bgInfo()};
   },
 

@@ -209,3 +209,22 @@ static/assets/ (the four 4CP items, 5010/5020 items); static/sandbox/items/
 (the four tote photos); tools/ (5010, 5020, camo builders).
 - New getting-started guide (static/configurator.html): four short pages for
   the item that is open, replacing the old one-color pop-up.
+
+## Update 2026-11-06: 4CP back to the original background editor
+- The Side 2 (same / upside down) and bottom background step from 2026-10-29
+  is removed. 4CP items' Background step now has the main app's own tools:
+  "Upload Full-Bleed Background", "Design background" (the whole-item design
+  studio: Side 1, bottom and Side 2 on one board), a link to the template PDF,
+  and the Background Fill panel (none / solid / gradient, PMS search, stock
+  backgrounds).
+- Gweg's set_background drives those same tools (solid, gradient, pattern,
+  picture, finished design, none). For a laid-out design he points the
+  customer to "Design background".
+- Port tools: bgd.js is no longer used. /api/bg-sheet stays in server.py but
+  nothing calls it.
+- Gweg designs 4CP backgrounds: make_design / get_design / edit_design take
+  location "background". Each piece has a panel (sides = Side 1 + Side 2 the
+  right way up, side1, side2, bottom) and a spot (middle, top, bottom - top
+  and bottom keep words clear of a logo in the middle); shape "band" is a
+  stripe of colour behind its group. It builds in the same "Design
+  background" studio, so the customer can open it and fine-tune.

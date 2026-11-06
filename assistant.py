@@ -90,9 +90,15 @@ PANTONEs with set_inks if they ask.
 - Size: "max", "as big as possible" = set_art_size fit. Otherwise fill the print area unless \
 they give a size (inches).
 - 4CP background (4CP items): set_background - a solid colour (hex or PANTONE), a two-colour \
-gradient, one of the item's patterns, the customer's own picture, or none. Side 2 is the same \
-as Side 1 or upside down; the bottom repeats the background or takes a solid colour. If they \
-attach a finished design for the whole item, use type 'finished'.
+gradient, one of the item's patterns, the customer's own picture, or none. If they attach a \
+finished design for the whole item, use type 'finished'. To design the background itself - \
+text, shapes, extra art, a stripe of colour - use make_design with location 'background' \
+(set the base colour or pattern first with set_background). Example: "navy background, a gold \
+stripe with WILDCATS on both sides and the year on the bottom" -> set_background solid navy, \
+then make_design background with pieces [band gold, text WILDCATS] on 'sides' and [text 2026] \
+on 'bottom'. The customer's logo prints over the middle of each side, so when there will be a \
+logo, put background words and bands in spot 'top' or 'bottom' so the logo doesn't cover them. Small changes after: get_design / edit_design with location 'background'. The \
+customer can also fine-tune it themselves with "Design background" on the Background step.
 - Text and simple design: the configurator has a layout tool for text, shapes and arranging art. \
 "Add our name under the logo", "put 'Smith Wedding 2026' on it", "make it arch", "add a line \
 and the date" -> make_design (logo + text pieces, or text only when there's no logo). Small \
@@ -233,21 +239,19 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "location": {"type": "string"}, "degrees": {"type": "number"}}, "required": ["location", "degrees"]}},
     {"name": "set_background",
-     "description": "4CP items only: the printed background. type 'solid' (hex and/or pms), "
-                    "'gradient' (colors: two hexes, direction down/right/diag), 'pattern' (pattern: "
-                    "a name get_state lists), 'picture' (file: an attachment id, covers each side), "
-                    "'none' (white), or 'finished' (file: a finished design for the whole item, laid "
-                    "out like the template). side2: 'same' or 'upside_down'. bottom: 'same' or "
-                    "'solid' with bottom_hex.",
+     "description": "4CP items only: the printed background over the whole item. type 'solid' "
+                    "(hex or pms), 'gradient' (colors: two to four hexes, direction down/right/"
+                    "diag/up_right), 'pattern' (pattern: a name get_state lists), 'picture' (file: "
+                    "an attachment id, stretched over the whole item), 'finished' (file: a finished "
+                    "design for the whole item laid out like the template: Side 1, bottom, Side 2), "
+                    "or 'none' (white).",
      "input_schema": {"type": "object", "properties": {
          "type": {"type": "string", "enum": ["solid", "gradient", "pattern", "picture", "none", "finished"]},
          "hex": {"type": "string"}, "pms": {"type": "string"},
          "colors": {"type": "array", "items": {"type": "string"}},
-         "direction": {"type": "string", "enum": ["down", "right", "diag"]},
-         "pattern": {"type": "string"}, "file": {"type": "string"},
-         "side2": {"type": "string", "enum": ["same", "upside_down"]},
-         "bottom": {"type": "string", "enum": ["same", "solid"]},
-         "bottom_hex": {"type": "string"}}}},
+         "direction": {"type": "string", "enum": ["down", "right", "diag", "up_right"]},
+         "pattern": {"type": "string"}, "file": {"type": "string"}},
+         "required": ["type"]}},
     {"name": "get_design",
      "description": "What's in a location's design (the layout tool: logo, text, shapes), with "
                     "each piece's index for edit_design, plus the fonts, shapes and templates "
@@ -267,7 +271,13 @@ TOOLS = [
                     "0-300). color (hex or PANTONE) only matters on full-colour items - "
                     "one-colour items print everything in the one ink. Replaces what's there now; "
                     "use edit_design for small changes. After it, size the whole thing with "
-                    "set_art_size like any art.",
+                    "set_art_size like any art. On 4CP items, location 'background' designs the "
+                    "printed background itself (over the fill / pattern set with set_background): "
+                    "each piece takes a panel - 'sides' (default: on Side 1 and repeated on Side 2 "
+                    "the right way up), 'side1', 'side2' or 'bottom' - and is laid out in that "
+                    "panel, in its middle or its top/bottom strip (spot); 'band' is a stripe of "
+                    "colour behind the pieces it's grouped with. The imprint logo "
+                    "still goes on top in the logo step.",
      "input_schema": {"type": "object", "properties": {
          "location": {"type": "string"},
          "arrange": {"type": "string", "enum": ["stack", "row"]},
@@ -280,7 +290,13 @@ TOOLS = [
              "bold": {"type": "boolean"}, "italic": {"type": "boolean"},
              "curve": {"type": "number"}, "spacing": {"type": "number"},
              "color": {"type": "string"},
-             "shape": {"type": "string", "enum": ["line", "ring", "frame", "star", "dot", "block"]}},
+             "shape": {"type": "string", "enum": ["line", "ring", "frame", "band", "star", "dot", "block"]},
+             "panel": {"type": "string", "enum": ["sides", "side1", "side2", "bottom"],
+                       "description": "location 'background' only: where the piece goes"},
+             "spot": {"type": "string", "enum": ["middle", "top", "bottom"],
+                      "description": "location 'background' only: middle of the panel (default), or "
+                                     "its top / bottom strip - use top/bottom when a logo goes on top "
+                                     "in the middle"}},
              "required": ["type"]}}},
          "required": ["location", "pieces"]}},
     {"name": "edit_design",
