@@ -45,6 +45,11 @@ const CSS = `
 .ask-in button{height:38px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;color:var(--text);font:600 12px var(--sans);padding:0 11px}
 .ask-in button.go{background:var(--burgundy);border-color:var(--burgundy);color:#fff}
 .ask-in button:disabled{opacity:.5;cursor:default}
+#ask-mic{width:38px;padding:0;display:none;align-items:center;justify-content:center;color:var(--burgundy)}
+#ask-mic svg{width:17px;height:17px}
+#ask-mic.rec{background:#c62828;border-color:#c62828;color:#fff;animation:askmic 1.2s ease-in-out infinite}
+@keyframes askmic{0%,100%{box-shadow:0 0 0 0 rgba(198,40,40,.45)}50%{box-shadow:0 0 0 7px rgba(198,40,40,0)}}
+#ask-text.rec{border-color:#c62828}
 #ask-panel.drag #ask-log{outline:2px dashed var(--burgundy);outline-offset:-8px}
 .ask-hint{font-size:12px;color:var(--muted);line-height:1.5;padding:4px 2px}
 .ask-dots::after{content:"…";animation:askd 1.2s steps(4) infinite}
@@ -75,6 +80,7 @@ function build(){
     <div id="ask-log"></div><div class="ask-pend" id="ask-pend"></div>
     <div class="ask-in"><button onclick="document.getElementById('ask-file').click()" title="Attach artwork">Attach</button>
       <textarea id="ask-text" rows="1" placeholder="e.g. a navy Kolder Kaddy with this logo in white"></textarea>
+      <button id="ask-mic" onclick="askMic()" title="Talk instead of typing" aria-label="Talk instead of typing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button>
       <button class="go" id="ask-go" onclick="askSend()">Send</button>
       <input type="file" id="ask-file" multiple accept=".png,.jpg,.jpeg,.svg,.pdf,.ai,.eps,.tif,.tiff,.webp,.gif" style="display:none"></div>`;
   document.body.appendChild(p);
@@ -85,8 +91,50 @@ function build(){
   p.addEventListener("dragover", e => { e.preventDefault(); p.classList.add("drag"); });
   p.addEventListener("dragleave", () => p.classList.remove("drag"));
   p.addEventListener("drop", e => { e.preventDefault(); p.classList.remove("drag"); addFiles(e.dataTransfer.files); });
+  if(MIC.ok) $("ask-mic").style.display = "inline-flex";
   hello();
 }
+
+// ── talk instead of typing (the browser's own speech recognition) ──────────
+// Chrome, Edge and Safari, desktop and phone; Firefox has none, so the mic
+// button just doesn't show there. Words land in the box to check, then Send.
+const MIC = {ok: !!(window.SpeechRecognition || window.webkitSpeechRecognition), rec: null, on: false, base: ""};
+function micStop(){ if(MIC.rec){ try{ MIC.rec.stop(); }catch(e){} } }
+function micUi(on){
+  MIC.on = on;
+  $("ask-mic")?.classList.toggle("rec", on);
+  $("ask-text")?.classList.toggle("rec", on);
+  const m = $("ask-mic"); if(m) m.title = on ? "Stop listening" : "Talk instead of typing";
+  const t = $("ask-text"); if(t) t.placeholder = on ? "Listening… say what you'd like" : "e.g. a navy Kolder Kaddy with this logo in white";
+}
+window.askMic = function(){
+  if(!MIC.ok) return;
+  if(MIC.on) return micStop();
+  const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const r = new R();
+  r.lang = navigator.language || "en-US";
+  r.continuous = true; r.interimResults = true;
+  const t = $("ask-text");
+  MIC.base = t.value.trim() ? t.value.trim() + " " : "";
+  let done = "";
+  r.onresult = e => {
+    let live = "";
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const txt = e.results[i][0].transcript;
+      if(e.results[i].isFinal) done += txt; else live += txt;
+    }
+    t.value = (MIC.base + done + live).replace(/\s+/g, " ").replace(/^\s/, "");
+    t.dispatchEvent(new Event("input"));
+  };
+  r.onerror = e => {
+    if(e.error === "not-allowed" || e.error === "service-not-allowed")
+      log("ask-m e", "I can't hear you - the browser blocked the microphone. Click the mic or lock icon by the web address, allow the microphone, and try again. (Typing works too!)");
+    else if(e.error === "audio-capture")
+      log("ask-m e", "I couldn't find a microphone on this device. Typing works too!");
+  };
+  r.onend = () => { MIC.rec = null; micUi(false); t.focus(); };
+  try{ r.start(); MIC.rec = r; micUi(true); }catch(e){ micUi(false); }
+};
 
 function hello(){
   $("ask-log").innerHTML = `<div class="ask-row"><img class="ask-av" src="/static/img/gweg.png" alt=""><div class="ask-m a">Hi, I'm Gweg! I live in this website and have never once held a can, but I'm weirdly good at dressing them up. Tell me what you'd like and attach your logo (the Attach button or drop it here), and I'll build it while you watch. Ask me anything along the way.</div></div>
@@ -155,6 +203,7 @@ async function thumb(file, max = 768){
 // ── the conversation ─────────────────────────────────────────────────────
 window.askSend = async function(){
   if(A.busy) return;
+  if(MIC.on) micStop();
   const t = $("ask-text"); const text = t.value.trim();
   if(!text && !A.pending.length) return;
   t.value = ""; t.style.height = "auto";
