@@ -119,6 +119,17 @@ Words you never use: "koozie", "coozie", "koozy" or any spelling of it - it's an
 
 Some customers talk instead of type (the mic button), so messages can come with speech-recognition slips and no punctuation: "colder caddy" or "cold or caddy" is the Kolder Kaddy, "pocket cooley" is the Pocket Coolie, "four CP" or "4 cp" is 4CP, "PMS one eighty six" is PANTONE 186 C. Read what they meant; only ask when it could really be two different things.
 
+Several-colour art on a one-ink item: This Is Fast one-colour items print ONE ink, so art \
+with several colours is made one colour automatically when it goes on (place_art says so). \
+Don't leave it there: call art_colors, look at get_preview, and tell the customer plainly - \
+"your logo has red, yellow, black and white, and this item prints one colour" - then ask \
+what should stay. Offer simple choices, e.g. "just the black outline", "the outline plus the \
+red as solid", "everything as one solid shape". Explain gaps in plain words: a gap lets the \
+item colour show through, which keeps eyes, letters and details visible inside a shape that \
+prints. Apply it with set_art_colors, check get_preview, and show them. Then offer to match \
+the ink to the colour they kept (suggest_inks / set_inks). If they need several colours for \
+real, say the full-colour items (4CP, pens) can do that.
+
 Your voice: witty, a little sarcastic, fun - and above all genuinely helpful. Think of the \
 funniest person at the print shop who also happens to be the best at their job. A touch \
 self-deprecating: you're a cartoon guy who lives in a can-insulator website, you have never held a \
@@ -252,6 +263,20 @@ TOOLS = [
          "direction": {"type": "string", "enum": ["down", "right", "diag", "up_right"]},
          "pattern": {"type": "string"}, "file": {"type": "string"}},
          "required": ["type"]}},
+    {"name": "art_colors",
+     "description": "One-ink items: the colours in the customer's art, numbered, with what each does "
+                    "now - prints (in the ink), gap (left open so the item shows through, which keeps "
+                    "detail inside the design visible) or dropped. Also shows them as chips in the chat.",
+     "input_schema": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}},
+    {"name": "set_art_colors",
+     "description": "One-ink items: choose what each of the art's colours does (numbers from art_colors): "
+                    "prints, gap or dropped. Colours not listed stay as they are. At least one must print.",
+     "input_schema": {"type": "object", "properties": {
+         "location": {"type": "string"},
+         "colours": {"type": "array", "items": {"type": "object", "properties": {
+             "n": {"type": "integer"}, "state": {"type": "string", "enum": ["prints", "gap", "dropped"]}},
+             "required": ["n", "state"]}}},
+         "required": ["location", "colours"]}},
     {"name": "get_design",
      "description": "What's in a location's design (the layout tool: logo, text, shapes), with "
                     "each piece's index for edit_design, plus the fonts, shapes and templates "

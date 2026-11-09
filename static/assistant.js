@@ -408,7 +408,8 @@ function label(c){
     move_art: `Moving ${locName(i.location)}`, rotate_art: `Rotating ${locName(i.location)}`,
     set_background: `Background: ${i.type || "update"}`, get_preview: "Looking at the mockup",
     show_lifestyle: "Opening the lifestyle photo", download_virtual: "Downloading the virtual",
-    go_to_review: "Going to Review & send", get_design: `Reading the design on ${locName(i.location)}`,
+    go_to_review: "Going to Review & send", art_colors: "Looking at the art's colours",
+    set_art_colors: "Choosing which colours print", get_design: `Reading the design on ${locName(i.location)}`,
     make_design: `Designing ${locName(i.location)}`, edit_design: `Editing the design on ${locName(i.location)}`,
     use_template: `Template: ${i.template}`, clear_inside: `Inner white: ${i.mode}`,
     hide_color: `${i.hidden === false ? "Bringing back" : "Leaving out"} colour ${i.n}`})[c.name] || c.name;
@@ -704,7 +705,85 @@ async function lyBuild(pieces, arrange, Z, logo, location){
   return [...back, ...placed];
 }
 
+// ── one-ink items: which of the art's colours print ─────────────────────────
+// The page's own one-colour engine (/api/one-color) splits the art into its
+// colours; each prints in the ink, becomes a gap (the item shows through, so
+// detail inside the design stays visible), or is dropped.
+const ART_STATE = {print: "prints", knockout: "gap", remove: "dropped"};
+const STATE_IN = {print: "print", prints: "print", keep: "print", gap: "knockout", gaps: "knockout",
+                  knockout: "knockout", drop: "remove", dropped: "remove", remove: "remove"};
+const NAMES = {white: "#FFFFFF", black: "#111111", gray: "#8A8D8F", silver: "#C0C0C0", brown: "#6E4C1E", tan: "#C9A77C",
+               cream: "#F3E7C9", pink: "#F4A7C0", purple: "#6E3FA0", "light blue": "#7BAFD4", "dark green": "#1E5C3A"};
+function colourName(hex){
+  const L = labOf(hex);
+  let best = "colour", d0 = 1e9;
+  for(const [n, h] of Object.entries({...FAMILY, ...NAMES})){
+    const m = labOf(h), d = (m[0] - L[0]) ** 2 + (m[1] - L[1]) ** 2 + (m[2] - L[2]) ** 2;
+    if(d < d0){ d0 = d; best = n; }
+  }
+  return best;
+}
+async function artColours(location, overrides){
+  const sl = needArt(location);
+  if(inkMode() !== "one") throw new Error("This item prints in full colour, so the art's colours don't need choosing.");
+  const src = sl.oneColor?.src;
+  if(!src) return {sl, src: null};
+  const r = await fetch("/api/one-color", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({art_path: src, decisions: overrides ?? sl.oneColor.overrides ?? {}})});
+  const d = await r.json();
+  if(!r.ok || d.error) throw new Error(d.error || "Couldn't read the art's colours.");
+  const total = d.groups.reduce((a, g) => a + g.area, 0) || 1;
+  const groups = d.groups.map((g, k) => {
+    const st = new Set(g.shapes.map(i => d.decisions[String(i)]));
+    return {n: k + 1, colour: colourName(g.hex), hex: g.hex, share: Math.max(1, Math.round(100 * g.area / total)) + "%",
+            now: st.size === 1 ? ART_STATE[[...st][0]] : "mixed", shapes: g.shapes};
+  });
+  return {sl, src, d, groups};
+}
+function artColoursChips(groups){
+  const say = g => g.now === "prints" ? `Leave the ${g.colour} out` : `Print the ${g.colour}`;
+  return `<div class="ask-swh">Colours in your art (one ink prints - tap to change):</div><div class="ask-sw">${groups.map(g =>
+    `<button onclick="askSay(${esc(JSON.stringify(say(g)))})" title="${esc(g.hex)} · ${esc(g.now)}"><i style="background:${esc(g.hex)}"></i>${g.n}. ${esc(g.colour)} · ${esc(g.now)}</button>`).join("")}</div>`;
+}
+
 const TOOLS = {
+  async art_colors({location}){
+    const {src, groups} = await artColours(location);
+    if(!src) return {location, note: "This art is already one colour - nothing to choose."};
+    log("ask-m a ask-swm", artColoursChips(groups));
+    return {location, ink: SP.ink?.name || null, colours: groups.map(({shapes, ...g}) => g),
+            how: "prints = in the ink; gap = left open so the item shows through (keeps detail inside the design); dropped = gone"};
+  },
+
+  async set_art_colors({location, colours}){
+    const {sl, src, d: d0, groups} = await artColours(location);
+    if(!src) throw new Error("This art is already one colour.");
+    const over = {...(sl.oneColor.overrides || {})};
+    for(const c of colours || []){
+      const g = groups.find(x => x.n === Number(c.n));
+      const st = STATE_IN[String(c.state || "").toLowerCase()];
+      if(!g) throw new Error(`No colour ${c.n}. Colours: ${groups.map(x => `${x.n} ${x.colour}`).join(", ")}`);
+      if(!st) throw new Error(`State "${c.state}" - use prints, gap or dropped.`);
+      for(const i of g.shapes) over[String(i)] = st;
+    }
+    if(!groups.some(g => g.shapes.some(i => (over[String(i)] ?? d0.decisions[String(i)]) === "print")))
+      throw new Error("That would leave nothing to print - keep at least one colour printing.");
+    const r = await fetch("/api/one-color", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({art_path: src, decisions: over})});
+    const d = await r.json();
+    if(!r.ok || d.error) throw new Error(d.error === "That removes everything." ? "That would leave nothing to print - keep at least one colour." : (d.error || "Couldn't change the colours."));
+    const mask = await _ocImg(d.preview_b64);
+    const ids = (typeof pairedIds === "function" ? pairedIds(location) : [location]).filter(t => S.slots[t]?.oneColor?.src === src);
+    ocCommit(ids.length ? ids : [location], d, mask, src, over);
+    if(MC.reduce) clearSeparations();
+    renderArtworkPanel(); renderSeparationsPanel?.(); R();
+    await settle();
+    const now = (await artColours(location, over)).groups;
+    log("ask-m a ask-swm", artColoursChips(now));
+    return {...artInfo(location), colours: now.map(({shapes, ...g}) => g)};
+  },
+
+  
   async get_design({location}){
     const id = lyLoc(location);
     if(lyBusy()) throw new Error("The customer has the layout tool open - let them finish, or ask them to close it.");
@@ -946,7 +1025,10 @@ const TOOLS = {
       throw new Error("The art didn't go on" + (why ? `: ${why}` : "."));
     }
     let white = null;
-    if($("aw-scrim")){ $("aw-scrim").remove(); white = "This art has white in it: ask whether the white prints white or is cut out (the item shows through), then set_white."; }
+    if(sl.oneColor?.src && inkMode() === "one")
+      white = "This art has several colours and this item prints one ink, so it was made one colour automatically. "
+            + "Call art_colors, show the customer what prints now, and ask which colours they want to keep.";
+    if($("aw-scrim")){ $("aw-scrim").remove(); white = (white ? white + " " : "") + "This art has white in it: ask whether the white prints white or is cut out (the item shows through), then set_white."; }
     return {...artInfo(location), ink: inkMode() === "one" ? (SP.ink?.name || null) : undefined,
             note: white, warnings: (typeof artRiskSummary === "function" ? artRiskSummary() : [])};
   },

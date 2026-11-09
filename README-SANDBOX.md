@@ -228,3 +228,7 @@ static/assets/ (the four 4CP items, 5010/5020 items); static/sandbox/items/
   and bottom keep words clear of a logo in the middle); shape "band" is a
   stripe of colour behind its group. It builds in the same "Design
   background" studio, so the customer can open it and fine-tune.
+- Several-colour art on one-ink items: Gweg calls art_colors (the art's
+  colours, numbered, as chips in the chat) and set_art_colors (each colour
+  prints, becomes a gap, or is dropped) on the page's own one-colour engine
+  (/api/one-color), then shows the result and offers to match the ink.

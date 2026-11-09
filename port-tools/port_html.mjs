@@ -125,60 +125,40 @@ rep(`  if(!hasSidePair()){ el.style.display = "none"; el.innerHTML = ""; return;
 rep(`  const shown = (S.prod.slots||[]).filter(sl => !(same && sl.id === "side2"))`,
     `  const shown = (S.prod.slots||[]).filter(sl => !(same && sl.id === "side2") && !(imprintOne() && sl.id === imprintOff()))`);
 
-// ── 4CP background step (2026-10-29) ────────────────────────────────────────
+// ── 4CP background (2026-11-06) ──────────────────────────────────────────────
+// 4CP items use the main app's own background tools on step 1: the fill
+// (none / solid / gradient, PMS search), the stock backgrounds, "Upload
+// Full-Bleed Background" and "Design background" (the whole-item editor).
+// The Side 2 / bottom background step from 2026-10-29 is gone.
+rep('function custHasArt(){ return Object.values(S.slots || {}).some(sl => sl?.img); }',
+    'function custHasArt(){ return Object.values(S.slots || {}).some(sl => sl?.img); }\n'
+    + '// A 4CP item can go to review with only its background (a finished design, say).\n'
+    + 'function custCanReview(){ return custHasArt() || (bgBoardOk() && !!S.bleed?.img); }\n'
+    + 'function cust4cpLabel(){\n'
+    + '  const on = bgBoardOk(), lbl = document.getElementById("cs1-lbl");\n'
+    + '  if(lbl) lbl.textContent = on ? "Background" : "Product color";\n'
+    + '  CUST_HD[1] = on ? "Design your background" : "Pick your product color";\n'
+    + '  const hd = document.getElementById("cust-hd");\n'
+    + '  if(hd && typeof CSTEP !== "undefined" && CSTEP === 1 && hd.textContent !== CUST_HD[1]) hd.textContent = CUST_HD[1];\n'
+    + '}');
+rep('  if(n === 3 && !custHasArt()){ n = 2; }', '  if(n === 3 && !custCanReview()){ n = 2; }');
+rep('    next.disabled = n === 2 && !custHasArt();', '    next.disabled = n === 2 && !custCanReview();');
+rep('<button data-s="1" onclick="custStep(1)"><b>1</b>Product color</button>',
+    '<button data-s="1" onclick="custStep(1)"><b>1</b><span id="cs1-lbl">Product color</span></button>');
+rep('function R(){\nif(syncMatchInks()) return;\nimprintOneEnforce();', 'function R(){\nif(syncMatchInks()) return;\nimprintOneEnforce();\ncust4cpLabel();');
+// The background buttons sit on the Background step, above the fill.
 {
-  const BGD_JS = fs.readFileSync(new URL('./bgd.js', import.meta.url), 'utf8');
-  rep('function custHasArt(){ return Object.values(S.slots || {}).some(sl => sl?.img); }',
-      'function custHasArt(){ return Object.values(S.slots || {}).some(sl => sl?.img); }\n'
-      + '// A 4CP item can go to review with only its background (a finished design, say).\n'
-      + 'function custCanReview(){ return custHasArt() || (typeof bgdOn === "function" && bgdOn() && !!S.bleed?.img); }\n' + BGD_JS);
-  rep('  if(n === 3 && !custHasArt()){ n = 2; }', '  if(n === 3 && !custCanReview()){ n = 2; }');
-  rep('    next.disabled = n === 2 && !custHasArt();', '    next.disabled = n === 2 && !custCanReview();');
-  rep('<button data-s="1" onclick="custStep(1)"><b>1</b>Product color</button>',
-      '<button data-s="1" onclick="custStep(1)"><b>1</b><span id="cs1-lbl">Product color</span></button>');
-  rep('<div id="fill-panel-wrap" style="display:none">', '<div id="bgd" class="bgd" style="display:none"></div>\n<div id="fill-panel-wrap" style="display:none">');
+  const ROW = '<div class="br" id="bleed-btn-row" style="display:none"><button class="bt b1" onclick="upBleed()" style="flex:1;background:#2d5a27">↑ Upload Full-Bleed Background</button><button class="bt b1" onclick="openBgDesigner()" style="flex:1;margin-left:6px" title="Design the whole item - background, text, art and shapes - in the art editor">✎ Design background</button></div>';
+  rep(ROW + '\n', '');
+  rep('<div id="fill-panel-wrap" style="display:none">',
+      '<div id="bg-tools">' + ROW.replace('<div class="br" id="bleed-btn-row" style="display:none">', '<div class="br" id="bleed-btn-row" style="display:none;margin-bottom:4px">')
+      + '\n<div class="bg-tpl" id="bg-tpl" style="display:none">Have the whole design finished? Lay it out like <a href="#" onclick="this.href=\'/api/bg-template/\'+encodeURIComponent(S.pid)" download>our template (PDF)</a>: Side 1, the bottom, Side 2 - then use Upload.</div></div>\n'
+      + '<div id="fill-panel-wrap" style="display:none">');
+  rep('const bleedRow=document.getElementById("bleed-btn-row");\nif(bleedRow)bleedRow.style.display=(S.prod.is_4cp||mat4cp)?"":"none";',
+      'const bleedRow=document.getElementById("bleed-btn-row");\nif(bleedRow)bleedRow.style.display=(S.prod.is_4cp||mat4cp)?"":"none";\n'
+      + '{ const _t = document.getElementById("bg-tpl"); if(_t) _t.style.display = (S.prod.is_4cp||mat4cp) ? "" : "none"; }');
   rep('#ink-btn,#ink-pop,#export-preview,#em-opts,#am-open-ns,.sbx-hide{display:none!important}',
-      `#ink-btn,#ink-pop,#export-preview,#em-opts,#am-open-ns,.sbx-hide{display:none!important}
-body.bgd-on #fill-panel-wrap,body.bgd-on #bleed-btn-row{display:none!important}
-.bgd{margin:0 0 14px}
-.bgd .lbl{margin-top:14px}
-.bgd-fin{border:1px dashed var(--border-hi);border-radius:10px;padding:10px 12px;font:13px/1.45 var(--sans);color:var(--text);background:var(--surface)}
-.bgd-finbtn{display:block;width:100%;margin:8px 0 4px}
-.bgd-hint{font:11.5px/1.4 var(--sans);color:var(--muted)}
-.bgd-link{background:none;border:none;padding:2px 0;color:var(--burgundy);text-decoration:underline;cursor:pointer;font:12px var(--sans)}
-.bgd-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.bgd-card{display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px 2px 6px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);cursor:pointer;font:11px/1.2 var(--sans);color:var(--text)}
-.bgd-card.on{border-color:var(--burgundy);box-shadow:0 0 0 2px var(--burg-lo)}
-.bgd-sw{width:30px;height:30px;border-radius:7px;border:1px solid var(--border)}
-.bgd-opts{margin-top:9px}
-.bgd-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.bgd-color{width:38px;height:32px;padding:0;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer}
-.bgd-hex{width:88px;padding:7px 8px;border:1px solid var(--border);border-radius:6px;font:12px var(--mono)}
-.bgd-sel{padding:6px;border:1px solid var(--border);border-radius:6px;font:12px var(--sans)}
-.bgd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font:12px var(--sans);color:var(--muted)}
-.bgd-pat{border:1.5px solid var(--border);border-radius:8px;padding:3px;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;gap:3px}
-.bgd-pat.on{border-color:var(--burgundy)}
-.bgd-pat span{display:block;height:46px;border-radius:5px;background-size:cover;background-position:center}
-.bgd-pat i{font:10.5px/1.2 var(--sans);font-style:normal;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bgd-add{margin-top:10px;display:flex;align-items:center;gap:10px}
-.bgd-seg{margin-top:2px}
-@media (max-width:640px){.bgd-cards{grid-template-columns:repeat(3,1fr)}}`);
-  rep('function R(){\nif(syncMatchInks()) return;\nimprintOneEnforce();', 'function R(){\nif(syncMatchInks()) return;\nimprintOneEnforce();\nbgdSync();');
-  // The design board for the background: Side 1's visible panel.
-  rep('  if(id === BG_SLOT) return { W: S.prod.page_w, H: S.prod.page_h, circle: false };',
-      '  if(id === BG_SLOT) return { W: S.prod.page_w, H: S.prod.page_h, circle: false };\n  if(id === BGS_SLOT){ const z = bgdZonePts("side1"); return { W: z.W, H: z.H, circle: false }; }');
-  rep('  if(id === BG_SLOT) return studioLoadBg(opts);', '  if(id === BG_SLOT) return studioLoadBg(opts);\n  if(id === BGS_SLOT) return bgdLoadBoard();');
-  rep('  if(id === BG_SLOT) return "Background · whole item";', '  if(id === BG_SLOT) return "Background · whole item";\n  if(id === BGS_SLOT) return "Background · Side 1";');
-  rep('  if(LY.slot === BG_SLOT) return bgBaseColor();', '  if(LY.slot === BG_SLOT) return bgBaseColor();\n  if(LY.slot === BGS_SLOT) return BGD.base.type === "solid" ? (BGD.base.hex || "#ffffff") : "#ffffff";');
-  rep('  else g.fillRect(0, 0, LY.W, LY.H);', '  else g.fillRect(0, 0, LY.W, LY.H);\n  if(LY.slot === BGS_SLOT && BGD.preview) g.drawImage(BGD.preview, 0, 0, LY.W, LY.H);');
-  rep('if(LY.slot === BG_SLOT) break;', 'if(LY.slot === BG_SLOT || LY.slot === BGS_SLOT) break;');
-  rep('if(LY.slot === BG_SLOT && !msgs.length){', 'if(LY.slot === BGS_SLOT && !msgs.length){\n    studioNote("Side 1 as it shows on the item. Anything past the edge is trimmed; your logo goes on top in the next step.");\n    return;\n  }\n  if(LY.slot === BG_SLOT && !msgs.length){');
-  rep('  if(LY.slot === BG_SLOT) return;     // a background runs off the edges; the item trims it',
-      '  if(LY.slot === BG_SLOT || LY.slot === BGS_SLOT) return;     // a background runs off the edges; the item trims it');
-  rep('    if(LY.slot === BG_SLOT){ await bgDesignApply(d, items); return; }',
-      '    if(LY.slot === BG_SLOT){ await bgDesignApply(d, items); return; }\n    if(LY.slot === BGS_SLOT){ await bgdDesignApply(d, items); return; }');
-  rep('function closeLayout(){ document.getElementById("ly-scrim").classList.remove("vis"); }',
-      'function closeLayout(){ document.getElementById("ly-scrim").classList.remove("vis"); if(typeof bgdLayoutClosed === "function") bgdLayoutClosed(); }');
+      '#ink-btn,#ink-pop,#export-preview,#em-opts,#am-open-ns,.sbx-hide{display:none!important}\n.bg-tpl{font:11.5px/1.45 var(--sans);color:var(--muted);margin:2px 0 12px}\n.bg-tpl a{color:var(--burgundy)}');
 }
 
 // ── One-color ink follows the art's color (2026-10-29) ─────────────────────
@@ -192,7 +172,7 @@ body.bgd-on #fill-panel-wrap,body.bgd-on #bleed-btn-row{display:none!important}
 rep('<button class="tut-btn" id="tut-btn" onclick="openTutorial(\'replay\')"',
     '<button class="tut-btn" id="ask-btn" onclick="askToggle()" title="Ask Gweg: tell him what you want and he sets it up for you"><img src="/static/img/gweg.png" alt=""> Ask Gweg</button>\n'
     + '<button class="tut-btn" id="tut-btn" onclick="openTutorial(\'replay\')"');
-rep('<script src="/static/client.js" defer></script>', '<script src="/static/client.js" defer></script>\n<script src="/static/assistant.js?v=10" defer></script>');
+rep('<script src="/static/client.js" defer></script>', '<script src="/static/client.js" defer></script>\n<script src="/static/assistant.js?v=13" defer></script>');
 
 // The review step lists every colorway on the order (the bot can add them).
 rep('const rows = [["Product", e(document.getElementById("prod-label")?.textContent || S.prod?.name || S.pid || "")]];',
