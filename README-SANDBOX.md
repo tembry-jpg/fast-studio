@@ -243,3 +243,24 @@ static/assets/ (the four 4CP items, 5010/5020 items); static/sandbox/items/
   (home.html), "Have a proof from us? ↺ Revise it" under each item's step
   header, and Gweg's revise_from_proof (attach the PDF in the chat). Works
   from any login session; proofs for items not on the client site say so.
+
+## Export log + proofs to Dropbox (2026-11-10)
+- The export form now requires Company (plus project name, name, email).
+- Every customer download is logged and filed in Dropbox:
+    /This Is Fast Proofs/<Company>/<Project>/<date time> <proof, virtuals, details.txt>
+    /This Is Fast Proofs/Export Log.csv   one row per export: date, project,
+      company, name, email, notes, item #, item, every detail from the
+      Review step (colors, colorways, ink, art sizes), files, folder
+- export_log.py sends in the background (the customer never waits). If
+  Dropbox is down, exports wait in _exportq/ and go on the next export or
+  from "Send anything waiting" on the setup page. A redeploy clears anything
+  still waiting (Railway's disk resets).
+- Setup (one time):
+  1. dropbox.com/developers/apps -> Create app -> Scoped access -> App folder
+     (or Full Dropbox) -> name it. Permissions tab: tick files.content.write
+     and files.content.read, Submit. Settings tab: copy App key and App secret.
+  2. Railway (client site): DROPBOX_APP_KEY, DROPBOX_APP_SECRET, and
+     DROPBOX_SETUP_KEY (any password you make up). Optional DROPBOX_ROOT.
+  3. Open https://<client site>/dropbox-setup?key=<your setup key>, sign in,
+     follow Step 1 and 2, copy the refresh token into Railway as
+     DROPBOX_REFRESH_TOKEN. Reload the page and press "Test the connection".

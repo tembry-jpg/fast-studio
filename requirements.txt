@@ -18,3 +18,5 @@ potracer>=0.0.4
 pikepdf>=8.0
 # Measures text ink for layouts (stacked text + artwork).
 fonttools>=4.40
+# Export log: sends proofs and the log to Dropbox (export_log.py).
+requests>=2.31

@@ -800,5 +800,87 @@ rep('''            notes.append(f"{tag}: white could not be set to the WHITE spo
             notes.append(f"{tag}: the file could not be set to CMYK ({e})")
 ''')
 
+# ── Export log + proofs to Dropbox (2026-11-10): export_log.py ─────────────
+rep('''@app.route("/api/export-combine", methods=["POST"])
+def export_combine():''', '''def _log_write(serve_dir, meta, fallback=None):
+    """The customer's details and order summary, kept beside the export so the
+    download can log it (export_log.py). Client site only."""
+    try:
+        a = meta.get("artist") if isinstance(meta.get("artist"), dict) else {}
+        c = a.get("contact") if isinstance(a.get("contact"), dict) else None
+        if not c:
+            if fallback and (Path(fallback) / "_log.json").is_file():
+                shutil.copy2(str(Path(fallback) / "_log.json"), str(Path(serve_dir) / "_log.json"))
+            return
+        cap = lambda v, n: " ".join(str(v or "").split())[:n]
+        pid = str(meta.get("product_id") or (meta.get("press") or {}).get("product_id")
+                  or (meta.get("proof") or {}).get("product_id") or meta.get("item_number") or "")
+        p = PRODUCTS.get(pid) or {}
+        det = [[cap(x[0], 60), cap(x[1], 400)] for x in (a.get("summary") or [])
+               if isinstance(x, list) and len(x) == 2][:40]
+        rec = {"project": cap(a.get("project") or meta.get("prefix"), 120),
+               "company": cap(c.get("company"), 60), "name": cap(c.get("name"), 60),
+               "email": cap(c.get("email"), 80), "notes": cap(c.get("notes"), 300),
+               "item_id": pid, "item": cap(re.sub(r"\\s*-\\s*" + re.escape(pid) + r"$", "", str(p.get("name") or p.get("label") or "")), 120),
+               "details": det}
+        (Path(serve_dir) / "_log.json").write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
+    except Exception as e:
+        print(f"⚠️ export log details not kept: {e}")
+
+
+def _log_send(root):
+    """Queue the export for the log and Dropbox once, when it's downloaded."""
+    try:
+        import export_log
+        f, done = root / "_log.json", root / "_logged"
+        if not export_log.enabled() or not f.is_file():
+            return
+        try:
+            done.touch(exist_ok=False)
+        except FileExistsError:
+            return
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        rec["when"] = export_log.now_central().strftime("%Y-%m-%d %H:%M")
+        files = []
+        for e in json.loads((root / "_files.json").read_text()):
+            p = (root / str(e.get("path") or "")).resolve()
+            if not e.get("hidden") and e.get("kind") in ("digitalproof", "virtualproof") \\
+                    and root in p.parents and p.is_file():
+                files.append((p, e.get("name") or p.name))
+        export_log.enqueue(rec, files)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print(f"⚠️ export log: {e}")
+
+
+@app.route("/dropbox-setup", methods=["GET", "POST"])
+def dropbox_setup():
+    import export_log
+    return export_log.setup_page(request)
+
+
+@app.route("/api/export-combine", methods=["POST"])
+def export_combine():''')
+rep('''        (serve_dir / "_files.json").write_text(json.dumps(out + hidden))
+''', '''        (serve_dir / "_files.json").write_text(json.dumps(out + hidden))
+        if SANDBOX:
+            _log_write(serve_dir, meta, fallback=srcs[0] if srcs else None)
+''')
+rep('''        if SANDBOX:
+            listing = _sandbox_trim(listing, serve_dir)
+        (serve_dir / "_files.json").write_text(json.dumps(listing))
+''', '''        if SANDBOX:
+            listing = _sandbox_trim(listing, serve_dir)
+        (serve_dir / "_files.json").write_text(json.dumps(listing))
+        if SANDBOX:
+            _log_write(serve_dir, meta)
+''')
+rep('''            z.write(str(f), folder + f.name)
+    return send_file(str(zp), as_attachment=True, download_name=f"{name}.zip", mimetype="application/zip")''',
+    '''            z.write(str(f), folder + f.name)
+    if SANDBOX:
+        _log_send(root)
+    return send_file(str(zp), as_attachment=True, download_name=f"{name}.zip", mimetype="application/zip")''')
+
 open(dst, "w", encoding="utf-8").write(s)
 print("ok", len(s.splitlines()), "lines")

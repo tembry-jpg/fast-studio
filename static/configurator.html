@@ -2563,7 +2563,7 @@ async function runExport(){
   }
 
   if(CUSTOMER){
-    const need = [["export-name-input", "a project name"], ["cu-name", "your name"], ["cu-email", "your email"]]
+    const need = [["export-name-input", "a project name"], ["cu-name", "your name"], ["cu-company", "your company"], ["cu-email", "your email"]]
       .find(([id]) => !custVal(id));
     if(need){
       stat.textContent = `⚠ Enter ${need[1]}.`;
@@ -13551,9 +13551,14 @@ function artistPayload(){
   if(CUSTOMER){
 
     const nm = custVal("cu-name"), co = custVal("cu-company"), em = custVal("cu-email"), nt = custVal("cu-notes");
+    try{ custReview(); }catch(e){}
+    const summary = [...document.querySelectorAll("#cust-review .cust-rv-row")]
+      .map(r => [r.children[0]?.textContent || "", (r.children[1]?.innerText || "").replace(/\s*\n\s*/g, "; ")])
+      .filter(([a, b]) => a && b);
     return {artist: "", customer: co || nm,
             note: [`From ${nm}${co ? ", " + co : ""} · ${em}`, nt].filter(Boolean).join(" — ").slice(0, 600),
-            revision: null};
+            revision: null, project: custVal("export-name-input"),
+            contact: {name: nm, company: co, email: em, notes: nt}, summary};
   }
   if(!ARTIST.on) return null;
   const v = id => (document.getElementById(id)?.value || "").trim();
@@ -14099,7 +14104,7 @@ function zonesMouseUp(){
   <div class="cust-only" id="cust-fields">
     <div style="display:flex;flex-direction:column;gap:10px">
       <div class="txt-field cust-field"><label for="cu-name">Your name <span style="color:var(--burgundy)">*</span></label><input id="cu-name" maxlength="60" autocomplete="name"></div>
-      <div class="txt-field cust-field"><label for="cu-company">Company</label><input id="cu-company" maxlength="60" autocomplete="organization"></div>
+      <div class="txt-field cust-field"><label for="cu-company">Company <span style="color:var(--burgundy)">*</span></label><input id="cu-company" maxlength="60" autocomplete="organization"></div>
       <div class="txt-field cust-field"><label for="cu-email">Email <span style="color:var(--burgundy)">*</span></label><input id="cu-email" type="email" maxlength="80" autocomplete="email"></div>
       <div class="txt-field cust-field"><label for="cu-notes">Notes for Numo <span style="text-transform:none;letter-spacing:0">(optional)</span></label><textarea id="cu-notes" maxlength="160" placeholder="Quantity, in-hands date, anything we should know"></textarea></div>
     </div>

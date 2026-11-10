@@ -205,6 +205,25 @@ rep('#ink-btn,#ink-pop,#export-preview,#em-opts,#am-open-ns,.sbx-hide{display:no
     + 'body.cust .cust-rev{font:12.5px/1.45 var(--sans);color:var(--muted);margin:-2px 0 12px}\n'
     + '.cust-rev a{color:var(--burgundy);font-weight:600}');
 
+// ── Company is required on the customer's export form (2026-11-10) ───────────
+rep('<label for="cu-company">Company</label>',
+    '<label for="cu-company">Company <span style="color:var(--burgundy)">*</span></label>');
+rep('["cu-name", "your name"], ["cu-email", "your email"]]',
+    '["cu-name", "your name"], ["cu-company", "your company"], ["cu-email", "your email"]]');
+
+// ── Export log: the customer's details and order summary go with the export (2026-11-10) ──
+rep(`    return {artist: "", customer: co || nm,
+            note: [\`From \${nm}\${co ? ", " + co : ""} · \${em}\`, nt].filter(Boolean).join(" — ").slice(0, 600),
+            revision: null};`,
+    `    try{ custReview(); }catch(e){}
+    const summary = [...document.querySelectorAll("#cust-review .cust-rv-row")]
+      .map(r => [r.children[0]?.textContent || "", (r.children[1]?.innerText || "").replace(/\\s*\\n\\s*/g, "; ")])
+      .filter(([a, b]) => a && b);
+    return {artist: "", customer: co || nm,
+            note: [\`From \${nm}\${co ? ", " + co : ""} · \${em}\`, nt].filter(Boolean).join(" — ").slice(0, 600),
+            revision: null, project: custVal("export-name-input"),
+            contact: {name: nm, company: co, email: em, notes: nt}, summary};`);
+
 // ── One-color ink follows the art's color (2026-10-29) ─────────────────────
 {
   const AUTO_JS = fs.readFileSync(new URL('./autoink.js', import.meta.url), 'utf8');
