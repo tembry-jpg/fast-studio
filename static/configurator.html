@@ -11504,6 +11504,7 @@ function ordFromProof(b){
 async function _restoreBundleCore(b){
   const job = b.job, fb = document.getElementById("fb");
   RESTORE.token = b.token;
+  RESTORE.source = job.source || "proof";
   RESTORE.ns = job.ns || null;
   RESTORE.nso = job.nso || null;
   RESTORE.revision = job.revision || 0;
@@ -13368,6 +13369,15 @@ function custReview(){
   el.innerHTML = `<div class="cust-rv">` + rows.map(([a, b]) => `<div class="cust-rv-row"><span>${a}</span><span>${b}</span></div>`).join("") +
     `</div><div class="st-hint" style="margin:-4px 0 12px">Look over your item on the right. Get your proof below — we'll check it before anything prints.</div>`;
 }
+
+function custHow(){
+  const h = [], A = window.ASK;
+  if(A?.msgs?.length) h.push("Gweg chat");
+  if(A?.spokeEver) h.push("talked to Gweg");
+  if(RESTORE.token) h.push(RESTORE.source === "tif_template" ? "filled-in template" : "revised an old proof");
+  if(typeof VAR !== "undefined" && VAR.list?.length > 1) h.push("colorways");
+  return h;
+}
 function custVal(id){ return (document.getElementById(id)?.value || "").trim(); }
 (function customerBoot(){
 
@@ -13558,7 +13568,7 @@ function artistPayload(){
     return {artist: "", customer: co || nm,
             note: [`From ${nm}${co ? ", " + co : ""} · ${em}`, nt].filter(Boolean).join(" — ").slice(0, 600),
             revision: null, project: custVal("export-name-input"),
-            contact: {name: nm, company: co, email: em, notes: nt}, summary};
+            contact: {name: nm, company: co, email: em, notes: nt}, summary, how: custHow()};
   }
   if(!ARTIST.on) return null;
   const v = id => (document.getElementById(id)?.value || "").trim();

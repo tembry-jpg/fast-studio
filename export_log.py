@@ -44,7 +44,7 @@ HERE = Path(__file__).resolve().parent
 QDIR = HERE / "_exportq"
 LOG_NAME = "Export Log.csv"
 COLUMNS = ["Date (Central)", "Project", "Company", "Name", "Email", "Notes", "Item #", "Item",
-           "Details", "Files", "Dropbox folder"]
+           "Details", "How", "Files", "Dropbox folder"]
 TOKEN_URL = "https://api.dropboxapi.com/oauth2/token"
 API = "https://api.dropboxapi.com/2"
 CONTENT = "https://content.dropboxapi.com/2"
@@ -152,33 +152,67 @@ def account():
     return {"name": (j.get("name") or {}).get("display_name"), "email": j.get("email")}
 
 
+def _rows(text):
+    """Rows of a log CSV as dicts (any older column set)."""
+    return list(csv.DictReader(io.StringIO(text))) if text.strip() else []
+
+
+def _csv(rows):
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=COLUMNS, extrasaction="ignore")
+    w.writeheader()
+    for r in rows:
+        w.writerow({c: r.get(c, "") or "" for c in COLUMNS})
+    return ("\ufeff" + buf.getvalue()).encode("utf-8")
+
+
 def append_log(row):
     """Add one row to the shared CSV; another worker writing at the same time
     makes Dropbox refuse the stale copy, so it re-reads and tries again."""
     path = f"{root()}/{LOG_NAME}"
     for _ in range(8):
         data, rev = download(path)
-        buf = io.StringIO()
-        w = csv.writer(buf)
-        if data is None:
-            w.writerow(COLUMNS)
-            text = ""
-        else:
-            text = data.decode("utf-8-sig", errors="replace")
-            if text and not text.endswith("\n"):
-                text += "\n"
-        w.writerow([row.get(c, "") for c in COLUMNS])
-        body = ("﻿" + text + buf.getvalue()) if data is None else ("﻿" + text + buf.getvalue())
+        rows = _rows(data.decode("utf-8-sig", errors="replace")) if data else []
+        rows.append(row)
         mode = "add" if rev is None else {".tag": "update", "update": rev}
-        r = _call(CONTENT + "/files/upload", data=body.encode("utf-8"),
+        r = _call(CONTENT + "/files/upload", data=_csv(rows),
                   arg={"path": path, "mode": mode, "autorename": False, "mute": True})
         if r.status_code == 200:
+            _CACHE["t"] = 0
             return
         if r.status_code == 409 and "conflict" in r.text:
             time.sleep(0.5)
             continue
         raise DropboxError(f"log update failed ({r.status_code}): {r.text[:200]}")
     raise DropboxError("log update kept colliding with another export; will retry")
+
+
+_CACHE = {"t": 0.0, "rows": None}
+
+
+def read_log(max_age=60):
+    """The log's rows, newest last (cached a minute)."""
+    if _CACHE["rows"] is not None and time.time() - _CACHE["t"] < max_age:
+        return _CACHE["rows"]
+    data, _ = download(f"{root()}/{LOG_NAME}")
+    rows = _rows(data.decode("utf-8-sig", errors="replace")) if data else []
+    _CACHE.update(t=time.time(), rows=rows)
+    return rows
+
+
+def log_csv_bytes():
+    data, _ = download(f"{root()}/{LOG_NAME}")
+    return data or _csv([])
+
+
+def fetch_file(path):
+    """A filed proof or virtual, for the log page. Only paths inside the root."""
+    p = "/" + str(path or "").strip("/")
+    r = root()
+    if ".." in p.split("/") or not p.startswith((r or "") + "/") or p.endswith("/" + LOG_NAME):
+        return None
+    data, _ = download(p)
+    return data
 
 
 # ── queue ───────────────────────────────────────────────────────────────────
@@ -257,17 +291,21 @@ def _send(d):
     stamp = when.replace(":", "")
     folder = f"{root()}/{clean(rec.get('company'), 'No company')}/{clean(rec.get('project'), 'No project')}"
     if not rec.get("_uploaded"):
+        put = []
         for name in rec.get("files") or []:
-            upload(f"{folder}/{stamp} {name}", (d / name).read_bytes())
+            j = upload(f"{folder}/{stamp} {name}", (d / name).read_bytes())
+            put.append((j.get("path_display") or f"{folder}/{stamp} {name}").rsplit("/", 1)[-1])
         upload(f"{folder}/{stamp} details.txt", details_text(rec).encode("utf-8"))
-        rec["_uploaded"] = True       # don't upload twice if only the log row failed
+        rec["_uploaded"] = True
+        rec["_put"] = put       # don't upload twice if only the log row failed
         (d / "record.json").write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
     append_log({
         "Date (Central)": when, "Project": rec.get("project", ""), "Company": rec.get("company", ""),
         "Name": rec.get("name", ""), "Email": rec.get("email", ""), "Notes": rec.get("notes", ""),
         "Item #": rec.get("item_id", ""), "Item": rec.get("item", ""),
         "Details": " | ".join(f"{a}: {b}" for a, b in rec.get("details") or []),
-        "Files": ", ".join(rec.get("files") or []), "Dropbox folder": folder,
+        "How": ", ".join(rec.get("how") or []),
+        "Files": " | ".join(rec.get("_put") or rec.get("files") or []), "Dropbox folder": folder,
     })
 
 
@@ -278,7 +316,8 @@ def details_text(rec):
              f"Name       {rec.get('name', '')}",
              f"Email      {rec.get('email', '')}",
              f"Notes      {rec.get('notes', '')}",
-             f"Item       {rec.get('item_id', '')} {rec.get('item', '')}".rstrip(), ""]
+             f"Item       {rec.get('item_id', '')} {rec.get('item', '')}".rstrip(),
+             f"How        {', '.join(rec.get('how') or []) or 'on their own'}", ""]
     for a, b in rec.get("details") or []:
         lines.append(f"{a}: {b}")
     lines += ["", "Files: " + ", ".join(rec.get("files") or [])]

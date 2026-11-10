@@ -4785,7 +4785,8 @@ def _log_write(serve_dir, meta, fallback=None):
                "company": cap(c.get("company"), 60), "name": cap(c.get("name"), 60),
                "email": cap(c.get("email"), 80), "notes": cap(c.get("notes"), 300),
                "item_id": pid, "item": cap(re.sub(r"\s*-\s*" + re.escape(pid) + r"$", "", str(p.get("name") or p.get("label") or "")), 120),
-               "details": det}
+               "details": det,
+               "how": [cap(x, 40) for x in (a.get("how") or []) if isinstance(x, str)][:8]}
         (Path(serve_dir) / "_log.json").write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
     except Exception as e:
         print(f"⚠️ export log details not kept: {e}")
@@ -4820,6 +4821,64 @@ def _log_send(root):
 def dropbox_setup():
     import export_log
     return export_log.setup_page(request)
+
+
+def _log_key_ok():
+    import hmac
+    k = (os.environ.get("DROPBOX_SETUP_KEY") or "").strip()
+    return bool(k) and hmac.compare_digest((request.args.get("key") or "").strip().encode(), k.encode())
+
+
+@app.route("/export-log")
+def export_log_page():
+    """How customers use the site: the export log, for Numo (setup key)."""
+    if not _log_key_ok():
+        return "Not found.", 404
+    return send_file(str(HERE / "static" / "export-log.html"))
+
+
+@app.route("/api/export-log/data")
+def export_log_data():
+    import export_log
+    if not _log_key_ok():
+        return jsonify({"error": "Unknown."}), 404
+    if not export_log.enabled():
+        return jsonify({"error": "Dropbox isn't connected yet - see /dropbox-setup."}), 409
+    try:
+        rows = export_log.read_log(0 if request.args.get("fresh") else 60)
+    except Exception as e:
+        return jsonify({"error": f"Couldn't read the log from Dropbox: {e}"}), 502
+    return jsonify({"rows": rows, "root": export_log.root(), "waiting": len(export_log.pending())})
+
+
+@app.route("/api/export-log/file")
+def export_log_file():
+    import export_log, mimetypes
+    if not _log_key_ok():
+        return jsonify({"error": "Unknown."}), 404
+    path = request.args.get("path") or ""
+    try:
+        data = export_log.fetch_file(path)
+    except Exception as e:
+        return jsonify({"error": f"Dropbox: {e}"}), 502
+    if data is None:
+        return jsonify({"error": "Not found."}), 404
+    name = path.rsplit("/", 1)[-1]
+    mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
+    return send_file(io.BytesIO(data), mimetype=mime, download_name=name,
+                     as_attachment=request.args.get("dl") == "1")
+
+
+@app.route("/api/export-log/csv")
+def export_log_csv():
+    import export_log
+    if not _log_key_ok():
+        return jsonify({"error": "Unknown."}), 404
+    try:
+        data = export_log.log_csv_bytes()
+    except Exception as e:
+        return jsonify({"error": f"Dropbox: {e}"}), 502
+    return send_file(io.BytesIO(data), mimetype="text/csv", download_name="Export Log.csv", as_attachment=True)
 
 
 @app.route("/api/export-combine", methods=["POST"])

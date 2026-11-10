@@ -264,3 +264,20 @@ static/assets/ (the four 4CP items, 5010/5020 items); static/sandbox/items/
   3. Open https://<client site>/dropbox-setup?key=<your setup key>, sign in,
      follow Step 1 and 2, copy the refresh token into Railway as
      DROPBOX_REFRESH_TOKEN. Reload the page and press "Test the connection".
+- Dropbox app permissions: account_info.read, files.content.write,
+  files.content.read (Submit on the Permissions tab, then reconnect on
+  /dropbox-setup - an old token keeps its old permissions).
+
+## Customer exports page (2026-11-10)
+- https://<client site>/export-log?key=<DROPBOX_SETUP_KEY> (same key as the
+  setup page). Reads Export Log.csv from Dropbox: tiles (exports, companies,
+  repeat companies, people, projects, colorways per order, share using Gweg,
+  revisions from old proofs), exports per day/week, a day x hour heat map
+  (Central), items, how they built it (Gweg chat, talked to Gweg, revised an
+  old proof, filled-in template, on their own), product colors, ink colors,
+  colorways per order, art placement, a sortable companies table (click for
+  their history) and every export with links to its proof and virtuals.
+  Filters: dates, company, item, search. CSV download.
+- New log column "How" (filled from the page: Gweg chat / talked to Gweg /
+  revised an old proof / filled-in template / colorways). Older logs get the
+  column added on the next export.

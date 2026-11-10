@@ -306,7 +306,8 @@ window.askSend = async function(){
   const t = $("ask-text"); const text = t.value.trim();
   if(MIC.conv && !MIC.used) convEnd();         // they typed and pressed Send
   if(!text && !A.pending.length) return;
-  A.spoken = !!MIC.used; MIC.used = false;      // answer out loud only when they talked
+  A.spoken = !!MIC.used; MIC.used = false;
+  if(A.spoken) A.spokeEver = true;      // answer out loud only when they talked
   voStop();
   t.value = ""; t.style.height = "auto";
   const ids = A.pending; A.pending = []; renderPending();

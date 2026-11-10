@@ -222,7 +222,19 @@ rep(`    return {artist: "", customer: co || nm,
     return {artist: "", customer: co || nm,
             note: [\`From \${nm}\${co ? ", " + co : ""} · \${em}\`, nt].filter(Boolean).join(" — ").slice(0, 600),
             revision: null, project: custVal("export-name-input"),
-            contact: {name: nm, company: co, email: em, notes: nt}, summary};`);
+            contact: {name: nm, company: co, email: em, notes: nt}, summary, how: custHow()};`);
+rep('async function _restoreBundleCore(b){\n  const job = b.job, fb = document.getElementById("fb");\n  RESTORE.token = b.token;',
+    'async function _restoreBundleCore(b){\n  const job = b.job, fb = document.getElementById("fb");\n  RESTORE.token = b.token;\n  RESTORE.source = job.source || "proof";');
+rep('function custVal(id){', '// How the customer built this one, for the export log.\n'
+  + 'function custHow(){\n'
+  + '  const h = [], A = window.ASK;\n'
+  + '  if(A?.msgs?.length) h.push("Gweg chat");\n'
+  + '  if(A?.spokeEver) h.push("talked to Gweg");\n'
+  + '  if(RESTORE.token) h.push(RESTORE.source === "tif_template" ? "filled-in template" : "revised an old proof");\n'
+  + '  if(typeof VAR !== "undefined" && VAR.list?.length > 1) h.push("colorways");\n'
+  + '  return h;\n'
+  + '}\n'
+  + 'function custVal(id){');
 
 // ── One-color ink follows the art's color (2026-10-29) ─────────────────────
 {

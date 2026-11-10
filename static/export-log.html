@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Customer exports</title>
+<style>
+:root{--bg:#faf7f2;--card:#fff;--line:#e8dfd0;--soft:#f0e8dc;--ink:#2a2622;--muted:#7a6a52;--brand:#6d1f2a;--brand-soft:#f3e3e5;--ok:#2f6b3a;--warn:#fff3df;--warnline:#e7c58c}
+*{box-sizing:border-box}
+body{font:14px/1.45 system-ui,sans-serif;margin:0;padding:24px 16px 60px;background:var(--bg);color:var(--ink)}
+main{max-width:1180px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.sub{margin:0 0 10px;color:var(--muted);font-size:13px}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:16px;min-width:0}
+.btn{display:inline-block;background:var(--brand);color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none;border:0;font:inherit;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--brand);border:1px solid #c9b8a0}
+.warn{background:var(--warn);border:1px solid var(--warnline);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;align-items:end}
+.filters label{display:flex;flex-direction:column;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);gap:3px}
+.filters input,.filters select{font:13px system-ui,sans-serif;padding:6px 8px;border:1px solid #d9cbb5;border-radius:7px;background:#fff;color:var(--ink);min-width:0;width:100%}
+.filters .wide{grid-column:span 2}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:10px;margin-bottom:16px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.tile span{font-size:12px;color:var(--muted)} .tile b{display:block;font-size:24px;line-height:1.25;font-variant-numeric:tabular-nums}
+.tile small{display:block;color:var(--muted);font-size:11.5px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:16px}
+.two section{margin:0}
+/* weekly bars */
+.cols{display:flex;align-items:flex-end;gap:2px;height:150px;border-bottom:1px solid var(--line);padding-top:8px}
+.cols .c{flex:1 1 0;min-width:3px;display:flex;flex-direction:column;justify-content:flex-end;height:100%;cursor:default}
+.cols .c i{display:block;background:var(--brand);border-radius:4px 4px 0 0;min-height:1px}
+.cols .c:hover i{background:#8d2c3a}
+.axis{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
+/* bar lists */
+.hb{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:4px 10px;align-items:center;font-size:13px}
+.hb .lab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb .track{height:12px;border-radius:0 4px 4px 0;background:transparent;position:relative}
+.hb .track i{position:absolute;left:0;top:0;bottom:0;background:var(--brand);border-radius:0 4px 4px 0;min-width:2px}
+.hb .v{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;text-align:right;white-space:nowrap}
+.hb .row{display:contents;cursor:default}
+.empty{color:var(--muted);font-size:13px}
+/* heat grid */
+.heat{display:grid;grid-template-columns:34px repeat(24,1fr);gap:2px;font-size:10.5px;color:var(--muted)}
+.heat div{height:18px;border-radius:3px}
+.heat .h{height:auto;text-align:center}
+.heat .d{height:auto;align-self:center}
+.heat .cell{background:#f6efe6}
+.legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:16px;height:10px;border-radius:2px}
+/* tables */
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+td,th{padding:6px 8px;border-bottom:1px solid var(--soft);text-align:left;font-size:13px;vertical-align:top}
+th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;background:#fffdf9;position:sticky;top:0;white-space:nowrap}
+th.s{cursor:pointer;user-select:none} th.s:hover{color:var(--brand)} th .ar{font-size:9px}
+td.nw{white-space:nowrap}
+.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.co{cursor:pointer} tr.co:hover td{background:#fffaf2}
+tr.co td:first-child::before{content:"▸ ";color:var(--muted)} tr.co.open td:first-child::before{content:"▾ "}
+tr.sub td{background:#fcf9f4;font-size:12.5px} tr.sub td:first-child{padding-left:24px}
+.pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11.5px;border:1px solid var(--line);background:#fffdf9;margin:0 3px 3px 0;white-space:nowrap}
+.pill.g{background:#f6f0ff;border-color:#d8c9f0;color:#5b3d8a}
+.pill.r{background:#eaf2fb;border-color:#b9d0ea;color:#244d7a}
+.pill.c{background:#eaf5ec;border-color:#bcdcc3;color:#2f6b3a}
+.files a{display:inline-block;margin:0 6px 2px 0;color:var(--brand);font-size:12.5px;white-space:nowrap}
+.note{max-width:260px;color:var(--ink)}
+.muted{color:var(--muted)}
+.more{margin-top:8px}
+#tip{position:fixed;pointer-events:none;background:#2a2622;color:#fff;font-size:12px;padding:6px 9px;border-radius:7px;z-index:9;display:none;max-width:280px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+#tip b{font-weight:600}
+@media (max-width:600px){.filters .wide{grid-column:span 1}.two{grid-template-columns:1fr}.heat{font-size:9px}}
+</style></head>
+<body><main>
+<h1>Customer exports · This Is Fast</h1>
+<p class="sub">Who's using the client site, what they build, and how - from every proof a customer downloads.</p>
+<div id="warn"></div>
+<div class="bar">
+  <a class="btn" id="csv" href="#">Download the log (CSV)</a>
+  <button class="btn ghost" id="refresh" type="button">Refresh</button>
+  <span class="sub" id="stamp" style="margin:0"></span>
+</div>
+
+<section>
+  <h2>Filters</h2>
+  <div class="filters">
+    <label>From<input type="date" id="f-from"></label>
+    <label>To<input type="date" id="f-to"></label>
+    <label>Company<select id="f-co"><option value="">All</option></select></label>
+    <label>Item<select id="f-item"><option value="">All</option></select></label>
+    <label class="wide">Search<input id="f-q" placeholder="Project, company, name, email, color, notes…"></label>
+    <div><button class="btn ghost" id="f-clear" type="button">Clear filters</button></div>
+  </div>
+</section>
+
+<div class="tiles" id="tiles"></div>
+
+<div class="two">
+  <section>
+    <h2 id="trendTitle">Exports per week</h2>
+    <div id="trend"></div>
+  </section>
+  <section>
+    <h2>When customers export</h2>
+    <p class="sub" style="margin-top:-4px">Day and hour, Central time. Darker = more exports.</p>
+    <div id="heat"></div>
+  </section>
+</div>
+
+<div class="two">
+  <section><h2>Items</h2><div id="items"></div></section>
+  <section><h2>How they built it</h2><p class="sub" style="margin-top:-4px">Share of exports. One export can use several.</p><div id="how"></div></section>
+</div>
+
+<div class="two">
+  <section><h2>Product colors</h2><p class="sub" style="margin-top:-4px">Every colorway counts.</p><div id="colors"></div></section>
+  <section><h2>Ink colors</h2><div id="inks"></div></section>
+</div>
+
+<div class="two">
+  <section><h2>Colorways per order</h2><div id="cw"></div></section>
+  <section><h2>Art placement</h2><div id="sides"></div></section>
+</div>
+
+<section>
+  <h2>Companies</h2>
+  <p class="sub">One row per company. Click a row for every export they made.</p>
+  <div class="scroll"><table id="cos"></table></div>
+  <button class="btn ghost more" id="cosMore" type="button" hidden>Show more</button>
+</section>
+
+<section>
+  <h2>All exports</h2>
+  <p class="sub">Newest first. File links open the proof and virtuals straight from Dropbox.</p>
+  <div class="scroll"><table id="ex"></table></div>
+  <button class="btn ghost more" id="exMore" type="button" hidden>Show more</button>
+</section>
+</main>
+<div id="tip" role="tooltip"></div>
+
+<script>
+const KEY = new URLSearchParams(location.search).get("key") || "";
+const $ = id => document.getElementById(id);
+const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const api = (p, extra) => `${p}?key=${encodeURIComponent(KEY)}${extra || ""}`;
+let ROWS = [], ROOT = "", F = [], cosLimit = 25, exLimit = 50, cosSort = {k: "last", d: -1};
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const NOT_COLOR = /^(product|colors on this order|ink color|stitching|also in this order|background)$/i;
+
+// ── parse one log row ────────────────────────────────────────────────────────
+function parse(r){
+  const when = String(r["Date (Central)"] || "");
+  const m = when.match(/^(\d{4})-(\d\d)-(\d\d)(?: (\d\d):(\d\d))?/);
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)) : null;
+  const det = {}; const order = [];
+  for(const part of String(r.Details || "").split(" | ")){
+    const i = part.indexOf(":"); if(i < 1) continue;
+    const k = part.slice(0, i).trim(), v = part.slice(i + 1).trim();
+    det[k] = v; order.push(k);
+  }
+  const sizeKeys = order.filter(k => /″\s*×|"\s*x|\d\.\d\d.*×/.test(det[k]));
+  let colors = [], inks = [];
+  if(det["Colors on this order"]){
+    for(const cw of det["Colors on this order"].split(";").map(s => s.trim()).filter(Boolean)){
+      colors.push(cw.split(/\s\/\s|\s·\s/)[0].trim());
+      const ink = cw.split(" · ")[1]; if(ink) inks.push(...ink.split(" + ").map(s => s.trim()));
+    }
+  } else {
+    const k = order.find(k => !NOT_COLOR.test(k) && !sizeKeys.includes(k));
+    if(k) colors.push(det[k]);
+  }
+  if(!inks.length && det["Ink color"]) inks.push(det["Ink color"]);
+  inks = [...new Set(inks.map(x => x.replace(/^PANTONE\s*/i, "")))];
+  const how = String(r.How || "").split(",").map(s => s.trim()).filter(Boolean);
+  const fl = String(r.Files || ""), folder = String(r["Dropbox folder"] || "");
+  const files = (fl.includes(" | ") ? fl.split(" | ") : fl.split(", ")).map(s => s.trim()).filter(Boolean);
+  const stamp = when.replace(":", "");
+  return {
+    raw: r, d, when, day: m ? `${m[1]}-${m[2]}-${m[3]}` : "", project: r.Project || "", company: (r.Company || "").trim() || "(no company)",
+    name: r.Name || "", email: (r.Email || "").trim().toLowerCase(), notes: r.Notes || "", itemId: r["Item #"] || "",
+    item: r.Item || r["Item #"] || "(unknown)", det, colors, inks, how, colorways: Math.max(1, colors.length),
+    places: sizeKeys, files: files.map(f => ({name: f, path: folder + "/" + (f.startsWith(stamp) || /^\d{4}-\d\d-\d\d \d{4} /.test(f) ? f : stamp + " " + f)})),
+    text: [r.Project, r.Company, r.Name, r.Email, r.Notes, r.Item, r["Item #"], r.Details, r.How].join(" ").toLowerCase()
+  };
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+const count = (arr, key) => { const m = new Map(); for(const x of arr){ const k = key(x); if(k == null || k === "") continue; m.set(k, (m.get(k) || 0) + 1); } return m; };
+const countMany = (arr, keys) => { const m = new Map(); for(const x of arr) for(const k of keys(x)) if(k) m.set(k, (m.get(k) || 0) + 1); return m; };
+const pct = (a, b) => b ? Math.round(100 * a / b) + "%" : "-";
+const fmtDay = d => d ? d.toLocaleDateString("en-US", {month: "short", day: "numeric", year: "numeric"}) : "";
+function tipOn(el, html){ el.dataset.tip = html; }
+document.addEventListener("mousemove", e => {
+  const t = e.target.closest?.("[data-tip]"), tip = $("tip");
+  if(!t){ tip.style.display = "none"; return; }
+  tip.innerHTML = t.dataset.tip; tip.style.display = "block";
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(innerWidth - w - 8, e.clientX + 12) + "px";
+  tip.style.top = (e.clientY - h - 12 < 4 ? e.clientY + 16 : e.clientY - h - 12) + "px";
+});
+
+function barList(el, map, total, opts = {}){
+  const rows = [...map.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(b[0]));
+  if(!rows.length){ el.innerHTML = `<p class="empty">Nothing yet.</p>`; return; }
+  const top = rows.slice(0, opts.limit || 10), rest = rows.slice(opts.limit || 10);
+  if(rest.length) top.push([`${rest.length} more`, rest.reduce((a, r) => a + r[1], 0)]);
+  const max = Math.max(...top.map(r => r[1]));
+  el.innerHTML = `<div class="hb">` + top.map(([k, v]) => {
+    const share = total ? ` (${pct(v, total)})` : "";
+    return `<div class="row" data-tip="<b>${esc(k)}</b><br>${v} ${opts.unit || "export"}${v === 1 ? "" : "s"}${share}">`
+      + `<span class="lab" title="${esc(k)}">${esc(k)}</span><span class="track"><i style="width:${(100 * v / max).toFixed(1)}%"></i></span>`
+      + `<span class="v">${v}${opts.pct && total ? " · " + pct(v, total) : ""}</span></div>`;
+  }).join("") + `</div>`;
+}
+
+// ── render ───────────────────────────────────────────────────────────────────
+function applyFilters(){
+  const from = $("f-from").value, to = $("f-to").value, co = $("f-co").value, it = $("f-item").value;
+  const q = $("f-q").value.trim().toLowerCase();
+  F = ROWS.filter(r => (!from || r.day >= from) && (!to || r.day <= to) && (!co || r.company === co)
+                      && (!it || r.item === it) && (!q || q.split(/\s+/).every(w => r.text.includes(w))));
+  render();
+}
+
+function render(){
+  const n = F.length;
+  const companies = count(F, r => r.company), people = new Set(F.map(r => r.email || r.name).filter(Boolean));
+  const repeat = [...companies.values()].filter(v => v > 1).length;
+  const cwAvg = n ? (F.reduce((a, r) => a + r.colorways, 0) / n) : 0;
+  const gweg = F.filter(r => r.how.some(h => /gweg/i.test(h))).length;
+  const rev = F.filter(r => r.how.includes("revised an old proof")).length;
+  const now = new Date(), wk = new Date(now - 7 * 864e5);
+  const last7 = F.filter(r => r.d && r.d >= wk).length;
+  const tiles = [
+    ["Exports", n, `${last7} in the last 7 days`],
+    ["Companies", companies.size, `${repeat} came back (${pct(repeat, companies.size)})`],
+    ["People", people.size, n ? `${(n / Math.max(1, people.size)).toFixed(1)} exports each` : ""],
+    ["Projects", new Set(F.map(r => r.company + "|" + r.project)).size, ""],
+    ["Colorways / order", n ? cwAvg.toFixed(1) : "-", `${F.filter(r => r.colorways > 1).length} orders with more than one`],
+    ["Used Gweg", pct(gweg, n), `${gweg} export${gweg === 1 ? "" : "s"}`],
+    ["Revised an old proof", rev, pct(rev, n) + " of exports"],
+  ];
+  $("tiles").innerHTML = tiles.map(([a, b, c]) => `<div class="tile"><span>${esc(a)}</span><b>${esc(b)}</b><small>${esc(c)}</small></div>`).join("");
+
+  renderTrend(); renderHeat();
+  barList($("items"), count(F, r => r.item), n, {pct: true});
+  const hows = countMany(F, r => r.how.length ? r.how.filter(h => h !== "colorways") : ["on their own"]);
+  barList($("how"), hows, n, {pct: true});
+  barList($("colors"), countMany(F, r => r.colors), 0, {unit: "time", limit: 12});
+  barList($("inks"), countMany(F, r => r.inks), 0, {unit: "time", limit: 12});
+  barList($("cw"), count(F, r => r.colorways >= 4 ? "4 or more" : r.colorways + (r.colorways === 1 ? " color" : " colors")), n, {pct: true});
+  barList($("sides"), count(F, r => r.places.length ? r.places.join(" + ") : "(not recorded)"), n, {pct: true});
+  renderCompanies(); renderExports();
+}
+
+function renderTrend(){
+  const el = $("trend");
+  const dated = F.filter(r => r.d);
+  if(!dated.length){ el.innerHTML = `<p class="empty">Nothing yet.</p>`; return; }
+  const min = new Date(Math.min(...dated.map(r => r.d))), max = new Date(Math.max(...dated.map(r => r.d)));
+  const spanDays = (max - min) / 864e5;
+  const daily = spanDays <= 45;
+  $("trendTitle").textContent = daily ? "Exports per day" : "Exports per week";
+  const keyOf = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); if(!daily){ x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); } return x; };
+  const buckets = new Map();
+  for(let x = keyOf(min); x <= max; x = new Date(x.getFullYear(), x.getMonth(), x.getDate() + (daily ? 1 : 7))) buckets.set(+x, 0);
+  for(const r of dated){ const k = +keyOf(r.d); buckets.set(k, (buckets.get(k) || 0) + 1); }
+  const arr = [...buckets.entries()].sort((a, b) => a[0] - b[0]);
+  const top = Math.max(1, ...arr.map(a => a[1]));
+  el.innerHTML = `<div class="cols">` + arr.map(([k, v]) => {
+    const d = new Date(k), lbl = daily ? fmtDay(d) : "Week of " + fmtDay(d);
+    return `<div class="c" data-tip="<b>${esc(lbl)}</b><br>${v} export${v === 1 ? "" : "s"}"><i style="height:${v ? Math.max(2, 100 * v / top) : 0}%"></i></div>`;
+  }).join("") + `</div><div class="axis"><span>${esc(fmtDay(new Date(arr[0][0])))}</span><span>peak ${top}</span><span>${esc(fmtDay(new Date(arr[arr.length - 1][0])))}</span></div>`;
+}
+
+function renderHeat(){
+  const g = Array.from({length: 7}, () => Array(24).fill(0));
+  for(const r of F) if(r.d) g[(r.d.getDay() + 6) % 7][r.d.getHours()]++;
+  const top = Math.max(0, ...g.flat());
+  if(!top){ $("heat").innerHTML = `<p class="empty">Nothing yet.</p>`; return; }
+  const steps = [0.14, 0.32, 0.55, 0.78, 1];
+  const shade = v => v ? `rgba(109,31,42,${steps[Math.min(4, Math.floor(4.999 * v / top))]})` : "";
+  const hr = h => h === 0 ? "12a" : h < 12 ? h + "a" : h === 12 ? "12p" : (h - 12) + "p";
+  let html = `<div class="heat"><div class="h"></div>` + Array.from({length: 24}, (_, h) => `<div class="h">${h % 3 ? "" : hr(h)}</div>`).join("");
+  g.forEach((row, i) => {
+    html += `<div class="d">${DAYS[i]}</div>` + row.map((v, h) =>
+      `<div class="cell" style="${v ? "background:" + shade(v) : ""}" data-tip="<b>${DAYS[i]} ${hr(h)}-${hr((h + 1) % 24)}</b><br>${v} export${v === 1 ? "" : "s"}"></div>`).join("");
+  });
+  html += `</div><div class="legend">Fewer ${steps.map(s => `<i style="background:rgba(109,31,42,${s})"></i>`).join("")} More</div>`;
+  $("heat").innerHTML = html;
+}
+
+function companyRows(){
+  const by = new Map();
+  for(const r of F){
+    const c = by.get(r.company) || {company: r.company, n: 0, projects: new Set(), people: new Set(), items: new Set(), first: null, last: null, cw: 0, rows: []};
+    c.n++; c.projects.add(r.project); if(r.email || r.name) c.people.add(r.email || r.name); c.items.add(r.item); c.cw += r.colorways;
+    if(r.d){ if(!c.first || r.d < c.first) c.first = r.d; if(!c.last || r.d > c.last) c.last = r.d; }
+    c.rows.push(r); by.set(r.company, c);
+  }
+  const list = [...by.values()];
+  const val = c => ({company: c.company.toLowerCase(), n: c.n, projects: c.projects.size, people: c.people.size,
+                     items: c.items.size, cw: c.cw, first: +c.first || 0, last: +c.last || 0})[cosSort.k];
+  list.sort((a, b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * cosSort.d);
+  return list;
+}
+function renderCompanies(){
+  const list = companyRows();
+  const cols = [["company", "Company"], ["n", "Exports"], ["projects", "Projects"], ["people", "People"], ["items", "Items"], ["cw", "Colorways"], ["first", "First"], ["last", "Latest"]];
+  const head = `<tr>` + cols.map(([k, l]) => `<th class="s${k === "company" ? "" : " n"}" data-k="${k}">${l}${cosSort.k === k ? ` <span class="ar">${cosSort.d > 0 ? "▲" : "▼"}</span>` : ""}</th>`).join("") + `</tr>`;
+  const body = list.slice(0, cosLimit).map((c, i) =>
+    `<tr class="co" data-i="${i}"><td>${esc(c.company)}</td><td class="n">${c.n}</td><td class="n">${c.projects.size}</td><td class="n">${c.people.size}</td>`
+    + `<td class="n" title="${esc([...c.items].join(", "))}">${c.items.size}</td><td class="n">${c.cw}</td><td class="n">${esc(fmtDay(c.first))}</td><td class="n">${esc(fmtDay(c.last))}</td></tr>`).join("");
+  $("cos").innerHTML = `<thead>${head}</thead><tbody>${body || `<tr><td colspan="8" class="empty">Nothing yet.</td></tr>`}</tbody>`;
+  $("cosMore").hidden = list.length <= cosLimit;
+  $("cos").querySelectorAll("th.s").forEach(th => th.onclick = () => {
+    const k = th.dataset.k; cosSort = {k, d: cosSort.k === k ? -cosSort.d : (k === "company" ? 1 : -1)}; renderCompanies();
+  });
+  $("cos").querySelectorAll("tr.co").forEach(tr => tr.onclick = () => {
+    const open = tr.classList.toggle("open");
+    if(!open){ let n = tr.nextElementSibling; while(n && n.classList.contains("sub")){ const x = n.nextElementSibling; n.remove(); n = x; } return; }
+    const c = list[+tr.dataset.i];
+    const subs = [...c.rows].sort((a, b) => (b.d || 0) - (a.d || 0)).map(r =>
+      `<tr class="sub"><td colspan="2">${esc(r.when)}</td><td colspan="2">${esc(r.project)}</td><td colspan="2">${esc(r.item)} · ${esc(r.colors.join(", "))}</td><td colspan="2">${esc(r.name)}${r.email ? " · " + esc(r.email) : ""}</td></tr>`).join("");
+    tr.insertAdjacentHTML("afterend", subs);
+  });
+}
+
+function howPills(r){
+  return r.how.map(h => `<span class="pill ${/gweg/i.test(h) ? "g" : /proof|template/.test(h) ? "r" : "c"}">${esc(h)}</span>`).join("") || `<span class="muted">on their own</span>`;
+}
+function renderExports(){
+  const list = [...F].sort((a, b) => (b.d || 0) - (a.d || 0));
+  const head = `<tr><th>Date</th><th>Project</th><th>Company</th><th>Person</th><th>Item</th><th>Colors</th><th>Ink</th><th>How</th><th>Notes</th><th>Files</th></tr>`;
+  const body = list.slice(0, exLimit).map(r => `<tr>
+    <td class="nw">${esc(r.when)}</td><td>${esc(r.project)}</td><td>${esc(r.company)}</td>
+    <td>${esc(r.name)}${r.email ? `<br><a href="mailto:${esc(r.email)}" class="muted">${esc(r.email)}</a>` : ""}</td>
+    <td>${esc(r.item)}</td><td>${esc(r.colors.join(", "))}</td><td class="nw">${esc(r.inks.join(", "))}</td>
+    <td>${howPills(r)}</td><td class="note">${esc(r.notes)}</td>
+    <td class="files">${r.files.map(f => `<a href="${esc(api("/api/export-log/file", "&path=" + encodeURIComponent(f.path)))}" target="_blank" rel="noopener">${/proof/i.test(f.name) ? "Proof" : /virtual/i.test(f.name) ? "Virtual" + (f.name.match(/VIRTUAL-([A-Z0-9-]+)\./)?.[1] ? " " + esc(f.name.match(/VIRTUAL-([A-Z0-9-]+)\./)[1].split("-")[0].toLowerCase()) : "") : "File"}</a>`).join("")}</td>
+  </tr>`).join("");
+  $("ex").innerHTML = `<thead>${head}</thead><tbody>${body || `<tr><td colspan="10" class="empty">Nothing yet.</td></tr>`}</tbody>`;
+  $("exMore").hidden = list.length <= exLimit;
+}
+
+function fillSelect(id, values){
+  const el = $(id), cur = el.value;
+  el.innerHTML = `<option value="">All</option>` + [...values].sort((a, b) => a.localeCompare(b)).map(v => `<option>${esc(v)}</option>`).join("");
+  if(values.has(cur)) el.value = cur;
+}
+
+async function load(fresh){
+  $("warn").innerHTML = "";
+  $("stamp").textContent = "Loading…";
+  try{
+    const r = await fetch(api("/api/export-log/data", fresh ? "&fresh=1" : ""), {cache: "no-store"});
+    const j = await r.json();
+    if(!r.ok || j.error) throw new Error(j.error || "Couldn't load the log.");
+    ROOT = j.root;
+    ROWS = j.rows.map(parse);
+    // "Acme Co." and "acme co" are one company: group on letters and numbers,
+    // shown with the spelling they used most.
+    const names = new Map();
+    for(const r of ROWS){ const k = r.company.toLowerCase().replace(/[^a-z0-9]+/g, ""); const m = names.get(k) || new Map(); m.set(r.company, (m.get(r.company) || 0) + 1); names.set(k, m); }
+    for(const r of ROWS){ const m = names.get(r.company.toLowerCase().replace(/[^a-z0-9]+/g, "")); r.company = [...m.entries()].sort((a, b) => b[1] - a[1])[0][0]; }
+    fillSelect("f-co", new Set(ROWS.map(r => r.company)));
+    fillSelect("f-item", new Set(ROWS.map(r => r.item)));
+    $("stamp").textContent = `${ROWS.length} exports · updated ${new Date().toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})}`
+      + (j.waiting ? ` · ${j.waiting} waiting to reach Dropbox` : "");
+    applyFilters();
+  }catch(e){
+    $("stamp").textContent = "";
+    $("warn").innerHTML = `<div class="warn">${esc(e.message)}</div>`;
+  }
+}
+
+$("csv").href = api("/api/export-log/csv");
+$("refresh").onclick = () => load(true);
+["f-from", "f-to", "f-co", "f-item"].forEach(id => $(id).onchange = applyFilters);
+$("f-q").oninput = applyFilters;
+$("f-clear").onclick = () => { ["f-from", "f-to", "f-co", "f-item", "f-q"].forEach(id => $(id).value = ""); applyFilters(); };
+$("cosMore").onclick = () => { cosLimit += 25; renderCompanies(); };
+$("exMore").onclick = () => { exLimit += 50; renderExports(); };
+load();
+</script>
+</body></html>
