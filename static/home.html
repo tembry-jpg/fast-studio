@@ -256,6 +256,13 @@
   .recent .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
   .filters-btn { display: none; }
   .landing-search { margin-top: 26px; max-width: 560px; }
+  .rev-old { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; max-width: 760px; }
+  .rev-btn { font: inherit; font-size: 13.5px; font-weight: 600; color: var(--accent); background: #fff; cursor: pointer;
+             border: 1.5px solid var(--accent); border-radius: 999px; padding: 8px 16px; }
+  .rev-btn:hover { background: rgba(107,26,42,.06); }
+  .rev-btn:disabled { opacity: .6; cursor: default; }
+  .rev-sub { font-size: 13px; color: var(--muted); flex: 1 1 260px; }
+  .rev-msg { flex-basis: 100%; font-size: 13px; color: var(--accent); min-height: 0; }
   @media (max-width: 860px) {
     .cat { grid-template-columns: 1fr; }
     .cat-side { position: static; display: none; background: var(--card); border: 1px solid var(--border);
@@ -320,6 +327,12 @@
       <div class="tif-kicker" id="cat-kicker">All items</div>
       <div class="tif-title" id="cat-title">Find an item</div>
       <div class="tif-sub" id="cat-sub">Search by name, item number or material, or narrow it down with the filters.</div>
+      <div class="rev-old">
+      <button type="button" class="rev-btn" onclick="document.getElementById('rev-fi').click()">↺ Revise an old proof</button>
+      <span class="rev-sub">Drop in a digital proof we made for you - your item, colors and art come right back, ready to change.</span>
+      <input type="file" id="rev-fi" accept=".pdf" style="display:none" onchange="reviseOld(this)">
+      <div class="rev-msg" id="rev-msg" role="status"></div>
+    </div>
     </div>
     <div class="cat-top">
       <div class="search">
@@ -680,5 +693,29 @@ async function init() {
 init();
 </script>
 <script src="/static/client.js" defer></script>
+<script>
+// Revise an old proof: the proof carries the whole job, so the server reads
+// it and the item page opens with everything back in place.
+async function reviseOld(inp){
+  const f = inp.files && inp.files[0]; inp.value = "";
+  if(!f) return;
+  const msg = document.getElementById("rev-msg"), btn = document.querySelector(".rev-btn");
+  msg.textContent = "Reading your proof…"; btn.disabled = true;
+  try{
+    const fd = new FormData(); fd.append("file", f, f.name);
+    const r = await fetch("/api/restore", {method: "POST", body: fd});
+    const b = await r.json().catch(() => ({}));
+    if(r.status === 401){ location.href = "/"; return; }
+    if(!r.ok || b.error){
+      const e = String(b.error || "");
+      throw new Error(b.code === "not_proof" ? "That doesn't look like one of our digital proofs. Open the item and add your art instead."
+        : /isn't in the catalog/.test(e) ? "That proof is for an item that isn't on This Is Fast. Your Numo rep can revise it for you."
+        : e || "That proof couldn't be read.");
+    }
+    if(!b.job || !b.job.pid) throw new Error("That proof doesn't say which item it's for. Open the item and add your art instead.");
+    location.href = "/" + encodeURIComponent(b.job.pid) + "?restore=" + encodeURIComponent(b.token);
+  }catch(e){ msg.textContent = "⚠ " + e.message; btn.disabled = false; }
+}
+</script>
 </body>
 </html>

@@ -424,6 +424,11 @@ body.cust .cust-hide,body.cust #artist-btn,body.cust #master-debug-btn,body.cust
 body.cust #view-toggle,body.cust #var-box,body.cust #restore-btn,body.cust #json-btn,body.cust #tif-import-row,
 body.cust #ns-card,body.cust #ns-fa-card,body.cust #export-preview,body.cust #am-after{display:none!important}
 #ink-btn,#ink-pop,#export-preview,#em-opts,#am-open-ns,.sbx-hide{display:none!important}
+body.cust .cust-rev{font:12.5px/1.45 var(--sans);color:var(--muted);margin:-2px 0 12px}
+.cust-rev a{color:var(--burgundy);font-weight:600}
+.ae-1c{margin:12px 0;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font:12.5px/1.5 var(--sans);color:var(--text)}
+.ae-1c button{display:block;margin-top:10px;width:100%}
+#oc-scrim{z-index:10020}
 .bg-tpl{font:11.5px/1.45 var(--sans);color:var(--muted);margin:2px 0 12px}
 .bg-tpl a{color:var(--burgundy)}
 #life-ov{position:fixed;inset:0;z-index:9000;background:rgba(20,16,14,.72);display:none;align-items:center;justify-content:center;padding:16px}
@@ -843,6 +848,7 @@ body.artist span.artist-only{display:inline}
   <button data-s="3" onclick="custStep(3)"><b>3</b>Review &amp; send</button>
 </div>
 <div class="cust-step-hd" id="cust-hd"></div>
+<div class="cust-only cust-rev">Have a proof from us? <a href="#" onclick="document.getElementById('restore-fi').click();return false">↺ Revise it</a> - your item, colors and art come right back.</div>
 <div id="var-box" style="display:none;margin:4px 0 10px"></div>
 <div id="pn" style="display:none">
   <div class="lbl" id="pn-lbl">Neoprene</div>
@@ -1131,6 +1137,7 @@ body.artist span.artist-only{display:inline}
         </div>
         <div class="ae-pane" id="ae-p-colors">
           <p class="ae-intro" id="ae-colors-intro"></p>
+          <div class="ae-1c" id="ae-1c" style="display:none"><b>Your art has several colors.</b> This item prints one, so you choose what prints: each color (or any single part) can <b>print</b>, be <b>knocked out</b> so the item shows through - great for eyes, letters and details inside a shape - or be <b>removed</b>.<button class="rd-btn pri" onclick="ae1cOpen()">Choose what prints</button></div>
           <div id="ae-colors-host"></div>
         </div>
         <div class="ae-pane" id="ae-p-checks"><div id="ae-checks"></div></div>
@@ -11294,7 +11301,9 @@ async function restoreFromProofFile(inp, source){
     const r = await fetch("/api/restore", {method:"POST", body:fd});
     const b = await r.json();
 
-    if(b.code === "not_proof"){ fb.textContent = "Not a proof or TIF template — pick the art from it."; apOpen(f); return; }
+    if(b.code === "not_proof"){
+      if(CUSTOMER){ fb.textContent = "⚠ That doesn't look like one of our digital proofs. Add your art in step 2 instead."; return; }
+      fb.textContent = "Not a proof or TIF template — pick the art from it."; apOpen(f); return; }
     if(!r.ok || b.error) throw new Error(b.error || "couldn't read that proof");
 
     const tifOnOrder = (b.job.source === "tif_template" || b.job.source === "4imprint") && RESTORE.ns;
@@ -11664,6 +11673,7 @@ async function _restoreBundleCore(b){
     fb.textContent = (job.nso
       ? `✓ Loaded ${job.nso}${job.revision ? " · Rev " + job.revision : ""}. `
         + `Make your changes, then export — it's set up as Rev ${rev}.`
+      : CUSTOMER ? "✓ Your proof is back. Make your changes, then send it again from Review & send."
       : "✓ Loaded the customer's proof. Make any changes, then export with the NSO number.")
       + (missing.length ? ` ⚠ Artwork for ${missing.join(", ")} couldn't be restored — add it again.` : "");
   } else {
@@ -12385,7 +12395,17 @@ document.addEventListener("keydown", ev => {
   if(!typing && ev.key === "?"){ ev.preventDefault(); aeKeys(!keys.classList.contains("on")); }
 }, true);
 
+function ae1cSlots(){ return (AE.slots || []).filter(id => S.slots[id]?.oneColor?.src); }
+function ae1cOpen(){
+  const ids = ae1cSlots(); if(!ids.length) return;
+  const sl = S.slots[ids[0]], same = ids.filter(id => S.slots[id].oneColor.src === sl.oneColor.src);
+  OC.inAE = false; OC_PENDING = null;
+  openOneColor(same, sl.oneColor.src, sl.oneColor.overrides).then(() => {
+    if(!document.getElementById("oc-edit").classList.contains("open")) ocToggleEdit();
+  });
+}
 function aeColorsIntro(){
+  { const b = document.getElementById("ae-1c"); if(b) b.style.display = (CUSTOMER && isScreenPrint() && ae1cSlots().length) ? "" : "none"; }
   const el = document.getElementById("ae-colors-intro");
   const mcOn = document.getElementById("mc-panel")?.classList.contains("vis");
   const spOn = document.getElementById("sp-ink")?.style.display !== "none";
@@ -14285,6 +14305,6 @@ function zonesMouseUp(){
 </div>
 
 <script src="/static/client.js" defer></script>
-<script src="/static/assistant.js?v=13" defer></script>
+<script src="/static/assistant.js?v=15" defer></script>
 </body>
 </html>

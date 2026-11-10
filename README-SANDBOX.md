@@ -232,3 +232,14 @@ static/assets/ (the four 4CP items, 5010/5020 items); static/sandbox/items/
   colours, numbered, as chips in the chat) and set_art_colors (each colour
   prints, becomes a gap, or is dropped) on the page's own one-colour engine
   (/api/one-color), then shows the result and offers to match the ink.
+- 2026-11-09: Gweg's first suggestion for several-colour art on a one-ink
+  item is preset "contrast" (dark colours print, light ones become gaps). He
+  then asks which ink to print in and offers open_art_editor. The customer
+  art editor's Colors tab now has "Choose what prints", which opens the
+  one-colour editor (Print / Knock out / Remove per colour or per part).
+- 2026-11-10: Revise an old proof for customers. The proof PDF carries the
+  job, so dropping it in brings back the item, colors, colorways, ink, sides
+  and art. Entry points: "↺ Revise an old proof" on the items page
+  (home.html), "Have a proof from us? ↺ Revise it" under each item's step
+  header, and Gweg's revise_from_proof (attach the PDF in the chat). Works
+  from any login session; proofs for items not on the client site say so.

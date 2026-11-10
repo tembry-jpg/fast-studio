@@ -409,7 +409,7 @@ function label(c){
     set_background: `Background: ${i.type || "update"}`, get_preview: "Looking at the mockup",
     show_lifestyle: "Opening the lifestyle photo", download_virtual: "Downloading the virtual",
     go_to_review: "Going to Review & send", art_colors: "Looking at the art's colours",
-    set_art_colors: "Choosing which colours print", get_design: `Reading the design on ${locName(i.location)}`,
+    set_art_colors: "Choosing which colours print", open_art_editor: "Opening the art editor", revise_from_proof: "Opening your old proof", get_design: `Reading the design on ${locName(i.location)}`,
     make_design: `Designing ${locName(i.location)}`, edit_design: `Editing the design on ${locName(i.location)}`,
     use_template: `Template: ${i.template}`, clear_inside: `Inner white: ${i.mode}`,
     hide_color: `${i.hidden === false ? "Bringing back" : "Leaving out"} colour ${i.n}`})[c.name] || c.name;
@@ -755,9 +755,19 @@ const TOOLS = {
             how: "prints = in the ink; gap = left open so the item shows through (keeps detail inside the design); dropped = gone"};
   },
 
-  async set_art_colors({location, colours}){
+  async set_art_colors({location, colours, preset}){
     const {sl, src, d: d0, groups} = await artColours(location);
     if(!src) throw new Error("This art is already one colour.");
+    if(preset === "contrast"){
+      // Like a photo turned into a stamp: dark, strong colours print; light ones
+      // become gaps so the item shows through and details inside stay readable.
+      const L = g => labOf(g.hex)[0];
+      colours = groups.map(g => ({n: g.n, state: L(g) < 62 ? "prints" : "gap"}));
+      if(!colours.some(c => c.state === "prints")){
+        const dark = groups.reduce((a, b) => L(a) <= L(b) ? a : b);
+        colours.find(c => c.n === dark.n).state = "prints";
+      }
+    }
     const over = {...(sl.oneColor.overrides || {})};
     for(const c of colours || []){
       const g = groups.find(x => x.n === Number(c.n));
@@ -784,6 +794,35 @@ const TOOLS = {
   },
 
   
+  async revise_from_proof({file}){
+    const f = A.files[file];
+    if(!f) throw new Error(`No attachment "${file}".`);
+    if(!/\.pdf$/i.test(f.name)) throw new Error("That isn't a PDF - a digital proof from us is a PDF.");
+    const fd = new FormData(); fd.append("file", f, f.name);
+    if(S.pid) fd.append("product_id", S.pid);
+    const r = await fetch("/api/restore", {method: "POST", body: fd});
+    const b = await r.json().catch(() => ({}));
+    if(!r.ok || b.error){
+      const e = String(b.error || "");
+      throw new Error(b.code === "not_proof" ? "That isn't one of our digital proofs (or a filled-in This Is Fast template). Treat it as their art instead (place_art)."
+        : /isn't in the catalog/.test(e) ? "That proof is for an item that isn't on This Is Fast - their Numo rep can revise it."
+        : e || "That proof couldn't be read.");
+    }
+    if(b.job?.pid && b.job.pid !== S.pid) await TOOLS.open_item({id: b.job.pid});
+    await restoreBundle(b);
+    await settle();
+    return {loaded: (($("fb")?.textContent) || "").trim(), state: await TOOLS.get_state()};
+  },
+
+  async open_art_editor({location}){
+    needArt(location);
+    try{ custStep(2); }catch(e){}
+    openArtEditor(pairedIds(location), "colors"); await sleep(400);
+    const one = typeof ae1cSlots === "function" && ae1cSlots().length && isScreenPrint();
+    return one ? "The art editor is open on its Colors tab: the ink picker, and a 'Choose what prints' button. That opens the one-colour editor: each colour has Print / Knock out / Remove buttons, and they can click any single part of the art to change just that part. 'Use this' saves it; 'Back to automatic' starts over."
+               : "The art editor is open on its Colors tab.";
+  },
+
   async get_design({location}){
     const id = lyLoc(location);
     if(lyBusy()) throw new Error("The customer has the layout tool open - let them finish, or ask them to close it.");

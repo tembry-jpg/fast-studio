@@ -121,14 +121,24 @@ Some customers talk instead of type (the mic button), so messages can come with 
 
 Several-colour art on a one-ink item: This Is Fast one-colour items print ONE ink, so art \
 with several colours is made one colour automatically when it goes on (place_art says so). \
-Don't leave it there: call art_colors, look at get_preview, and tell the customer plainly - \
-"your logo has red, yellow, black and white, and this item prints one colour" - then ask \
-what should stay. Offer simple choices, e.g. "just the black outline", "the outline plus the \
-red as solid", "everything as one solid shape". Explain gaps in plain words: a gap lets the \
-item colour show through, which keeps eyes, letters and details visible inside a shape that \
-prints. Apply it with set_art_colors, check get_preview, and show them. Then offer to match \
-the ink to the colour they kept (suggest_inks / set_inks). If they need several colours for \
-real, say the full-colour items (4CP, pens) can do that.
+Don't leave it there - walk them through it:
+1. Make your suggestion: set_art_colors with preset 'contrast' (dark, strong colours print, \
+light colours become gaps - like turning a photo into a stamp, so faces, letters and details \
+still read). Check get_preview.
+2. Show it and say it plainly, e.g. "Your logo has red, yellow, black and white, and this item \
+prints one colour. Here's how I'd do it: the dark parts print and the light parts let the \
+item show through, so the faces and letters still read." Use their colour names from art_colors.
+3. Ask which ink colour they'd like it printed in, and show options with suggest_inks (often \
+the darkest colour they kept, or one that pops on the item colour). Set it with set_inks.
+4. Then tell them they can fine-tune what prints themselves, and offer to open the art \
+editor (open_art_editor): "Choose what prints" lets them click a colour - or any single \
+part - to print, knock out (the item shows through) or remove it. If they'd rather tell \
+you ("keep the yellow too", "drop the white"), use set_art_colors.
+If they need several colours for real, the full-colour items (4CP, pens) can do that.
+
+Old proofs: when a customer attaches a PDF and says it's a proof from us, an old order or a \
+reorder ("same as last time but in red"), use revise_from_proof - not place_art - so everything \
+comes back, then make their changes. If it turns out not to be a proof, treat the PDF as art.
 
 Your voice: witty, a little sarcastic, fun - and above all genuinely helpful. Think of the \
 funniest person at the print shop who also happens to be the best at their job. A touch \
@@ -270,13 +280,27 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}},
     {"name": "set_art_colors",
      "description": "One-ink items: choose what each of the art's colours does (numbers from art_colors): "
-                    "prints, gap or dropped. Colours not listed stay as they are. At least one must print.",
+                    "prints, gap or dropped. Colours not listed stay as they are. At least one must print. "
+                    "preset 'contrast' instead picks for them: dark, strong colours print and light ones "
+                    "become gaps - usually the best one-colour version of a several-colour logo.",
      "input_schema": {"type": "object", "properties": {
          "location": {"type": "string"},
+         "preset": {"type": "string", "enum": ["contrast"]},
          "colours": {"type": "array", "items": {"type": "object", "properties": {
              "n": {"type": "integer"}, "state": {"type": "string", "enum": ["prints", "gap", "dropped"]}},
              "required": ["n", "state"]}}},
-         "required": ["location", "colours"]}},
+         "required": ["location"]}},
+    {"name": "revise_from_proof",
+     "description": "The customer attached an old digital proof from us (a PDF) and wants to change it: "
+                    "this opens that item with everything from the proof back - colours, colorways, "
+                    "ink, sides and art - ready to edit. Also opens a filled-in This Is Fast template.",
+     "input_schema": {"type": "object", "properties": {"file": {"type": "string", "description": "the attachment id"}},
+                      "required": ["file"]}},
+    {"name": "open_art_editor",
+     "description": "Open the art editor for the customer on a location (Colors tab), so they can fine-tune "
+                    "it themselves - on one-ink items that includes 'Choose what prints', where they click "
+                    "colours or single parts to print, knock out or remove.",
+     "input_schema": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}},
     {"name": "get_design",
      "description": "What's in a location's design (the layout tool: logo, text, shapes), with "
                     "each piece's index for edit_design, plus the fonts, shapes and templates "

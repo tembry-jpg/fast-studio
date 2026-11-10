@@ -161,6 +161,50 @@ rep('function R(){\nif(syncMatchInks()) return;\nimprintOneEnforce();', 'functio
       '#ink-btn,#ink-pop,#export-preview,#em-opts,#am-open-ns,.sbx-hide{display:none!important}\n.bg-tpl{font:11.5px/1.45 var(--sans);color:var(--muted);margin:2px 0 12px}\n.bg-tpl a{color:var(--burgundy)}');
 }
 
+// ── Several-colour art on a one-ink item: the customer picks what prints (2026-11-09) ──
+// The art editor's Colors tab gets a "Choose what prints" button that opens the
+// one-colour editor (click a colour or any part: print / knock out / remove).
+rep('          <p class="ae-intro" id="ae-colors-intro"></p>',
+    '          <p class="ae-intro" id="ae-colors-intro"></p>\n'
+    + '          <div class="ae-1c" id="ae-1c" style="display:none"><b>Your art has several colors.</b> This item prints one, so you choose what prints: '
+    + 'each color (or any single part) can <b>print</b>, be <b>knocked out</b> so the item shows through - great for eyes, letters and details inside a shape - or be <b>removed</b>.'
+    + '<button class="rd-btn pri" onclick="ae1cOpen()">Choose what prints</button></div>');
+rep('function aeColorsIntro(){',
+    'function ae1cSlots(){ return (AE.slots || []).filter(id => S.slots[id]?.oneColor?.src); }\n'
+    + 'function ae1cOpen(){\n'
+    + '  const ids = ae1cSlots(); if(!ids.length) return;\n'
+    + '  const sl = S.slots[ids[0]], same = ids.filter(id => S.slots[id].oneColor.src === sl.oneColor.src);\n'
+    + '  OC.inAE = false; OC_PENDING = null;\n'
+    + '  openOneColor(same, sl.oneColor.src, sl.oneColor.overrides).then(() => {\n'
+    + '    if(!document.getElementById("oc-edit").classList.contains("open")) ocToggleEdit();\n'
+    + '  });\n'
+    + '}\n'
+    + 'function aeColorsIntro(){\n'
+    + '  { const b = document.getElementById("ae-1c"); if(b) b.style.display = (CUSTOMER && isScreenPrint() && ae1cSlots().length) ? "" : "none"; }');
+rep('#ink-btn,#ink-pop,#export-preview,#em-opts,#am-open-ns,.sbx-hide{display:none!important}',
+    '#ink-btn,#ink-pop,#export-preview,#em-opts,#am-open-ns,.sbx-hide{display:none!important}\n'
+    + '.ae-1c{margin:12px 0;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font:12.5px/1.5 var(--sans);color:var(--text)}\n'
+    + '.ae-1c button{display:block;margin-top:10px;width:100%}\n#oc-scrim{z-index:10020}');
+
+// ── Revise an old proof, for customers (2026-11-10) ────────────────────────
+// The proof carries the job, so dropping it in brings the item, colors,
+// colorways and art back. The button lives in the hidden Export panel; give
+// customers a link under the step header and customer wording.
+rep('<div class="cust-step-hd" id="cust-hd"></div>',
+    '<div class="cust-step-hd" id="cust-hd"></div>\n'
+    + '<div class="cust-only cust-rev">Have a proof from us? <a href="#" onclick="document.getElementById(\'restore-fi\').click();return false">↺ Revise it</a> - your item, colors and art come right back.</div>');
+rep(': "✓ Loaded the customer\'s proof. Make any changes, then export with the NSO number.")',
+    ': CUSTOMER ? "✓ Your proof is back. Make your changes, then send it again from Review & send."\n'
+    + '      : "✓ Loaded the customer\'s proof. Make any changes, then export with the NSO number.")');
+rep('if(b.code === "not_proof"){ fb.textContent = "Not a proof or TIF template — pick the art from it."; apOpen(f); return; }',
+    'if(b.code === "not_proof"){\n'
+    + '      if(CUSTOMER){ fb.textContent = "⚠ That doesn\'t look like one of our digital proofs. Add your art in step 2 instead."; return; }\n'
+    + '      fb.textContent = "Not a proof or TIF template — pick the art from it."; apOpen(f); return; }');
+rep('#ink-btn,#ink-pop,#export-preview,#em-opts,#am-open-ns,.sbx-hide{display:none!important}',
+    '#ink-btn,#ink-pop,#export-preview,#em-opts,#am-open-ns,.sbx-hide{display:none!important}\n'
+    + 'body.cust .cust-rev{font:12.5px/1.45 var(--sans);color:var(--muted);margin:-2px 0 12px}\n'
+    + '.cust-rev a{color:var(--burgundy);font-weight:600}');
+
 // ── One-color ink follows the art's color (2026-10-29) ─────────────────────
 {
   const AUTO_JS = fs.readFileSync(new URL('./autoink.js', import.meta.url), 'utf8');
@@ -172,7 +216,7 @@ rep('function R(){\nif(syncMatchInks()) return;\nimprintOneEnforce();', 'functio
 rep('<button class="tut-btn" id="tut-btn" onclick="openTutorial(\'replay\')"',
     '<button class="tut-btn" id="ask-btn" onclick="askToggle()" title="Ask Gweg: tell him what you want and he sets it up for you"><img src="/static/img/gweg.png" alt=""> Ask Gweg</button>\n'
     + '<button class="tut-btn" id="tut-btn" onclick="openTutorial(\'replay\')"');
-rep('<script src="/static/client.js" defer></script>', '<script src="/static/client.js" defer></script>\n<script src="/static/assistant.js?v=13" defer></script>');
+rep('<script src="/static/client.js" defer></script>', '<script src="/static/client.js" defer></script>\n<script src="/static/assistant.js?v=15" defer></script>');
 
 // The review step lists every colorway on the order (the bot can add them).
 rep('const rows = [["Product", e(document.getElementById("prod-label")?.textContent || S.prod?.name || S.pid || "")]];',
