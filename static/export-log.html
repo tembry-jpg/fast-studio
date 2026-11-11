@@ -140,7 +140,7 @@ tr.sub td{background:#fcf9f4;font-size:12.5px} tr.sub td:first-child{padding-lef
 const KEY = new URLSearchParams(location.search).get("key") || "";
 const $ = id => document.getElementById(id);
 const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const api = (p, extra) => `${p}?key=${encodeURIComponent(KEY)}${extra || ""}`;
+const api = (p, extra) => `${p}?${KEY ? "key=" + encodeURIComponent(KEY) : "v=1"}${extra || ""}`;
 let ROWS = [], ROOT = "", F = [], cosLimit = 25, exLimit = 50, cosSort = {k: "last", d: -1};
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const NOT_COLOR = /^(product|colors on this order|ink color|stitching|also in this order|background)$/i;
@@ -353,6 +353,7 @@ async function load(fresh){
   try{
     const r = await fetch(api("/api/export-log/data", fresh ? "&fresh=1" : ""), {cache: "no-store"});
     const j = await r.json();
+    if(r.status === 404){ location.href = "/export-log"; return; }
     if(!r.ok || j.error) throw new Error(j.error || "Couldn't load the log.");
     ROOT = j.root;
     ROWS = j.rows.map(parse);

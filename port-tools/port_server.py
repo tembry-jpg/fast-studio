@@ -861,17 +861,42 @@ def dropbox_setup():
 
 
 def _log_key_ok():
-    import hmac
+    """Numo only: the customers share one client login, so the export log
+    needs its own password (DROPBOX_SETUP_KEY). Once entered it's remembered
+    for this browser session."""
+    import hmac, hashlib
+    from flask import session
     k = (os.environ.get("DROPBOX_SETUP_KEY") or "").strip()
-    return bool(k) and hmac.compare_digest((request.args.get("key") or "").strip().encode(), k.encode())
+    if not k:
+        return False
+    if session.get("numo_log") == hashlib.sha256(k.encode()).hexdigest()[:16]:
+        return True
+    given = (request.values.get("key") or "").strip()
+    if given and hmac.compare_digest(given.encode(), k.encode()):
+        session["numo_log"] = hashlib.sha256(k.encode()).hexdigest()[:16]
+        return True
+    return False
 
 
-@app.route("/export-log")
+@app.route("/export-log", methods=["GET", "POST"])
 def export_log_page():
-    """How customers use the site: the export log, for Numo (setup key)."""
-    if not _log_key_ok():
-        return "Not found.", 404
-    return send_file(str(HERE / "static" / "export-log.html"))
+    """How customers use the site: the export log, for Numo."""
+    from flask import redirect
+    if _log_key_ok():
+        if request.method == "POST" or request.args.get("key"):
+            return redirect("/export-log")      # keep the password out of the address bar
+        return send_file(str(HERE / "static" / "export-log.html"))
+    bad = request.method == "POST"
+    return ("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
+            "<title>Customer exports</title><style>body{font:15px/1.5 system-ui,sans-serif;background:#faf7f2;color:#2a2622;"
+            "display:grid;place-items:center;min-height:100vh;margin:0;padding:16px}form{background:#fff;border:1px solid #e8dfd0;"
+            "border-radius:12px;padding:24px;width:100%;max-width:340px}h1{font-size:19px;margin:0 0 4px}p{color:#7a6a52;"
+            "font-size:13px;margin:0 0 14px}input{width:100%;box-sizing:border-box;font:15px system-ui;padding:9px 10px;"
+            "border:1px solid #d9cbb5;border-radius:8px}button{margin-top:12px;width:100%;background:#6d1f2a;color:#fff;border:0;"
+            "border-radius:8px;padding:10px;font:inherit;cursor:pointer}.bad{color:#a01c1c;margin-top:10px}</style>"
+            "<form method=post><h1>Customer exports</h1><p>Numo only.</p>"
+            "<input type=password name=key placeholder=Password autofocus autocomplete=current-password>"
+            "<button>Open</button>" + ("<div class=bad>That password isn't right.</div>" if bad else "") + "</form>")
 
 
 @app.route("/api/export-log/data")
