@@ -230,6 +230,7 @@ rep('function custVal(id){', '// How the customer built this one, for the export
   + '  const h = [], A = window.ASK;\n'
   + '  if(A?.msgs?.length) h.push("Gweg chat");\n'
   + '  if(A?.spokeEver) h.push("talked to Gweg");\n'
+  + '  if(A?.drew) h.push("Gweg drew art");\n'
   + '  if(RESTORE.token) h.push(RESTORE.source === "tif_template" ? "filled-in template" : "revised an old proof");\n'
   + '  if(typeof VAR !== "undefined" && VAR.list?.length > 1) h.push("colorways");\n'
   + '  return h;\n'
@@ -247,7 +248,7 @@ rep('function custVal(id){', '// How the customer built this one, for the export
 rep('<button class="tut-btn" id="tut-btn" onclick="openTutorial(\'replay\')"',
     '<button class="tut-btn" id="ask-btn" onclick="askToggle()" title="Ask Gweg: tell him what you want and he sets it up for you"><img src="/static/img/gweg.png" alt=""> Ask Gweg</button>\n'
     + '<button class="tut-btn" id="tut-btn" onclick="openTutorial(\'replay\')"');
-rep('<script src="/static/client.js" defer></script>', '<script src="/static/client.js" defer></script>\n<script src="/static/assistant.js?v=15" defer></script>');
+rep('<script src="/static/client.js" defer></script>', '<script src="/static/client.js" defer></script>\n<script src="/static/assistant.js?v=16" defer></script>');
 
 // The review step lists every colorway on the order (the bot can add them).
 rep('const rows = [["Product", e(document.getElementById("prod-label")?.textContent || S.prod?.name || S.pid || "")]];',

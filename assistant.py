@@ -33,7 +33,7 @@ from pathlib import Path
 
 API = "https://api.anthropic.com/v1/messages"
 MODEL = os.environ.get("ASSISTANT_MODEL", "claude-sonnet-5")
-MAX_TOKENS = 2000
+MAX_TOKENS = 4000   # room for a drawing (draw_art writes SVG)
 MAX_TURN_MESSAGES = 80          # a conversation longer than this is trimmed from the front
 MAX_BODY_BYTES = 12_000_000
 MAX_IMAGES = 6                  # pictures in one request
@@ -139,6 +139,22 @@ If they need several colours for real, the full-colour items (4CP, pens) can do 
 Old proofs: when a customer attaches a PDF and says it's a proof from us, an old order or a \
 reorder ("same as last time but in red"), use revise_from_proof - not place_art - so everything \
 comes back, then make their changes. If it turns out not to be a proof, treat the PDF as art.
+
+Drawing for customers (draw_art): when someone has no logo and wants you to design something \
+("a fish jumping out of water with LAKE DAYS under it", "something simple for our 5K"), draw it.
+- Ask one quick question only if you truly need it (what it's for, the vibe); otherwise just draw.
+- Draw for printing: bold, simple, flat shapes; thick outlines and gaps (nothing thinner than \
+about 2% of the drawing's width); no tiny details, no photo-realism, no shading. On one-colour \
+items use ONE fill colour (black is fine - the ink sets the colour) and let gaps make the \
+detail - cut the gaps as holes in the shapes (fill-rule="evenodd" or separate paths), never by \
+painting white on top, because white shapes may print white or vanish. On full-colour items use a few flat colours.
+- Words go on with make_design afterwards (type 'logo' = your drawing, plus text pieces), never \
+inside the SVG. Typical: draw_art, then make_design [logo, text], then set_art_size fit.
+- Always check get_preview, show it, and offer one or two ideas for changes. Redraw on request.
+- Never draw other people's logos, team or school marks, brands, mascots, cartoon or movie \
+characters, or anything meant to look like them - even "just similar". Say kindly you can only \
+make original art, and offer an original idea instead. Same for real people's likenesses.
+- Say once, lightly, that Numo's artists look over every design before it's made.
 
 Your voice: witty, a little sarcastic, fun - and above all genuinely helpful. Think of the \
 funniest person at the print shop who also happens to be the best at their job. A touch \
@@ -296,6 +312,18 @@ TOOLS = [
                     "ink, sides and art - ready to edit. Also opens a filled-in This Is Fast template.",
      "input_schema": {"type": "object", "properties": {"file": {"type": "string", "description": "the attachment id"}},
                       "required": ["file"]}},
+    {"name": "draw_art",
+     "description": "Draw original artwork yourself and place it on a location: write one complete SVG "
+                    "(with a viewBox) using only shapes - path, rect, circle, ellipse, line, polyline, "
+                    "polygon, g, defs, clipPath, linearGradient/radialGradient (full-colour items only). "
+                    "No text, no images, no external links; add lettering afterwards with make_design "
+                    "(type 'logo' for the drawing plus text pieces), which uses real fonts. Each call "
+                    "replaces the art on that location.",
+     "input_schema": {"type": "object", "properties": {
+         "location": {"type": "string"},
+         "svg": {"type": "string", "description": "the complete <svg>…</svg>"},
+         "name": {"type": "string", "description": "a short file name, e.g. 'mountain-badge'"}},
+         "required": ["location", "svg"]}},
     {"name": "open_art_editor",
      "description": "Open the art editor for the customer on a location (Colors tab), so they can fine-tune "
                     "it themselves - on one-ink items that includes 'Choose what prints', where they click "

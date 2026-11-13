@@ -13374,6 +13374,7 @@ function custHow(){
   const h = [], A = window.ASK;
   if(A?.msgs?.length) h.push("Gweg chat");
   if(A?.spokeEver) h.push("talked to Gweg");
+  if(A?.drew) h.push("Gweg drew art");
   if(RESTORE.token) h.push(RESTORE.source === "tif_template" ? "filled-in template" : "revised an old proof");
   if(typeof VAR !== "undefined" && VAR.list?.length > 1) h.push("colorways");
   return h;
@@ -14320,6 +14321,6 @@ function zonesMouseUp(){
 </div>
 
 <script src="/static/client.js" defer></script>
-<script src="/static/assistant.js?v=15" defer></script>
+<script src="/static/assistant.js?v=16" defer></script>
 </body>
 </html>

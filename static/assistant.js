@@ -410,7 +410,7 @@ function label(c){
     set_background: `Background: ${i.type || "update"}`, get_preview: "Looking at the mockup",
     show_lifestyle: "Opening the lifestyle photo", download_virtual: "Downloading the virtual",
     go_to_review: "Going to Review & send", art_colors: "Looking at the art's colours",
-    set_art_colors: "Choosing which colours print", open_art_editor: "Opening the art editor", revise_from_proof: "Opening your old proof", get_design: `Reading the design on ${locName(i.location)}`,
+    set_art_colors: "Choosing which colours print", open_art_editor: "Opening the art editor", revise_from_proof: "Opening your old proof", draw_art: "Drawing it", get_design: `Reading the design on ${locName(i.location)}`,
     make_design: `Designing ${locName(i.location)}`, edit_design: `Editing the design on ${locName(i.location)}`,
     use_template: `Template: ${i.template}`, clear_inside: `Inner white: ${i.mode}`,
     hide_color: `${i.hidden === false ? "Bringing back" : "Leaving out"} colour ${i.n}`})[c.name] || c.name;
@@ -746,8 +746,54 @@ function artColoursChips(groups){
   return `<div class="ask-swh">Colours in your art (one ink prints - tap to change):</div><div class="ask-sw">${groups.map(g =>
     `<button onclick="askSay(${esc(JSON.stringify(say(g)))})" title="${esc(g.hex)} · ${esc(g.now)}"><i style="background:${esc(g.hex)}"></i>${g.n}. ${esc(g.colour)} · ${esc(g.now)}</button>`).join("")}</div>`;
 }
+// ── Gweg draws: vector art he writes himself as SVG ─────────────────────────
+// Only plain shapes survive: no scripts, no event handlers, nothing fetched
+// from outside the file, no text (lettering goes on with the layout tool,
+// in real fonts).
+const SVG_OK = new Set(["svg", "g", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon",
+                        "defs", "clippath", "mask", "lineargradient", "radialgradient", "stop", "use", "title", "desc"]);
+function cleanSvg(src){
+  const doc = new DOMParser().parseFromString(String(src || ""), "image/svg+xml");
+  const root = doc.documentElement;
+  if(!root || root.nodeName.toLowerCase() !== "svg" || doc.querySelector("parsererror"))
+    throw new Error("That SVG didn't parse - send one complete <svg>…</svg> with a viewBox.");
+  let dropped = 0;
+  const walk = el => {
+    for(const c of [...el.children]){
+      if(!SVG_OK.has(c.nodeName.toLowerCase())){ c.remove(); dropped++; continue; }
+      for(const a of [...c.attributes]){
+        const n = a.name.toLowerCase(), v = a.value;
+        if(n.startsWith("on") || ((n === "href" || n === "xlink:href") && !v.startsWith("#"))
+           || /url\(\s*['"]?(?!#)/i.test(v) || /javascript:/i.test(v)) c.removeAttribute(a.name);
+      }
+      walk(c);
+    }
+  };
+  for(const a of [...root.attributes]) if(a.name.toLowerCase().startsWith("on")) root.removeAttribute(a.name);
+  walk(root);
+  if(!root.getAttribute("viewBox")) throw new Error('Add a viewBox to the <svg> (e.g. viewBox="0 0 400 400").');
+  root.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  if(!root.querySelector("path,rect,circle,ellipse,line,polyline,polygon,use"))
+    throw new Error("The drawing came out empty" + (dropped ? " (text isn't allowed in drawings - add words with make_design)" : "") + ".");
+  return {svg: new XMLSerializer().serializeToString(root), dropped};
+}
 
 const TOOLS = {
+  async draw_art({location, svg, name}){
+    needLoc(location);
+    if((A.drew || 0) >= 10) throw new Error("That's the drawing limit for this visit (10). Offer to tweak the last drawing with smaller changes, or have Numo's artists take it from the proof.");
+    const {svg: clean, dropped} = cleanSvg(svg);
+    if(clean.length > 400e3) throw new Error("That drawing is too big - simplify it.");
+    const fname = (String(name || "gweg-design").replace(/[^a-z0-9 _-]+/gi, "").trim().replace(/\s+/g, "-").slice(0, 40) || "gweg-design") + ".svg";
+    const f = new File([clean], fname, {type: "image/svg+xml"});
+    const id = "a" + (++A.nfile); A.files[id] = f;
+    A.drew = (A.drew || 0) + 1;
+    const out = await TOOLS.place_art({location, file: id});
+    return {...(typeof out === "object" ? out : {placed: out}), file: id,
+            note: (dropped ? "Text and anything unsupported was removed from the drawing - add words with make_design. " : "")
+                + "Check get_preview, show them, and offer changes."};
+  },
+
   async art_colors({location}){
     const {src, groups} = await artColours(location);
     if(!src) return {location, note: "This art is already one colour - nothing to choose."};

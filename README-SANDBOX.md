@@ -281,3 +281,12 @@ static/assets/ (the four 4CP items, 5010/5020 items); static/sandbox/items/
 - New log column "How" (filled from the page: Gweg chat / talked to Gweg /
   revised an old proof / filled-in template / colorways). Older logs get the
   column added on the next export.
+
+## Gweg draws (2026-11-13)
+- draw_art: Gweg writes original vector art as SVG and places it. The page
+  keeps only plain shapes (no scripts, event handlers, outside links, images
+  or text) before it's uploaded. Lettering goes on afterwards with
+  make_design in real fonts. Limit 10 drawings per visit. MAX_TOKENS 4000.
+- He refuses other people's logos, team/school marks, brands, characters and
+  likenesses, and offers an original idea instead.
+- The export log's How column says "Gweg drew art" for those exports.
